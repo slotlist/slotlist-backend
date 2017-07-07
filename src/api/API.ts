@@ -126,7 +126,8 @@ export class API {
                     }
                 },
                 schemes: [HTTPConfig.scheme],
-                host: `${HTTPConfig.host}:${HTTPConfig.port}`
+                host: `${HTTPConfig.host}:${HTTPConfig.port}`,
+                pathPrefixSize: 2
             }
         });
 
