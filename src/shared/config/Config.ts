@@ -22,6 +22,16 @@ export interface ILoggingConfig {
     stdout: string | number | false;
 }
 
+export interface ISteamConfig {
+    openID: {
+        callbackURL: string;
+        realm: string;
+    };
+    api: {
+        secret: string;
+    };
+}
+
 /**
  * Configuration class for storing all application-revelant config
  *
@@ -54,6 +64,16 @@ export class Config {
         src: true,
         stdout: 'debug'
     };
+
+    public steam: ISteamConfig = {
+        openID: {
+            callbackURL: 'http://localhost:4000/#/login',
+            realm: 'http://localhost:4000'
+        },
+        api: {
+            secret: 'supersecret'
+        }
+    };
 }
 
 export const instance = new Config();
@@ -62,4 +82,5 @@ export const instance = new Config();
 export const HTTP = instance.http;
 export const JWT = instance.jwt;
 export const Logging = instance.logging;
+export const Steam = instance.steam;
 // tslint:enable:variable-name

@@ -3,8 +3,11 @@
         "tslint-microsoft-contrib"
     ],
     "rules": {
+        "export-name": false,
         "max-func-body-length": false,
         "no-any": false,
+        "no-default-export": false,
+        "no-http-string": false,
         "no-relative-imports": false,
         "typedef": [
             true,
