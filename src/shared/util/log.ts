@@ -30,7 +30,7 @@ _.each(LoggingConfig.files, (logFile: { path: string; level: string | number; })
 });
 
 export const log = bunyan.createLogger({
-    name: pjson.name,
+    name: 'slotlist-backend',
     serializers: serializers,
     level: 'trace',
     src: LoggingConfig.src,

@@ -10,6 +10,7 @@
   "author": "Nick 'MorpheusXAUT' Mueller <nick@morpheusxaut.net>",
   "license": "MIT",
   "scripts": {
+    "build": "./node_modules/.bin/tsc -p .",
     "start": "node ./dist/src/index.js | ./node_modules/.bin/bunyan",
     "test": "./node_modules/.bin/mocha -c -A ./dist/src/test/index.js"
   },
@@ -36,6 +37,7 @@
     "pg-native": "^1.10.1",
     "pjson": "^1.0.8",
     "sequelize": "^4.2.1",
+    "source-map-support": "^0.4.15",
     "umzug": "^2.0.1",
     "uuid": "^3.1.0",
     "vision": "^4.1.1"
@@ -58,7 +60,6 @@
     "@types/umzug": "^1.8.32",
     "@types/uuid": "^3.0.0",
     "mocha": "^3.4.2",
-    "source-map-support": "^0.4.15",
     "tslint": "^5.5.0",
     "tslint-microsoft-contrib": "^5.0.1",
     "typescript": "^2.4.1"
