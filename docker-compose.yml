@@ -1,0 +1,33 @@
+version: "3.3"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      cache_from:
+        - alpine:3.6
+    env_file:
+      - ./dev.env
+    ports:
+      - "${HOST_PORT:-3000}:${HTTP_PORT:-3000}"
+    volumes:
+      - ./dist:/app/dist:ro
+    depends_on:
+      - db
+    links:
+      - db
+    healthcheck:
+      test: curl -f http://localhost:${HTTP_PORT:-3000}/v1/status
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  db:
+    image: postgres:9.6.3-alpine
+    environment:
+      POSTGRES_DB: slotlist-backend
+      POSTGRES_USER: slotlist-backend
+      POSTGRES_PASSWORD: slotlist-backend
+    expose:
+      - "5432"

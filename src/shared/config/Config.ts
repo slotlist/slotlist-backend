@@ -1,3 +1,12 @@
+import * as dotenv from 'dotenv';
+import * as _ from 'lodash';
+
+if (_.isString(process.env.DOTENV_FILE) && !_.isEmpty(process.env.DOTENV_FILE)) {
+    dotenv.config({
+        path: process.env.DOTENV_FILE
+    });
+}
+
 export interface IDatabaseConfig {
     host: string;
     port: number;
@@ -48,50 +57,173 @@ export interface ISteamConfig {
  * @class Config
  */
 export class Config {
-    public database: IDatabaseConfig = {
-        host: '127.0.0.1',
-        port: 5432,
-        database: 'slotlist-backend',
-        username: 'slotlist-backend',
-        password: 'slotlist-backend'
-    };
+    public database: IDatabaseConfig;
+    public http: IHTTPConfig;
+    public jwt: IJWTConfig;
+    public logging: ILoggingConfig;
+    public steam: ISteamConfig;
 
-    public http: IHTTPConfig = {
-        address: '0.0.0.0',
-        host: 'localhost',
-        port: 3000,
-        scheme: 'http',
-        opsInterval: 900000
-    };
-
-    public jwt: IJWTConfig = {
-        algorithms: ['HS256'],
-        audience: 'https://api.slotlist.info',
-        expiresIn: '3d',
-        issuer: 'https://api.slotlist.info',
-        secret: 'supersecret'
-    };
-
-    public logging: ILoggingConfig = {
-        files: [
-            {
-                path: 'logs/slotlist-backend.log',
-                level: 'debug'
+    // tslint:disable:cyclomatic-complexity
+    constructor() {
+        const configEnvVariables: { [name: string]: string } = {};
+        _.each(process.env, (value: string, name: string): void => {
+            if (_.startsWith(name, 'CONFIG_')) {
+                configEnvVariables[name] = value;
             }
-        ],
-        src: true,
-        stdout: 'debug'
-    };
+        });
 
-    public steam: ISteamConfig = {
-        openID: {
-            callbackURL: 'http://localhost:4000/#/login',
-            realm: 'http://localhost:4000'
-        },
-        api: {
-            secret: 'supersecret'
-        }
-    };
+        const databaseConfig: any = {};
+        const httpConfig: any = {};
+        const jwtConfig: any = {};
+        const loggingConfig: any = {};
+        const steamConfig: any = {};
+
+        const loggingConfigFiles: { [key: string]: { path: string, level: string } } = {};
+
+        _.each(configEnvVariables, (value: string, name: string) => {
+            const nameParts = name.split('_');
+            if (nameParts.length < 3) {
+                console.error(`Skipping configEnvVariable '${name}' with value '${value}': invalid naming scheme`);
+            }
+
+            const configType = nameParts[1].toLowerCase();
+            let configKey = nameParts[2].toLowerCase();
+
+            switch (configType) {
+                case 'database':
+                    if (configKey === 'port') {
+                        try {
+                            const intValue = parseInt(value, 10);
+                            databaseConfig[configKey] = intValue;
+                        } catch (err) {
+                            console.error(`Skipping configEnvVariable '${name}' with value '${value}': failed to parse database number`);
+                        }
+
+                        break;
+                    }
+
+                    databaseConfig[configKey] = value;
+
+                    break;
+                case 'http':
+                    if (configKey === 'opsinterval') {
+                        configKey = 'opsInterval';
+                    }
+
+                    if (configKey === 'port' || configKey === 'opsInterval') {
+                        try {
+                            const intValue = parseInt(value, 10);
+
+                            httpConfig[configKey] = intValue;
+                        } catch (err) {
+                            console.error(`Skipping configEnvVariable '${name}' with value '${value}': failed to parse HTTP number`);
+                        }
+
+                        break;
+                    } else if (configKey === 'scheme') {
+                        const scheme = value.toLowerCase();
+                        if (scheme !== 'http' && scheme !== 'https') {
+                            console.error(`Skipping configEnvVariable '${name}' with value '${value}': invalid HTTP scheme`);
+                        } else {
+                            httpConfig[configKey] = scheme;
+                        }
+
+                        break;
+                    }
+
+                    httpConfig[configKey] = value;
+
+                    break;
+                case 'jwt':
+                    if (configKey === 'expiresin') {
+                        configKey = 'expiresIn';
+                    }
+
+                    if (configKey === 'algorithm') {
+                        jwtConfig.algorithms = value.split(',');
+
+                        break;
+                    }
+
+                    jwtConfig[configKey] = value;
+
+                    break;
+                case 'logging':
+                    if (configKey === 'files') {
+                        if (nameParts.length < 5) {
+                            console.error(`Skipping configEnvVariable '${name}' with value '${value}': invalid logging files entry`);
+
+                            break;
+                        }
+
+                        const fileNumber = nameParts[3];
+                        const fileAttribute = nameParts[4].toLowerCase();
+
+                        if (fileAttribute !== 'path' && fileAttribute !== 'level') {
+                            console.error(`Skipping configEnvVariable '${name}' with value '${value}': invalid logging files entry`);
+
+                            break;
+                        }
+
+                        if (_.isNil(loggingConfigFiles[fileNumber])) {
+                            const fileConfig: any = {};
+                            loggingConfigFiles[fileNumber] = fileConfig;
+                        }
+
+                        loggingConfigFiles[fileNumber][fileAttribute] = value;
+
+                        break;
+                    } else if (configKey === 'src') {
+                        loggingConfig.src = value.toLowerCase() === 'true';
+
+                        break;
+                    }
+
+                    loggingConfig[configKey] = value;
+
+                    break;
+                case 'steam':
+                    if (nameParts.length < 4) {
+                        console.error(`Skipping configEnvVariable '${name}' with value '${value}': invalid steam subconfig entry`);
+
+                        break;
+                    }
+
+                    let subConfigKey = nameParts[3].toLowerCase();
+
+                    if (subConfigKey === 'callbackurl') {
+                        subConfigKey = 'callbackURL';
+                    }
+
+                    if (configKey === 'openid') {
+                        configKey = 'openID';
+                    }
+
+                    if (_.isNil(steamConfig[configKey])) {
+                        const subConfig: any = {};
+                        steamConfig[configKey] = subConfig;
+                    }
+
+                    steamConfig[configKey][subConfigKey] = value;
+
+                    break;
+                default:
+                    console.error(`Skipping configEnvVariable '${name}' with value '${value}': unknown type`);
+            }
+        });
+
+        loggingConfig.files = [];
+        _.each(loggingConfigFiles, (f: any) => {
+            loggingConfig.files.push(f);
+        });
+
+        this.database = databaseConfig;
+        this.http = httpConfig;
+        this.jwt = jwtConfig;
+        this.logging = loggingConfig;
+        this.steam = steamConfig;
+    }
+    // tslint:enable:cyclomatic-complexity
 }
 
 export const instance = new Config();

@@ -63,6 +63,15 @@ export class Storage {
         return <Sequelize.Sequelize>this._sequelize;
     }
 
+    private get umzug(): Umzug.Umzug {
+        if (_.isNil(this._sequelize)) {
+            log.fatal('Tried to get umzug from disconnected storage');
+            throw new Error('Cannot get umzug, storage is disconnected');
+        }
+
+        return <Umzug.Umzug>this._umzug;
+    }
+
     public static PROCESS_MODELS(sequelize: Sequelize.Sequelize, modelFactoryFunctions: { [key: string]: Function }): IModels {
         // tslint:disable-next-line:max-line-length
         const models: any = _.mapValues(modelFactoryFunctions, (sequelizeModelFunction: Function, modelName: string): Sequelize.Model<{}, {}> => {
@@ -126,6 +135,34 @@ export class Storage {
         this._sequelize = undefined;
         this._umzug = undefined;
         this._models = undefined;
+    }
+
+    public async migrateUp(all: boolean = true): Promise<void> {
+        // tslint:disable-next-line:no-var-self
+        const self = this;
+
+        await self.sequelize.transaction(async (transaction: Sequelize.Transaction) => {
+            let pendingMigrations = await self.umzug.pending();
+
+            if (!all && pendingMigrations.length > 1) {
+                pendingMigrations = [pendingMigrations[0]];
+            }
+
+            return Promise.each(pendingMigrations, (migration: Umzug.Migration) => {
+                const migrationName = migration.file.split(':')[0];
+
+                return self.umzug.up(migrationName);
+            });
+        });
+    }
+
+    public async migrateDown(all: boolean = true): Promise<void> {
+        // tslint:disable-next-line:no-var-self
+        const self = this;
+
+        await self.sequelize.transaction(async (transaction: Sequelize.Transaction) => {
+            return self.umzug.down();
+        });
     }
 
     private initialize(): void {
