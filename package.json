@@ -12,6 +12,7 @@
   "scripts": {
     "build": "./node_modules/.bin/tsc -p .",
     "dev": "./node_modules/.bin/nodemon -e js,json -w dist/src | ./node_modules/.bin/bunyan",
+    "dev:docker": "./node_modules/.bin/nodemon -L -e js,json -w dist/src | ./node_modules/.bin/bunyan",
     "start": "node ./dist/src/index.js | ./node_modules/.bin/bunyan",
     "test": "./node_modules/.bin/mocha -c -A ./dist/src/test/index.js"
   },

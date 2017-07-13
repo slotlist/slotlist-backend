@@ -5,14 +5,17 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+      args:
+        PRODUCTION_BUILD: "false"
       cache_from:
         - alpine:3.6
     env_file:
       - ./dev.env
+    command: [ "yarn", "dev:docker" ]
     ports:
       - "${HOST_PORT:-3000}:${HTTP_PORT:-3000}"
     volumes:
-      - ./dist:/app/dist:ro
+      - ./dist:/app/dist
     depends_on:
       - db
     links:
