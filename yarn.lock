@@ -92,6 +92,19 @@
   version "6.0.79"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-6.0.79.tgz#5efe7d4a6d8c453c7e9eaf55d931f4a22fac5169"
 
+"@types/pg-types@*":
+  version "1.11.2"
+  resolved "https://registry.yarnpkg.com/@types/pg-types/-/pg-types-1.11.2.tgz#d6bd8fb3a54d1f81ef60b2006688692749a43e33"
+  dependencies:
+    moment ">=2.14.0"
+
+"@types/pg@^6.1.42":
+  version "6.1.42"
+  resolved "https://registry.yarnpkg.com/@types/pg/-/pg-6.1.42.tgz#e5d73fd112cdd1ce8edbb3a0c6664ab76c3b27fc"
+  dependencies:
+    "@types/node" "*"
+    "@types/pg-types" "*"
+
 "@types/podium@*":
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@types/podium/-/podium-1.0.0.tgz#bfaa2151be2b1d6109cc69f7faa9dac2cba3bb20"
@@ -923,12 +936,6 @@ hapi-auth-jwt2@^7.3.0:
     cookie "^0.3.1"
     jsonwebtoken "^7.4.1"
 
-hapi-bunyan@^0.7.0:
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/hapi-bunyan/-/hapi-bunyan-0.7.0.tgz#b9af1f03ab7ba361969821b7a742f59e73737ad9"
-  dependencies:
-    lodash "^3.0.0"
-
 hapi-swagger@^7.7.0:
   version "7.7.0"
   resolved "https://registry.yarnpkg.com/hapi-swagger/-/hapi-swagger-7.7.0.tgz#86b79ff50a0900110a9e83595941a9edbc7b6ad6"
@@ -1449,10 +1456,6 @@ lodash.restparam@^3.0.0:
   version "3.6.1"
   resolved "https://registry.yarnpkg.com/lodash.restparam/-/lodash.restparam-3.6.1.tgz#936a4e309ef330a7645ed4145986c85ae5b20805"
 
-lodash@^3.0.0:
-  version "3.10.1"
-  resolved "https://registry.yarnpkg.com/lodash/-/lodash-3.10.1.tgz#5bf45e8e49ba4189e17d482789dfd15bd140b7b6"
-
 lodash@^4.17.0, lodash@^4.17.1, lodash@^4.17.4:
   version "4.17.4"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.4.tgz#78203a4d1c328ae1d86dca6460e369b57f4055ae"
@@ -1568,7 +1571,7 @@ moment-timezone@^0.5.4:
   dependencies:
     moment ">= 2.9.0"
 
-moment@2.x.x, "moment@>= 2.9.0", moment@^2.10.6, moment@^2.13.0, moment@^2.18.1:
+moment@2.x.x, "moment@>= 2.9.0", moment@>=2.14.0, moment@^2.10.6, moment@^2.13.0, moment@^2.18.1:
   version "2.18.1"
   resolved "https://registry.yarnpkg.com/moment/-/moment-2.18.1.tgz#c36193dd3ce1c2eed2adb7c802dbbc77a81b1c0f"
 

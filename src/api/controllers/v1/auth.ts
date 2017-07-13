@@ -27,7 +27,3 @@ export function verifySteamLogin(request: Hapi.Request, reply: Hapi.ReplyWithCon
         };
     })());
 }
-
-export const auth = {
-    getSteamLoginRedirectURL
-};

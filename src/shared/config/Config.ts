@@ -1,3 +1,11 @@
+export interface IDatabaseConfig {
+    host: string;
+    port: number;
+    database: string;
+    username: string;
+    password: string;
+}
+
 export interface IHTTPConfig {
     address: string;
     host: string;
@@ -9,6 +17,7 @@ export interface IHTTPConfig {
 export interface IJWTConfig {
     algorithms: string[];
     audience: string;
+    expiresIn: string;
     issuer: string;
     secret: string;
 }
@@ -39,6 +48,14 @@ export interface ISteamConfig {
  * @class Config
  */
 export class Config {
+    public database: IDatabaseConfig = {
+        host: '127.0.0.1',
+        port: 5432,
+        database: 'slotlist-backend',
+        username: 'slotlist-backend',
+        password: 'slotlist-backend'
+    };
+
     public http: IHTTPConfig = {
         address: '0.0.0.0',
         host: 'localhost',
@@ -50,6 +67,7 @@ export class Config {
     public jwt: IJWTConfig = {
         algorithms: ['HS256'],
         audience: 'https://api.slotlist.info',
+        expiresIn: '3d',
         issuer: 'https://api.slotlist.info',
         secret: 'supersecret'
     };
@@ -77,8 +95,10 @@ export class Config {
 }
 
 export const instance = new Config();
+export default instance;
 
 // tslint:disable:variable-name
+export const Database = instance.database;
 export const HTTP = instance.http;
 export const JWT = instance.jwt;
 export const Logging = instance.logging;
