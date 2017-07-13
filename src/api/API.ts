@@ -24,7 +24,8 @@ export class API {
                 routes: {
                     cors: true
                 }
-            }
+            },
+            debug: false
         });
 
         this.server.connection({
@@ -36,16 +37,6 @@ export class API {
 
     public async start(): Promise<void> {
         log.info({ HTTPConfig, JWTConfig: _.omit(JWTConfig, 'secret') }, 'Starting API server');
-
-        const hapiChildLogger = log.child({ hapi: true });
-        log.debug('Registering bunyan logging plugging');
-        await this.server.register({
-            // tslint:disable-next-line:no-require-imports
-            register: require('hapi-bunyan'),
-            options: {
-                logger: hapiChildLogger
-            }
-        });
 
         log.debug('Registering inert plugin');
         // tslint:disable-next-line:no-require-imports
@@ -71,11 +62,28 @@ export class API {
                     bunyan: [{
                         module: 'good-bunyan',
                         args: [
-                            { ops: '*', response: '*', log: '*', errror: '*', request: '*', 'request-internal': '*' },
+                            { ops: '*', response: '*', log: '*', error: '*', request: '*' },
                             {
-                                logger: hapiChildLogger,
+                                logger: log.child({ hapi: true }),
                                 levels: {
-                                    ops: 'debug'
+                                    error: 'error',
+                                    log: 'info',
+                                    ops: 'info',
+                                    request: 'debug',
+                                    response: 'debug'
+                                },
+                                formatters: {
+                                    error: (data: any): any => {
+                                        const res: any = _.omit(data, 'config', 'labels');
+                                        res.err = res.error;
+
+                                        return [res, `ERROR --> ${data.url.path}`];
+                                    },
+                                    response: (data: any): any => {
+                                        const res: any = _.omit(data, 'config', 'labels');
+
+                                        return [res, `--> ${data.path}`];
+                                    }
                                 }
                             }
                         ]

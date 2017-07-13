@@ -1,6 +1,5 @@
 import * as Joi from 'joi';
 
-import { baseResponse } from '../../../shared/schemas/baseResponse';
 import * as controller from '../../controllers/v1/auth';
 
 /**
@@ -17,7 +16,7 @@ export const auth = [
             notes: 'SSO callback returns to frontend, backend later verifies claims via POST to `/v1/auth/steam`',
             tags: ['api', 'get', 'v1', 'auth', 'steam'],
             response: {
-                schema: baseResponse.keys({
+                schema: Joi.object().required().keys({
                     url: Joi.string().required().uri().description('Steam OpenID URL to redirect to for signin')
                 }).label('GetSteamLoginRedirectURLResponse').description('Response containing Steam OpenID URL to redirect user to')
             }
@@ -43,7 +42,7 @@ export const auth = [
                 }).label('VerifySteamLogin')
             },
             response: {
-                schema: baseResponse.keys({
+                schema: Joi.object().required().keys({
                     token: Joi.string().required().min(1).description('JWT to use for authentication')
                 }).label('VerifySteamLoginResponse').description('Response containing JWT to use for authentication')
             }
