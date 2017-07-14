@@ -97,7 +97,7 @@ export class Storage {
             return autoCallback(transactionFromContext);
         }
 
-        return this.sequelize.transaction(autoCallback);
+        return <any>this.sequelize.transaction(autoCallback);
         // tslint:enable
     }
 

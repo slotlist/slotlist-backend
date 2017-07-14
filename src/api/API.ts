@@ -1,11 +1,15 @@
+import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as HapiAuthJWT from 'hapi-auth-jwt2';
 import * as _ from 'lodash';
 import * as moment from 'moment';
-
 import * as pjson from 'pjson';
+
 import { HTTP as HTTPConfig, JWT as JWTConfig } from '../shared/config/Config';
 import log from '../shared/util/log';
+
+import { jwtPayloadSchema } from '../shared/schemas/auth';
+
 import { routes } from './routes/routes';
 
 /**
@@ -158,8 +162,13 @@ export class API {
         log.info({ startedAt: this.startedAt, stoppedAt, uptime }, 'Successfully stopped API server');
     }
 
-    private validateJWT(decoded: object, request: Hapi.Request, next: Function): void {
-        log.debug({ req: request, decoded }, 'Validating JWT');
+    private async validateJWT(decodedJWT: any, request: Hapi.Request, next: Function): Promise<void> {
+        log.debug({ req: request, decodedJWT }, 'Validating JWT');
+
+        const jwtValidationResult = jwtPayloadSchema.validate(decodedJWT);
+        if (!_.isNil(jwtValidationResult.error)) {
+            return next(Boom.forbidden('Invalid JWT payload', { decodedJWT }), false);
+        }
 
         return next(null, true);
     }

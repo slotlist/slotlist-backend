@@ -13,7 +13,7 @@ services:
       - ./dev.env
     command: [ "yarn", "dev:docker" ]
     ports:
-      - "${HOST_PORT:-3000}:${HTTP_PORT:-3000}"
+      - "${HOST_PORT:-3000}:${CONFIG_HTTP_PORT:-3000}"
     volumes:
       - ./dist:/app/dist
     depends_on:
@@ -21,7 +21,7 @@ services:
     links:
       - db
     healthcheck:
-      test: curl -f http://localhost:${HTTP_PORT:-3000}/v1/status
+      test: curl -f http://localhost:${CONFIG_HTTP_PORT:-3000}/v1/status
       interval: 30s
       timeout: 10s
       retries: 5
@@ -32,5 +32,5 @@ services:
       POSTGRES_DB: slotlist-backend
       POSTGRES_USER: slotlist-backend
       POSTGRES_PASSWORD: slotlist-backend
-    expose:
-      - "5432"
+    ports:
+      - "${POSTGRES_PORT-5432}:${CONFIG_DATABASE_PORT-5432}"

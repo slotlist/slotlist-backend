@@ -10,8 +10,52 @@ import { Logging as LoggingConfig } from '../config/Config';
 
 const serializers: bunyan.Serializers = {
     err: bunyan.stdSerializers.err,
-    req: bunyan.stdSerializers.req,
-    res: bunyan.stdSerializers.res
+    req: (req: any) => {
+        if (!req || !req.info) {
+            return req;
+        }
+
+        const auth = _.cloneDeep(req.auth);
+        const headers = _.cloneDeep(req.headers);
+        if (_.isString(auth.token)) {
+            auth.token = '***REDACTED***';
+        }
+        if (_.isString(headers.authorization)) {
+            headers.authorization = '***REDACTED***';
+        }
+
+        return {
+            auth: auth,
+            headers: headers,
+            id: req.id,
+            info: req.info,
+            method: req.method,
+            mime: req.mime,
+            params: req.params,
+            path: req.path,
+            payload: req.payload,
+            query: req.query,
+            state: req.state,
+            url: req.url
+        };
+    },
+    res: bunyan.stdSerializers.res,
+    responsePayload: (responsePayload: any) => {
+        const payload = _.cloneDeep(responsePayload);
+        if (_.isString(payload.token)) {
+            payload.token = '***REDACTED***';
+        }
+
+        return payload;
+    },
+    headers: (headers: any) => {
+        const head = _.cloneDeep(headers);
+        if (_.isString(head.authorization)) {
+            head.authorization = '***REDACTED***';
+        }
+
+        return head;
+    }
 };
 
 const streams: bunyan.Stream[] = [];

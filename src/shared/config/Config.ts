@@ -139,7 +139,7 @@ export class Config {
                         configKey = 'expiresIn';
                     }
 
-                    if (configKey === 'algorithm') {
+                    if (configKey === 'algorithms') {
                         jwtConfig.algorithms = value.split(',');
 
                         break;
