@@ -7,5 +7,5 @@ require('require-dir')('./gulp', {
 });
 
 const stop = new Date();
-const diff = (start.getTime() - stop.getTime()) / 1000;
+const diff = (stop.getTime() - start.getTime()) / 1000;
 console.info(`Gulp tasks initialized in ${diff} seconds`);

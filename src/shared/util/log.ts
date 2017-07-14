@@ -76,7 +76,7 @@ _.each(LoggingConfig.files, (logFile: { path: string; level: string | number; })
 export const log = bunyan.createLogger({
     name: 'slotlist-backend',
     serializers: serializers,
-    level: 'trace',
+    level: <any>LoggingConfig.stdout,
     src: LoggingConfig.src,
     version: pjson.version
 });

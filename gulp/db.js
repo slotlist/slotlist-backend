@@ -14,16 +14,24 @@ console.info(`Polyfills installed. CLS=${processCLSNamespace.name}`);
 const gulp = require('gulp');
 const gulpUtil = require('gulp-util');
 const __ = require('./__');
-const storage = require('../dist/src/shared/services/Storage').default;
 
-gulp.task('db:migrate', __('Migrate database up to latest state', function (callback) {
-    return storage.migrateUp().then(cb).catch(cb);
+gulp.task('db:migrate', __('Migrate database up to latest state', function (cb) {
+    const storage = require('../dist/src/shared/services/Storage').default;
+    storage.migrateUp().then(() => {
+        storage.disconnect();
+        cb();
+    }).catch((err) => {
+        storage.disconnect();
+        cb(err);
+    });
 }));
 
-gulp.task('db:migrate:up', __('Migrate database ONE STEP UP from its current state', function (callback) {
-    return storage.migrateUp(false).then(cb).catch(cb);
+gulp.task('db:migrate:up', __('Migrate database ONE STEP UP from its current state', function () {
+    const storage = require('../dist/src/shared/services/Storage').default;
+    return storage.migrateUp(false);
 }));
 
-gulp.task('db:migrate:down', __('Migrate database ONE STEP DOWN from its current state', function (callback) {
-    return storage.migrateDown().then(cb).catch(cb);
+gulp.task('db:migrate:down', __('Migrate database ONE STEP DOWN from its current state', function () {
+    const storage = require('../dist/src/shared/services/Storage').default;
+    return storage.migrateDown();
 }));
