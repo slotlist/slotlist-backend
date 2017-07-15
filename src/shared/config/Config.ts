@@ -63,7 +63,7 @@ export class Config {
     public logging: ILoggingConfig;
     public steam: ISteamConfig;
 
-    // tslint:disable:cyclomatic-complexity
+    // tslint:disable:cyclomatic-complexity max-func-body-length
     constructor() {
         const configEnvVariables: { [name: string]: string } = {};
         _.each(process.env, (value: string, name: string): void => {
@@ -223,7 +223,7 @@ export class Config {
         this.logging = loggingConfig;
         this.steam = steamConfig;
     }
-    // tslint:enable:cyclomatic-complexity
+    // tslint:enable:cyclomatic-complexity max-func-body-length
 }
 
 export const instance = new Config();

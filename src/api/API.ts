@@ -39,6 +39,7 @@ export class API {
         });
     }
 
+    // tslint:disable-next-line:max-func-body-length
     public async start(): Promise<void> {
         log.info({ HTTPConfig, JWTConfig: _.omit(JWTConfig, 'secret') }, 'Starting API server');
 

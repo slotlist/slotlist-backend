@@ -1,9 +1,13 @@
+import axios, * as Axios from 'axios';
+import * as Boom from 'boom';
 import * as _ from 'lodash';
-import { log } from '../util/log';
-// tslint:disable-next-line
+// tslint:disable-next-line:no-require-imports no-var-requires
 const openid = require('openid');
 
 import { Steam as SteamConfig } from '../config/Config';
+import { log as logger } from '../util/log';
+
+const log = logger.child({ service: 'SteamService' });
 
 /**
  * Service for retrieving Steam OpenID signing URLs, verifying OpenID claims and retrieving public user information
@@ -13,23 +17,28 @@ import { Steam as SteamConfig } from '../config/Config';
  */
 export class SteamService {
     private relyingParty: any;
+    private steamAPIClient: Axios.AxiosInstance;
 
     constructor() {
         this.relyingParty = new openid.RelyingParty(SteamConfig.openID.callbackURL, SteamConfig.openID.realm, true, true, []);
+        this.steamAPIClient = axios.create({
+            baseURL: 'http://api.steampowered.com',
+            params: { key: SteamConfig.api.secret, format: 'json' }
+        });
     }
 
     public getLoginRedirectURL(): Promise<string> {
         return new Promise<string>((resolve: Function, reject: Function) => {
-            log.debug('Retrieving Steam login redirect URL');
+            log.debug({ function: 'getLoginRedirectURL' }, 'Retrieving Steam login redirect URL');
 
             this.relyingParty.authenticate('http://steamcommunity.com/openid', false, (err: any, url: string) => {
                 if (!_.isNil(err)) {
-                    log.warn({ err }, 'Failed to retrieve Steam login redirect URL');
+                    log.warn({ function: 'getLoginRedirectURL', err }, 'Failed to retrieve Steam login redirect URL');
 
                     return reject(err);
                 }
 
-                log.debug({ url }, 'Successfully retrieved Steam login redirect URL');
+                log.debug({ function: 'getLoginRedirectURL', url }, 'Successfully retrieved Steam login redirect URL');
 
                 return resolve(url);
             });
@@ -38,26 +47,74 @@ export class SteamService {
 
     public verifySteamLogin(url: string): Promise<string> {
         return new Promise<string>((resolve: Function, reject: Function) => {
-            log.debug({ url }, 'Verifying Steam login');
+            log.debug({ function: 'verifySteamLogin', url }, 'Verifying Steam login');
 
             this.relyingParty.verifyAssertion(url, (err: any, result: any) => {
                 if (!_.isNil(err)) {
-                    log.warn({ err }, 'Failed to verify Steam login');
+                    log.warn({ function: 'verifySteamLogin', err }, 'Failed to verify Steam login');
 
                     return reject(err);
                 }
 
                 if (result.authenticated === true) {
-                    log.debug({ result }, 'Successfully verified Steam login');
+                    log.debug({ function: 'verifySteamLogin', result }, 'Successfully verified Steam login');
 
-                    return resolve(result.claimedIdentifier);
+                    const steamIDRegex = /http\:\/\/steamcommunity\.com\/openid\/id\/(\d+)/;
+                    const steamID = steamIDRegex.exec(result.claimedIdentifier);
+                    if (_.isNil(steamID) || steamID.length < 2) {
+                        log.warn({ function: 'verifySteamLogin', result }, 'Failed to verify Steam login, claimedIdentifier was invalid');
+
+                        return reject('Failed to verify Steam login');
+                    }
+
+                    return resolve(steamID[1]);
                 } else {
-                    log.warn({ result }, 'Failed to verify Steam login');
+                    log.warn({ function: 'verifySteamLogin', result }, 'Failed to verify Steam login');
 
                     return reject('Failed to verify Steam login');
                 }
             });
         });
+    }
+
+    public async getSteamNickname(steamID: string): Promise<string> {
+        log.debug({ function: 'getSteamNickname', steamID }, 'Retrieving Steam nickname');
+
+        let response: Axios.AxiosResponse;
+        try {
+            response = await this.steamAPIClient.get('/ISteamUser/GetPlayerSummaries/v0002/', {
+                params: {
+                    steamids: steamID
+                }
+            });
+        } catch (err) {
+            log.warn({ function: 'getSteamNickname', steamID, err }, 'Failed to retrieve Steam nickname');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+        }
+
+        if (response.status !== 200) {
+            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Received non-OK reponse status code while retrieving Steam nickname');
+            throw Boom.create(response.status, response.statusText, { steamID });
+        }
+
+        if (!_.isObject(response.data.response)) {
+            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing response object');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+        }
+
+        if (!_.isArray(response.data.response.players) || _.isEmpty(response.data.response.players)) {
+            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing players array');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+        }
+
+        if (!_.isString(response.data.response.players[0].personaname) || _.isEmpty(response.data.response.players[0].personaname)) {
+            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing personaname');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+        }
+
+        log.debug({ function: 'getSteamNickname', steamID, nickname: response.data.response.players[0].personaname }, 'Successfully retrieved Steam nickname');
+
+        return response.data.response.players[0].personaname;
     }
 }
 

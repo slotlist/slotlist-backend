@@ -17,6 +17,7 @@
     "test": "./node_modules/.bin/mocha -c -A ./dist/src/test/index.js"
   },
   "dependencies": {
+    "axios": "^0.16.2",
     "bluebird": "^3.5.0",
     "boom": "^5.1.0",
     "bunyan": "^1.8.10",

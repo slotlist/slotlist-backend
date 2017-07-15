@@ -4,7 +4,10 @@
     ],
     "rules": {
         "export-name": false,
-        "max-func-body-length": false,
+        "max-line-length": [
+            true,
+            180
+        ],
         "no-any": false,
         "no-default-export": false,
         "no-http-string": false,

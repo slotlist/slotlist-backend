@@ -11,6 +11,7 @@ services:
         - alpine:3.6
     env_file:
       - ./dev.env
+      - ./.env
     command: [ "yarn", "dev:docker" ]
     ports:
       - "${HOST_PORT:-3000}:${CONFIG_HTTP_PORT:-3000}"

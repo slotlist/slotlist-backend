@@ -14,16 +14,17 @@ export interface IUserAttributes extends IDefaultParanoidModelAttributes {
     steamID: string;
 }
 
-export interface IUserInstance extends Sequelize.Instance<IUserAttributes>, IUserAttributes {
-
-}
-export type IUser = IUserInstance;
-
-export interface IPublicUserInstance {
+export interface IPublicUserAttributes {
     uid: IUserPrimaryKey;
     nickname: string;
 }
-export type IPublicUser = IPublicUserInstance;
+export type IPublicUser = IPublicUserAttributes;
+
+export interface IUserInstance extends Sequelize.Instance<IUserAttributes>, IUserAttributes {
+    generateJWT(): string;
+    toPublicObject(): IPublicUser;
+}
+export type IUser = IUserInstance;
 
 // tslint:disable-next-line:no-empty-interface
 export interface IUserModel extends Sequelize.Model<IUserInstance, Partial<IUserAttributes>> {
