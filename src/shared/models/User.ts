@@ -4,7 +4,8 @@ import * as Sequelize from 'sequelize';
 
 import { JWT as JWTConfig } from '../config/Config';
 import { IDefaultParanoidModelAttributes } from '../services/Storage';
-import { log } from '../util/log';
+import { log as logger } from '../util/log';
+const log = logger.child({ model: 'User' });
 
 export type IUserPrimaryKey = string;
 
@@ -50,7 +51,7 @@ export function getAssociations(): IUserAssociations {
  */
 export default function createUserModel(sequelize: Sequelize.Sequelize): Sequelize.Model<IUserInstance, IUserAttributes> {
     // tslint:disable
-    const User: any = sequelize.define<IUserInstance, IUserAttributes>("User", {
+    const User: any = sequelize.define<IUserInstance, IUserAttributes>('User', {
         uid: {
             type: Sequelize.UUID,
             allowNull: false,
@@ -96,7 +97,7 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
             notBefore: moment.utc().seconds().toString()
         };
 
-        log.debug({ user: instance, jwtSignOptions }, 'Generating JWT for user');
+        log.debug({ function: 'generateJWT', user: instance, jwtSignOptions }, 'Generating JWT for user');
 
         const token = jwt.sign(payload, JWTConfig.secret, jwtSignOptions);
 
