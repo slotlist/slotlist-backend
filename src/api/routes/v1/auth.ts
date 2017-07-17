@@ -1,10 +1,5 @@
 import * as Joi from 'joi';
 
-import * as jwt from 'jsonwebtoken';
-import * as moment from 'moment';
-import { JWT as JWTConfig } from '../../../shared/config/Config';
-import { log } from '../../../shared/util/log';
-
 import * as controller from '../../controllers/v1/auth';
 
 /**
@@ -51,45 +46,6 @@ export const auth = [
                     token: Joi.string().required().min(1).description('JWT to use for authentication')
                 }).label('VerifySteamLoginResponse').description('Response containing JWT to use for authentication')
             }
-        }
-    },
-    {
-        method: 'get',
-        path: '/v1/auth/test',
-        handler: (request: any, reply: any) => {
-            log.debug({ req: request }, 'is this authed?');
-            reply({ text: 'You used a Token!' })
-                .header('Authorization', request.headers.authorization);
-        },
-        config: {
-            auth: 'jwt'
-        }
-    },
-    {
-        method: 'get',
-        path: '/v1/auth/token',
-        handler: (request: any, reply: any) => {
-            const payload = {
-                nickname: 'MorpheusXAUT'
-            };
-
-            const jwtSignOptions: jwt.SignOptions = {
-                algorithm: JWTConfig.algorithms[0],
-                audience: JWTConfig.audience,
-                expiresIn: JWTConfig.expiresIn,
-                issuer: JWTConfig.issuer,
-                subject: '22d16b55-666d-4d24-9a53-2b4c71b96a85',
-                notBefore: moment.utc().seconds().toString()
-            };
-
-            log.debug({ jwtSignOptions }, 'Generating JWT for user');
-
-            const token = jwt.sign(payload, JWTConfig.secret, jwtSignOptions);
-
-            reply({ token });
-        },
-        config: {
-            auth: false
         }
     }
 ];

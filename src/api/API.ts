@@ -168,6 +168,8 @@ export class API {
 
         const jwtValidationResult = jwtPayloadSchema.validate(decodedJWT);
         if (!_.isNil(jwtValidationResult.error)) {
+            log.warn({ req: request, decodedJWT, err: jwtValidationResult.error }, 'Received invalid JWT payload');
+
             return next(Boom.forbidden('Invalid JWT payload', { decodedJWT }), false);
         }
 

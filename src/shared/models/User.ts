@@ -80,8 +80,11 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
         const instance: IUserInstance = this;
 
         const payload = {
-            uid: instance.uid,
-            nickname: instance.nickname
+            user: {
+                uid: instance.uid,
+                nickname: instance.nickname
+            },
+            permissions: ['admin.panel']
         };
 
         const jwtSignOptions: jwt.SignOptions = {
