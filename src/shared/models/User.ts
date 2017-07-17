@@ -85,7 +85,7 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
                 uid: instance.uid,
                 nickname: instance.nickname
             },
-            permissions: ['admin.panel']
+            permissions: ['admin.panel', 'admin.*.read']
         };
 
         const jwtSignOptions: jwt.SignOptions = {
