@@ -18,9 +18,9 @@ export interface IUserAttributes extends IDefaultParanoidModelAttributes {
     uid: IUserPrimaryKey;
     nickname: string;
     steamId: string;
-    Community?: ICommunity;
-    CommunityUid?: ICommunityPrimaryKey;
-    Permissions?: IPermission[];
+    community?: ICommunity;
+    communityUid?: ICommunityPrimaryKey;
+    permissions?: IPermission[];
 }
 
 export interface IPublicUserAttributes {
@@ -172,14 +172,14 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
         log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict }, 'Checking if user has permission');
         log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict }, 'Retrieving user permissions');
 
-        instance.Permissions = await instance.getPermissions();
-        if (!_.isArray(instance.Permissions) || _.isEmpty(instance.Permissions)) {
+        instance.permissions = await instance.getPermissions();
+        if (!_.isArray(instance.permissions) || _.isEmpty(instance.permissions)) {
             log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict }, 'User does not have any permissions, ending permission check');
 
             return false;
         }
 
-        const permissions: string[] = _.map(instance.Permissions, 'permission');
+        const permissions: string[] = _.map(instance.permissions, 'permission');
         const parsedPermissions: any = {};
         _.each(permissions, (permission) => {
             const permissionParts = permission.toLowerCase().split('.');

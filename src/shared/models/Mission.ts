@@ -2,8 +2,6 @@ import * as _ from 'lodash';
 import * as Sequelize from 'sequelize';
 
 import { IDefaultModelAttributes, IModels } from '../services/Storage';
-import { log as logger } from '../util/log';
-const log = logger.child({ model: 'Mission' });
 import slug from '../util/slug';
 
 import { ICommunity, ICommunityPrimaryKey } from './Community';
@@ -24,10 +22,10 @@ export interface IMissionAttributes extends IDefaultModelAttributes {
     repositoryUrl?: string;
     techSupport?: string;
     rules?: string;
-    Initiator?: IUser;
-    InitiatorUid: IUserPrimaryKey;
-    Community?: ICommunity;
-    CommunityUid: ICommunityPrimaryKey;
+    initiator?: IUser;
+    initiatorUid: IUserPrimaryKey;
+    community?: ICommunity;
+    communityUid: ICommunityPrimaryKey;
 }
 
 export interface IPublicMissionAttributes {

@@ -128,7 +128,7 @@ export default function createCommunityModel(sequelize: Sequelize.Sequelize): Se
 
         log.debug({ function: 'addLeader', communityUid: instance.uid, userUid }, 'Adding leader to community');
 
-        const permission = await Storage.models.Permission.create({ UserUid: userUid, permission: `community.${instance.slug}.leader` });
+        const permission = await Storage.models.Permission.create({ userUid: userUid, permission: `community.${instance.slug}.leader` });
 
         log.debug({ function: 'addLeader', communityUid: instance.uid, userUid, permissionUid: permission.uid }, 'Successfully added leader to community');
     }

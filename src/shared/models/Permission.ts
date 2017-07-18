@@ -1,8 +1,6 @@
 import * as Sequelize from 'sequelize';
 
 import { IDefaultModelAttributes, IModels } from '../services/Storage';
-import { log as logger } from '../util/log';
-const log = logger.child({ model: 'Permission' });
 
 import { IUser, IUserPrimaryKey } from './User';
 
@@ -11,8 +9,8 @@ export type IPermissionPrimaryKey = string;
 export interface IPermissionAttributes extends IDefaultModelAttributes {
     uid: IPermissionPrimaryKey;
     permission: string;
-    User?: IUser;
-    UserUid: IUserPrimaryKey;
+    user?: IUser;
+    userUid: IUserPrimaryKey;
 }
 
 export interface IPublicPermissionAttributes {
@@ -66,14 +64,9 @@ export default function createPermissionModel(sequelize: Sequelize.Sequelize): S
             paranoid: false,
             indexes: [
                 {
-                    name: 'Permissions_unique_userUid_permission',
+                    name: 'permissions_unique_userUid_permission',
                     fields: ['userUid', 'permission'],
-                    unique: true,
-                },
-                {
-                    name: 'Permissions_index_permission',
-                    fields: ['permission'],
-                    method: 'BTREE'
+                    unique: true
                 }
             ]
         });

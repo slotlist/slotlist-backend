@@ -1,26 +1,29 @@
 import * as Sequelize from 'sequelize';
 
 /**
- * Creates table for User model
+ * Creates table for Permission model
  */
 module.exports = {
     up: async (queryInterface: Sequelize.QueryInterface): Promise<void> => {
-        await queryInterface.createTable('Users', {
+        await queryInterface.createTable('permissions', {
             uid: {
                 type: Sequelize.UUID,
                 allowNull: false,
                 defaultValue: Sequelize.UUIDV4,
                 primaryKey: true
             },
-            nickname: {
+            permission: {
                 type: Sequelize.STRING,
-                allowNull: false,
-                unique: true
+                allowNull: false
             },
-            steamId: {
-                type: Sequelize.STRING,
+            userUid: {
+                type: Sequelize.UUID,
                 allowNull: false,
-                unique: true
+                references: {
+                    model: 'users',
+                    key: 'uid'
+                },
+                onDelete: 'CASCADE'
             },
             createdAt: {
                 type: Sequelize.DATE,
@@ -29,15 +32,16 @@ module.exports = {
             updatedAt: {
                 type: Sequelize.DATE,
                 allowNull: false
-            },
-            deletedAt: {
-                type: Sequelize.DATE,
-                allowNull: true,
-                defaultValue: null
             }
+        });
+
+        await (<any>queryInterface).addIndex('permissions', ['userUid', 'permission'], {
+            indexName: 'permissions_unique_userUid_permission',
+            indicesType: 'UNIQUE',
+            indexType: 'BTREE'
         });
     },
     down: async (queryInterface: Sequelize.QueryInterface): Promise<void> => {
-        await queryInterface.dropTable('Users');
+        await queryInterface.dropTable('permissions');
     }
 };
