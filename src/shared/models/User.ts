@@ -35,7 +35,7 @@ export interface IUserInstance extends Sequelize.Instance<IUserAttributes>, IUse
     getMissions: Sequelize.HasManyGetAssociationsMixin<IMission>;
     getPermissions: Sequelize.HasManyGetAssociationsMixin<IPermission>;
 
-    generateJWT(): string;
+    generateJWT(): Promise<string>;
     hasPermission(permission: string | string[]): Promise<boolean>;
     toPublicObject(): Promise<IPublicUser>;
 }
@@ -132,15 +132,20 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
     }
 
     // Instance methods
-    User.prototype.generateJWT = function (): string {
+    User.prototype.generateJWT = async function (): Promise<string> {
         const instance: IUserInstance = this;
+
+        log.debug({ function: 'generateJWT', userUid: instance.uid }, 'Generating JWT for user');
+        log.debug({ function: 'generateJWT', userUid: instance.uid }, 'Retrieving user permissions');
+
+        const permissions = await instance.getPermissions();
 
         const payload = {
             user: {
                 uid: instance.uid,
                 nickname: instance.nickname
             },
-            permissions: ['admin.panel', 'admin.*.read']
+            permissions: _.map(permissions, 'permission')
         };
 
         const jwtSignOptions: jwt.SignOptions = {
@@ -152,9 +157,11 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
             notBefore: moment.utc().seconds().toString()
         };
 
-        log.debug({ function: 'generateJWT', user: instance, jwtSignOptions }, 'Generating JWT for user');
+        log.debug({ function: 'generateJWT', userUid: instance.uid, jwtSignOptions }, 'Signing JWT for user');
 
         const token = jwt.sign(payload, JWTConfig.secret, jwtSignOptions);
+
+        log.debug({ function: 'generateJWT', userUid: instance.uid, jwtSignOptions }, 'Successfully finished generating JWT for user');
 
         return token;
     }
