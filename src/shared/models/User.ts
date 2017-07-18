@@ -1,18 +1,26 @@
 import * as jwt from 'jsonwebtoken';
+import * as _ from 'lodash';
 import * as moment from 'moment';
 import * as Sequelize from 'sequelize';
 
 import { JWT as JWTConfig } from '../config/Config';
-import { IDefaultParanoidModelAttributes } from '../services/Storage';
+import { IDefaultParanoidModelAttributes, IModels } from '../services/Storage';
 import { log as logger } from '../util/log';
 const log = logger.child({ model: 'User' });
+
+import { ICommunity, ICommunityPrimaryKey } from './Community';
+import { IMission } from './Mission';
+import { IPermission, IPermissionAttributes } from './Permission';
 
 export type IUserPrimaryKey = string;
 
 export interface IUserAttributes extends IDefaultParanoidModelAttributes {
     uid: IUserPrimaryKey;
     nickname: string;
-    steamID: string;
+    steamId: string;
+    Community?: ICommunity;
+    CommunityUid?: ICommunityPrimaryKey;
+    Permissions?: IPermission[];
 }
 
 export interface IPublicUserAttributes {
@@ -22,8 +30,14 @@ export interface IPublicUserAttributes {
 export type IPublicUser = IPublicUserAttributes;
 
 export interface IUserInstance extends Sequelize.Instance<IUserAttributes>, IUserAttributes {
+    createPermission: Sequelize.BelongsToCreateAssociationMixin<Partial<IPermissionAttributes>>;
+    getCommunity: Sequelize.BelongsToGetAssociationMixin<ICommunity>;
+    getMissions: Sequelize.HasManyGetAssociationsMixin<IMission>;
+    getPermissions: Sequelize.HasManyGetAssociationsMixin<IPermission>;
+
     generateJWT(): string;
-    toPublicObject(): IPublicUser;
+    hasPermission(permission: string | string[]): Promise<boolean>;
+    toPublicObject(): Promise<IPublicUser>;
 }
 export type IUser = IUserInstance;
 
@@ -33,7 +47,9 @@ export interface IUserModel extends Sequelize.Model<IUserInstance, Partial<IUser
 }
 
 type IUserAssociations = {
-
+    Community: any,
+    Missions: any,
+    Permissions: any
 };
 
 // tslint:disable-next-line:prefer-const
@@ -43,6 +59,31 @@ export function getAssociations(): IUserAssociations {
     return associations;
 }
 
+const findPermission = (permissions: any, permission: string | string[]): boolean => {
+    if (_.isNil(permissions) || !_.isObject(permissions) || _.keys(permissions).length <= 0) {
+        return false;
+    }
+
+    if (_.has(permissions, permission)) {
+        return true;
+    }
+
+    return _.some(permissions, (next: any, current: string) => {
+        const permParts = _.isString(permission) ? permission.toLowerCase().split('.') : permission;
+
+        const permPart = permParts.shift();
+        if (current === '*' || current === permPart) {
+            if (permParts.length <= 0) {
+                return true;
+            }
+
+            return findPermission(next, _.clone(permParts));
+        }
+
+        return false;
+    });
+};
+
 /**
  * Sequelize model representing a user
  *
@@ -51,7 +92,7 @@ export function getAssociations(): IUserAssociations {
  */
 export default function createUserModel(sequelize: Sequelize.Sequelize): Sequelize.Model<IUserInstance, IUserAttributes> {
     // tslint:disable
-    const User: any = sequelize.define<IUserInstance, IUserAttributes>('User', {
+    const User: any = sequelize.define<IUserInstance, IUserAttributes>('user', {
         uid: {
             type: Sequelize.UUID,
             allowNull: false,
@@ -63,18 +104,32 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
             allowNull: false,
             unique: true
         },
-        steamID: {
+        steamId: {
             type: Sequelize.STRING,
             allowNull: false,
             unique: true
         }
     }, {
-            indexes: [
-
-            ]
+            paranoid: true
         });
 
     // Class methods
+    User.associate = function (models: IModels): void {
+        associations = {
+            Community: User.belongsTo(models.Community, {
+                as: 'community',
+                foreignKey: 'communityUid'
+            }),
+            Missions: User.hasMany(models.Mission, {
+                as: 'missions',
+                foreignKey: 'initiatorUid'
+            }),
+            Permissions: User.hasMany(models.Permission, {
+                as: 'permissions',
+                foreignKey: 'userUid'
+            })
+        }
+    }
 
     // Instance methods
     User.prototype.generateJWT = function (): string {
@@ -104,8 +159,52 @@ export default function createUserModel(sequelize: Sequelize.Sequelize): Sequeli
         return token;
     }
 
-    User.prototype.toPublicObject = function (): IPublicUser {
-        const instance: IUserInstance = this;
+    User.prototype.hasPermission = async function (permission: string | string[], strict: boolean = false): Promise<boolean> {
+        const instance: IUser = this;
+
+        log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict }, 'Checking if user has permission');
+        log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict }, 'Retrieving user permissions');
+
+        instance.Permissions = await instance.getPermissions();
+        if (!_.isArray(instance.Permissions) || _.isEmpty(instance.Permissions)) {
+            log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict }, 'User does not have any permissions, ending permission check');
+
+            return false;
+        }
+
+        const permissions: string[] = _.map(instance.Permissions, 'permission');
+        const parsedPermissions: any = {};
+        _.each(permissions, (permission) => {
+            const permissionParts = permission.toLowerCase().split('.');
+
+            let previous = parsedPermissions;
+            let part = permissionParts.shift();
+            while (!_.isNil(part)) {
+                if (_.isNil(previous[part])) {
+                    previous[part] = {};
+                }
+
+                previous = previous[part];
+                part = permissionParts.shift();
+            }
+        });
+
+        log.debug({ function: 'hasPermission', userUid: instance.uid, permission, parsedPermissions, strict }, 'Parsed user permissions, checking for permission');
+
+        const requiredPermissions = _.isArray(permission) ? permission : [permission];
+        const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission) => {
+            return findPermission(parsedPermissions, requiredPermission);
+        });
+
+        const hasPermission = strict ? foundPermissions.length === requiredPermissions.length : foundPermissions.length > 0;
+
+        log.debug({ function: 'hasPermission', userUid: instance.uid, permission, strict, foundPermissions, hasPermission }, 'Successfully finished checking if user has permission');
+
+        return hasPermission;
+    }
+
+    User.prototype.toPublicObject = async function (): Promise<IPublicUser> {
+        const instance: IUser = this;
 
         return {
             uid: instance.uid,

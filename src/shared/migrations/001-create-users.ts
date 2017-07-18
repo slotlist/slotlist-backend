@@ -17,7 +17,7 @@ module.exports = {
                 allowNull: false,
                 unique: true
             },
-            steamID: {
+            steamId: {
                 type: Sequelize.STRING,
                 allowNull: false,
                 unique: true

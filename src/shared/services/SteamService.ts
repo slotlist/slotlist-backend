@@ -59,15 +59,15 @@ export class SteamService {
                 if (result.authenticated === true) {
                     log.debug({ function: 'verifySteamLogin', result }, 'Successfully verified Steam login');
 
-                    const steamIDRegex = /http\:\/\/steamcommunity\.com\/openid\/id\/(\d+)/;
-                    const steamID = steamIDRegex.exec(result.claimedIdentifier);
-                    if (_.isNil(steamID) || steamID.length < 2) {
+                    const steamIdRegex = /http\:\/\/steamcommunity\.com\/openid\/id\/(\d+)/;
+                    const steamId = steamIdRegex.exec(result.claimedIdentifier);
+                    if (_.isNil(steamId) || steamId.length < 2) {
                         log.warn({ function: 'verifySteamLogin', result }, 'Failed to verify Steam login, claimedIdentifier was invalid');
 
                         return reject('Failed to verify Steam login');
                     }
 
-                    return resolve(steamID[1]);
+                    return resolve(steamId[1]);
                 } else {
                     log.warn({ function: 'verifySteamLogin', result }, 'Failed to verify Steam login');
 
@@ -77,42 +77,42 @@ export class SteamService {
         });
     }
 
-    public async getSteamNickname(steamID: string): Promise<string> {
-        log.debug({ function: 'getSteamNickname', steamID }, 'Retrieving Steam nickname');
+    public async getSteamNickname(steamId: string): Promise<string> {
+        log.debug({ function: 'getSteamNickname', steamId }, 'Retrieving Steam nickname');
 
         let response: Axios.AxiosResponse;
         try {
             response = await this.steamAPIClient.get('/ISteamUser/GetPlayerSummaries/v0002/', {
                 params: {
-                    steamids: steamID
+                    steamids: steamId
                 }
             });
         } catch (err) {
-            log.warn({ function: 'getSteamNickname', steamID, err }, 'Failed to retrieve Steam nickname');
-            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+            log.warn({ function: 'getSteamNickname', steamId, err }, 'Failed to retrieve Steam nickname');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamId });
         }
 
         if (response.status !== 200) {
-            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Received non-OK reponse status code while retrieving Steam nickname');
-            throw Boom.create(response.status, response.statusText, { steamID });
+            log.warn({ function: 'getSteamNickname', steamId, response: _.omit(response, 'request') }, 'Received non-OK reponse status code while retrieving Steam nickname');
+            throw Boom.create(response.status, response.statusText, { steamId });
         }
 
         if (!_.isObject(response.data.response)) {
-            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing response object');
-            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+            log.warn({ function: 'getSteamNickname', steamId, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing response object');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamId });
         }
 
         if (!_.isArray(response.data.response.players) || _.isEmpty(response.data.response.players)) {
-            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing players array');
-            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+            log.warn({ function: 'getSteamNickname', steamId, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing players array');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamId });
         }
 
         if (!_.isString(response.data.response.players[0].personaname) || _.isEmpty(response.data.response.players[0].personaname)) {
-            log.warn({ function: 'getSteamNickname', steamID, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing personaname');
-            throw Boom.internal('Failed to retrieve Steam nickname', { steamID });
+            log.warn({ function: 'getSteamNickname', steamId, response: _.omit(response, 'request') }, 'Failed to retrieve Steam nickname, response is missing personaname');
+            throw Boom.internal('Failed to retrieve Steam nickname', { steamId });
         }
 
-        log.debug({ function: 'getSteamNickname', steamID, nickname: response.data.response.players[0].personaname }, 'Successfully retrieved Steam nickname');
+        log.debug({ function: 'getSteamNickname', steamId, nickname: response.data.response.players[0].personaname }, 'Successfully retrieved Steam nickname');
 
         return response.data.response.players[0].personaname;
     }

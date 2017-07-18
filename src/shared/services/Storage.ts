@@ -7,6 +7,9 @@ import * as Umzug from 'umzug';
 import { Database as DatabaseConfig } from '../config/Config';
 import { log } from '../util/log';
 
+import Community, * as _Community from '../models/Community';
+import Mission, * as _Mission from '../models/Mission';
+import Permission, * as _Permission from '../models/Permission';
 import User, * as _User from '../models/User';
 
 export interface IDefaultModelAttributes {
@@ -19,10 +22,16 @@ export interface IDefaultParanoidModelAttributes extends IDefaultModelAttributes
 }
 
 export interface IModels {
+    Community: _Community.ICommunityModel;
+    Mission: _Mission.IMissionModel;
+    Permission: _Permission.IPermissionModel;
     User: _User.IUserModel;
 }
 
 const MODEL_FACTORY_FUNCTIONS: { [key: string]: Function } = {
+    Community,
+    Mission,
+    Permission,
     User
 };
 
@@ -240,5 +249,8 @@ const instance: Storage = new Storage();
 export default instance;
 
 // tslint:disable:variable-name
+export const Communities = instance.models.Community;
+export const Missions = instance.models.Mission;
+export const Permissions = instance.models.Permission;
 export const Users = instance.models.User;
 // tslint:enable:variable-name

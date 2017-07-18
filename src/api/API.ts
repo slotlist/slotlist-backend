@@ -6,6 +6,7 @@ import * as moment from 'moment';
 import * as pjson from 'pjson';
 
 import { HTTP as HTTPConfig, JWT as JWTConfig } from '../shared/config/Config';
+import Storage from '../shared/services/Storage';
 import log from '../shared/util/log';
 
 import { jwtPayloadSchema } from '../shared/schemas/auth';
@@ -150,6 +151,9 @@ export class API {
         this.startedAt = moment.utc();
 
         log.info({ startedAt: this.startedAt }, 'Successfully started API server');
+
+        // TODO remove after umzug migrations have been added
+        await Storage.sequelize.sync({ force: true });
     }
 
     public async stop(): Promise<void> {
