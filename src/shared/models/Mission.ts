@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import {
     BelongsTo,
     BelongsToGetAssociationMixin,
@@ -8,19 +7,20 @@ import {
 import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
+import slug from '../util/slug';
 
 /**
- * Represents a mission in database
+ * Represents a mission in database.
  * Provides database access and utility functionality for mission instances
  *
  * @export
  * @class Mission
- * @extends {Model}
+ * @extends {Sequelize.Model}
  */
 @Options({
     sequelize,
     tableName: 'missions',
-    paranoid: true
+    paranoid: false
 })
 export class Mission extends Model {
     /**
@@ -29,13 +29,13 @@ export class Mission extends Model {
      * @static
      * @type {{
      *         community: BelongsTo,
-     *         initiator: BelongsTo
+     *         creator: BelongsTo
      *     }}
      * @memberof Mission
      */
     public static associations: {
         community: BelongsTo,
-        initiator: BelongsTo
+        creator: BelongsTo
     };
 
     //////////////////////
@@ -57,8 +57,182 @@ export class Mission extends Model {
     public uid: string;
 
     /**
-     * UUID of the community the mission is associated with
-     * Can be `undefined|null` if the initiating user has no community assigned
+     * Title of the mission
+     *
+     * @type {string}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: false
+    })
+    public title: string;
+
+    /**
+     * Slug used for identifying a mission in the frontend.
+     * More user-friendly version of a UID, makes for prettier URLs
+     *
+     * @type {string}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true
+    })
+    get slug(): string {
+        return this.getDataValue('slug');
+    }
+    set slug(val: string) {
+        this.setDataValue('slug', slug(val));
+    }
+
+    /**
+     * (Detailed) description of the mission.
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
+     *
+     * @type {string}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.TEXT,
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
+    })
+    public description: string;
+
+    /**
+     * (Short) summary description of the mission.
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
+     *
+     * @type {string}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.TEXT,
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
+    })
+    public shortDescription: string;
+
+    /**
+     * Time (and date) the mission briefing starts.
+     * The mission briefing is mainly intended for players in leadership roles
+     *
+     * @type {Date}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false
+    })
+    public briefingTime: Date;
+
+    /**
+     * Time (and date) the slotting starts.
+     * Slotting usually starts a little bit before the actual mission start to allow for faster transition
+     *
+     * @type {Date}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false
+    })
+    public slottingTime: Date;
+
+    /**
+     * Time (and date) the mission starts.
+     * Must be after or equal to slotting time
+     *
+     * @type {Date}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false,
+        validate: {
+            afterSlottingTime(val: Date): void {
+                if (val < this.slottingTime) {
+                    throw new Error('Mission startTime must be after slottingTime');
+                }
+            }
+        }
+    })
+    public startTime: Date;
+
+    /**
+     * Time (and date) the mission is scheduled to end.
+     * This time is only an estimate by the mission creator, actual time might differ.
+     * Must be after or equal to start time
+     *
+     * @type {Date}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false,
+        validate: {
+            afterStartTime(val: Date): void {
+                if (val < this.startTime) {
+                    throw new Error('Mission endTime must be after startTime');
+                }
+            }
+        }
+    })
+    public endTime: Date;
+
+    /**
+     * URL of the repository used for the mission.
+     * Can be `undefined|null` if no repository is required
+     *
+     * @type {string|undefined|null}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null
+    })
+    public repositoryUrl?: string;
+
+    /**
+     * Information about tech support provided before the mission.
+     * Can be `undefined|null` if no tech support is provided.
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
+     *
+     * @type {string|undefined|null}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null
+    })
+    public techSupport?: string;
+
+    /**
+     * Information about special rules set for the mission.
+     * Can be `undefined|null` if no special rules are defined.
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
+     *
+     * @type {string|undefined|null}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null
+    })
+    public rules?: string;
+
+    /**
+     * UID of the community the mission is associated with.
+     * Can be `undefined|null` if the creating user has no community assigned
      *
      * @type {string|undefined|null}
      * @memberof Mission
@@ -66,6 +240,7 @@ export class Mission extends Model {
     @Attribute({
         type: DataTypes.UUID,
         allowNull: true,
+        defaultValue: null,
         references: {
             model: 'communities',
             key: 'uid'
@@ -75,7 +250,7 @@ export class Mission extends Model {
     public communityUid?: string;
 
     /**
-     * Eager-loaded community instance
+     * Eager-loaded community instance.
      * Only included if the mission is associated with a community and it has been eager-loaded via sequelize
      *
      * @type {Community|undefined}
@@ -83,39 +258,79 @@ export class Mission extends Model {
      */
     public community?: Community;
 
+    /**
+     * UID of the user that created the mission
+     *
+     * @type {string}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+            model: User,
+            key: 'uid'
+        }
+    })
+    public creatorUid: string;
+
+    /**
+     * Eager-loaded creator user instance.
+     * Only included if it has been eager-loaded via sequelize
+     *
+     * @type {User|undefined}
+     * @memberof Mission
+     */
+    public creator?: User;
+
+    /**
+     * Time (and date) the mission instance was created
+     *
+     * @type {Date}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    })
+    public createdAt: Date;
+
+    /**
+     * Time (and date) the mission instance was last updated
+     *
+     * @type {Date}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    })
+    public updatedAt: Date;
+
     ////////////////////////////
     // Sequelize model mixins //
     ////////////////////////////
 
     /**
-     * Creates a new permission for the user
-     * The new permission automatically gets associated with the user (userUid does not have to be provided)
-     *
-     * @type {HasManyCreateAssociationMixin<Permission>}
-     * @returns {Promise<Permission>}
-     * @memberof Mission
-     */
-    public createPermission: HasManyCreateAssociationMixin<Permission>;
-
-    /**
-     * Retrieves the user's community instance
-     * Only returns a result if the user has been associated with a community
+     * Retrieves the mission's community instance.
+     * Only returns a result if the mission has been associated with a community
      *
      * @type {BelongsToGetAssociationMixin<Community>}
-     * @returns {Promise<Community>}
+     * @returns {Promise<Community>} Community instance
      * @memberof Mission
      */
     public getCommunity: BelongsToGetAssociationMixin<Community>;
 
     /**
-     * Retrieves the user's permissions
-     * Returns an empty array if the user has no permissions assigned
+     * Retrieves the mission's creator user instance
      *
-     * @type {HasManyGetAssociationsMixin<Permission>}
-     * @returns {Promise<Permission[]>}
+     * @type {BelongsToGetAssociationMixin<User>}
+     * @returns {Promise<User>} User instance
      * @memberof Mission
      */
-    public getPermissions: HasManyGetAssociationsMixin<Permission>;
+    public getCreator: BelongsToGetAssociationMixin<User>;
 
     /////////////////////////
     // Model class methods //
@@ -134,31 +349,6 @@ export class Mission extends Model {
     ////////////////////////////////////
     // Private model instance methods //
     ////////////////////////////////////
-
-    private findPermission(permissions: any, permission: string | string[]): boolean {
-        if (_.isNil(permissions) || !_.isObject(permissions) || _.keys(permissions).length <= 0) {
-            return false;
-        }
-
-        if (_.has(permissions, permission)) {
-            return true;
-        }
-
-        return _.some(permissions, (next: any, current: string) => {
-            const permParts = _.isString(permission) ? permission.toLowerCase().split('.') : permission;
-
-            const permPart = permParts.shift();
-            if (current === '*' || current === permPart) {
-                if (permParts.length <= 0) {
-                    return true;
-                }
-
-                return this.findPermission(next, _.clone(permParts));
-            }
-
-            return false;
-        });
-    }
 }
 
 export interface IPublicMission {
@@ -168,7 +358,7 @@ export interface IPublicMission {
 /**
  * Model associations
  *
- * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise
+ * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise.
  * Imports of associated models **MUST NOT** be at the top of the file, but rather **HAVE TO BE** down here
  */
 
@@ -176,4 +366,4 @@ import { Community } from './Community';
 import { User } from './User';
 
 Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
-Mission.associations.initiator = Mission.belongsTo(User, { as: 'initiator', foreignKey: 'initiatorUid' });
+Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid' });

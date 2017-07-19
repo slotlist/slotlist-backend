@@ -19,12 +19,12 @@ import sequelize from '../util/sequelize';
 const log = logger.child({ model: 'User' });
 
 /**
- * Represents a user in database
+ * Represents a user in database.
  * Provides database access and utility functionality for user instances
  *
  * @export
  * @class User
- * @extends {Model}
+ * @extends {Sequelize.Model}
  */
 @Options({
     sequelize,
@@ -38,12 +38,14 @@ export class User extends Model {
      * @static
      * @type {{
      *         community: BelongsTo,
+     *         missions: HasMany,
      *         permissions: HasMany
      *     }}
      * @memberof User
      */
     public static associations: {
         community: BelongsTo,
+        missions: HasMany,
         permissions: HasMany
     };
 
@@ -66,7 +68,7 @@ export class User extends Model {
     public uid: string;
 
     /**
-     * Nickname of the user
+     * Nickname of the user.
      * Initially retrieved via Steam API upon user creation, can be changed by user though
      *
      * @type {string}
@@ -79,7 +81,7 @@ export class User extends Model {
     public nickname: string;
 
     /**
-     * SteamID (Steam 64 ID) of user
+     * SteamID (Steam 64 ID) of user.
      * Used to identify and log in a user via Steam SSO
      *
      * @type {string}
@@ -93,7 +95,7 @@ export class User extends Model {
     public steamId: string;
 
     /**
-     * UUID of the community the user is associated with
+     * UID of the community the user is associated with.
      * Can be `undefined|null` if the user has not been assigned to a community
      *
      * @type {string|undefined|null}
@@ -102,8 +104,9 @@ export class User extends Model {
     @Attribute({
         type: DataTypes.UUID,
         allowNull: true,
+        defaultValue: null,
         references: {
-            model: 'communities',
+            model: Community,
             key: 'uid'
         },
         onDelete: 'SET NULL'
@@ -111,7 +114,7 @@ export class User extends Model {
     public communityUid?: string;
 
     /**
-     * Eager-loaded community instance
+     * Eager-loaded community instance.
      * Only included if the user is associated with a community and it has been eager-loaded via sequelize
      *
      * @type {Community|undefined}
@@ -120,7 +123,16 @@ export class User extends Model {
     public community?: Community;
 
     /**
-     * Eager-loaded list of permissions associated with the user
+     * Eager-loaded list of missions created by the user.
+     * Only included if the user has missions associated and it has been eager-loaded via sequelize
+     *
+     * @type {Mission[]|undefined}
+     * @memberof User
+     */
+    public missions?: Mission[];
+
+    /**
+     * Eager-loaded list of permissions associated with the user.
      * Only included if the user has permissions associated and it has been eager-loaded via sequelize
      *
      * @type {Permission[]|undefined}
@@ -128,12 +140,53 @@ export class User extends Model {
      */
     public permissions?: Permission[];
 
+    /**
+     * Time (and date) the user instance was created
+     *
+     * @type {Date}
+     * @memberof User
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    })
+    public createdAt: Date;
+
+    /**
+     * Time (and date) the user instance was last updated
+     *
+     * @type {Date}
+     * @memberof User
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    })
+    public updatedAt: Date;
+
+    /**
+     * Time (and date) the user instance was deleted
+     * Will only be set once the user has been deleted, caused by paranoid table settings
+     * Can be `undefined|null` until the user instance deletion
+     *
+     * @type {Date|undefined|null}
+     * @memberof User
+     */
+    @Attribute({
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null
+    })
+    public deletedAt?: Date;
+
     ////////////////////////////
     // Sequelize model mixins //
     ////////////////////////////
 
     /**
-     * Creates a new permission for the user
+     * Creates a new permission for the user.
      * The new permission automatically gets associated with the user (userUid does not have to be provided)
      *
      * @type {HasManyCreateAssociationMixin<Permission>}
@@ -143,7 +196,7 @@ export class User extends Model {
     public createPermission: HasManyCreateAssociationMixin<Permission>;
 
     /**
-     * Retrieves the user's community instance
+     * Retrieves the user's community instance.
      * Only returns a result if the user has been associated with a community
      *
      * @type {BelongsToGetAssociationMixin<Community>}
@@ -153,7 +206,17 @@ export class User extends Model {
     public getCommunity: BelongsToGetAssociationMixin<Community>;
 
     /**
-     * Retrieves the user's permissions
+     * Retrieves the user's missions.
+     * Returns an empty array if the user has no missions assigned
+     *
+     * @type {HasManyGetAssociationsMixin<Mission>}
+     * @returns {Promise<Mission[]>} List of missions
+     * @memberof User
+     */
+    public getMissions: HasManyGetAssociationsMixin<Mission>;
+
+    /**
+     * Retrieves the user's permissions.
      * Returns an empty array if the user has no permissions assigned
      *
      * @type {HasManyGetAssociationsMixin<Permission>}
@@ -209,7 +272,7 @@ export class User extends Model {
     }
 
     /**
-     * Checks whether the user has the permissions provided
+     * Checks whether the user has the permissions provided.
      * Permission check also includes wildcards (in granted permissions) and can check for multiple permissions at once
      *
      * @param {(string | string[])} permission Permission or array of multiple permissions to check for. Uses dotted notation
@@ -325,12 +388,14 @@ export interface IPublicUser {
 /**
  * Model associations
  *
- * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise
+ * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise.
  * Imports of associated models **MUST NOT** be at the top of the file, but rather **HAVE TO BE** down here
  */
 
 import { Community } from './Community';
+import { Mission } from './Mission';
 import { Permission } from './Permission';
 
 User.associations.community = User.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
+User.associations.missions = User.hasMany(Mission, { as: 'missions', foreignKey: 'creatorUid' });
 User.associations.permissions = User.hasMany(Permission, { as: 'permissions', foreignKey: 'userUid' });
