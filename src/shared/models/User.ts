@@ -1,3 +1,4 @@
+import * as Boom from 'boom';
 import * as jwt from 'jsonwebtoken';
 import * as _ from 'lodash';
 import * as moment from 'moment';
@@ -8,6 +9,7 @@ import {
     HasMany,
     HasManyCreateAssociationMixin,
     HasManyGetAssociationsMixin,
+    HasManyRemoveAssociationMixin,
     Model
 } from 'sequelize';
 import { Attribute, Options } from 'sequelize-decorators';
@@ -225,6 +227,15 @@ export class User extends Model {
      */
     public getPermissions: HasManyGetAssociationsMixin<Permission>;
 
+    /**
+     * Removes the given permission or a permission with the provided UID from the user
+     *
+     * @type {HasManyRemoveAssociationMixin<Permission, string>}
+     * @returns {Promise<void>} Promise fulfilled when removal is completed
+     * @memberof User
+     */
+    public removePermission: HasManyRemoveAssociationMixin<Permission, string>;
+
     /////////////////////////
     // Model class methods //
     /////////////////////////
@@ -320,6 +331,24 @@ export class User extends Model {
         log.debug({ function: 'hasPermission', userUid: this.uid, permission, strict, foundPermissions, hasPermission }, 'Successfully finished checking if user has permission');
 
         return hasPermission;
+    }
+
+    public async removePermissionByPermissionString(permission: string): Promise<void> {
+        log.debug({ function: 'removePermissionByPermission', userUid: this.uid, permission }, 'Removing user permission by permission string');
+
+        const destroyed = await Permission.destroy({
+            where: {
+                userUid: this.uid,
+                permission: permission
+            }
+        });
+
+        if (destroyed <= 0) {
+            log.debug({ function: 'removePermissionByPermission', userUid: this.uid, permission }, 'Failed to remove user permission by permission string, not found');
+            throw Boom.notFound('Permission not found', { userUid: this.uid, permission });
+        }
+
+        log.debug({ function: 'removePermissionByPermission', userUid: this.uid, permission, destroyed }, 'Successfully removed user permission by permission string');
     }
 
     /**
