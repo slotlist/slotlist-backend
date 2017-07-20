@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
     BelongsTo,
     BelongsToGetAssociationMixin,
@@ -6,8 +7,10 @@ import {
 } from 'sequelize';
 import { Attribute, Options } from 'sequelize-decorators';
 
+import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
 import slug from '../util/slug';
+const log = logger.child({ model: 'Community' });
 
 /**
  * Represents a mission in database.
@@ -336,10 +339,40 @@ export class Mission extends Model {
     // Model class methods //
     /////////////////////////
 
+    /**
+     * Checks whether the given slug is available for new missions
+     *
+     * @static
+     * @param {string} newSlug Slug (can be unescaped) to check for
+     * @returns {Promise<boolean>} Indicates whether the slug is available
+     * @memberof Mission
+     */
+    // tslint:disable-next-line:function-name
+    public static async isSlugAvailable(newSlug: string): Promise<boolean> {
+        log.debug({ function: 'isSlugAvailable', newSlug }, 'Checking if mission slug is available');
+
+        const mission = await this.findOne({
+            where: { slug: slug(newSlug) },
+            attributes: ['uid']
+        });
+
+        const isSlugAvailable = _.isNil(mission);
+
+        log.debug({ function: 'isSlugAvailable', newSlug, isSlugAvailable }, 'Successfully finished checking if mission slug is available');
+
+        return isSlugAvailable;
+    }
+
     ////////////////////////////
     // Model instance methods //
     ////////////////////////////
 
+    /**
+     * Returns a public representation of the mission instance, as transmitted via API
+     *
+     * @returns {Promise<IPublicMission>} Object containing public mission information
+     * @memberof Mission
+     */
     public async toPublicObject(): Promise<IPublicMission> {
         return {
             uid: this.uid
@@ -351,6 +384,12 @@ export class Mission extends Model {
     ////////////////////////////////////
 }
 
+/**
+ * Public mission information as transmitted via API
+ *
+ * @export
+ * @interface IPublicMission
+ */
 export interface IPublicMission {
     uid: string;
 }
