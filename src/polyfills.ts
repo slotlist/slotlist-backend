@@ -11,6 +11,7 @@ import * as uuid from 'uuid';
 sourceMapSupport.install();
 
 const processCLSNamespace = cls.createNamespace(`SL_${uuid.v4()}`);
+// tslint:disable-next-line:no-unsafe-any
 (<any>Sequelize).useCLS(processCLSNamespace);
 
 // tslint:disable-next-line

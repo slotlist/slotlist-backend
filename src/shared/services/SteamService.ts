@@ -27,7 +27,7 @@ export class SteamService {
         });
     }
 
-    public getLoginRedirectURL(): Promise<string> {
+    public async getLoginRedirectURL(): Promise<string> {
         return new Promise<string>((resolve: Function, reject: Function) => {
             log.debug({ function: 'getLoginRedirectURL' }, 'Retrieving Steam login redirect URL');
 
@@ -45,7 +45,7 @@ export class SteamService {
         });
     }
 
-    public verifySteamLogin(url: string): Promise<string> {
+    public async verifySteamLogin(url: string): Promise<string> {
         return new Promise<string>((resolve: Function, reject: Function) => {
             log.debug({ function: 'verifySteamLogin', url }, 'Verifying Steam login');
 

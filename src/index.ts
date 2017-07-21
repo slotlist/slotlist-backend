@@ -4,32 +4,42 @@ import './polyfills';
 import * as _ from 'lodash';
 
 import { API } from './api/API';
-import Storage from './shared/services/Storage';
+import { createAssociations } from './shared/models/associations';
+import { User } from './shared/models/User';
 import { log } from './shared/util/log';
 
 /**
  * Initialise logger and start new API server
  */
+// tslint:disable-next-line:strict-boolean-expressions
 if (!module.parent) {
+    // Create sequelize associations as the very first step in the application.
+    // Required for circular dependencies to work properly
+    createAssociations();
+
     const api = new API();
+    // tslint:disable-next-line:no-floating-promises
     api.start().then(async () => {
-        if (_.isString(process.env.DEFAULT_ADMIN_STEAMID) && !_.isEmpty(process.env.DEFAULT_ADMIN_STEAMID)
-            && _.isString(process.env.DEFAULT_ADMIN_NICKNAME) && !_.isEmpty(process.env.DEFAULT_ADMIN_NICKNAME)) {
+        const adminSteamId = process.env.DEFAULT_ADMIN_STEAMID;
+        const adminNickname = process.env.DEFAULT_ADMIN_NICKNAME;
+        if (_.isString(adminSteamId) && !_.isEmpty(adminSteamId)
+            && _.isString(adminNickname) && !_.isEmpty(adminNickname)) {
 
-            log.info({ steamId: process.env.DEFAULT_ADMIN_STEAMID, nickname: process.env.DEFAULT_ADMIN_NICKNAME }, 'Creating default admin user with provided details');
+            log.info({ steamId: adminSteamId, nickname: adminNickname }, 'Creating default admin user with provided details');
 
-            let user = await Storage.models.User.findOne({
+            const steamId: string = adminSteamId;
+            let user = await User.findOne({
                 where: {
-                    steamId: process.env.DEFAULT_ADMIN_STEAMID
+                    steamId: steamId
                 }
             });
             if (!_.isNil(user)) {
                 log.info({ userUid: user.uid, steamId: user.steamId, nickname: user.nickname }, 'Default admin user with provided steamId already exists, skipping user creation');
             } else {
-                user = await Storage.models.User.create({
-                    steamId: process.env.DEFAULT_ADMIN_STEAMID,
-                    nickname: process.env.DEFAULT_ADMIN_NICKNAME
-                });
+                user = await new User({
+                    steamId: adminSteamId,
+                    nickname: adminNickname
+                }).save();
 
                 log.info(
                     { userUid: user.uid, steamId: user.steamId, nickname: user.nickname },
@@ -38,7 +48,7 @@ if (!module.parent) {
                 const permission = await user.createPermission({ permission: '*' });
 
                 log.info(
-                    { userUid: user.uid, steamId: user.steamId, nickname: user.nickname, permissionUid: (<any>permission).uid },
+                    { userUid: user.uid, steamId: user.steamId, nickname: user.nickname, permissionUid: permission.uid },
                     'Successfully added top wildcard permission to default admin user');
             }
         }

@@ -1,30 +1,31 @@
-import * as Sequelize from 'sequelize';
+import { DataTypes } from 'sequelize';
 
 /**
  * Creates table for User model
  */
 module.exports = {
-    up: async (queryInterface: Sequelize.QueryInterface): Promise<void> => {
+    up: async (queryInterface: any): Promise<void> => {
         await queryInterface.createTable('users', {
             uid: {
-                type: Sequelize.UUID,
+                type: DataTypes.UUID,
                 allowNull: false,
-                defaultValue: Sequelize.UUIDV4,
+                defaultValue: DataTypes.UUIDV4,
                 primaryKey: true
             },
             nickname: {
-                type: Sequelize.STRING,
+                type: DataTypes.STRING,
                 allowNull: false,
                 unique: true
             },
             steamId: {
-                type: Sequelize.STRING,
+                type: DataTypes.STRING,
                 allowNull: false,
                 unique: true
             },
             communityUid: {
-                type: Sequelize.UUID,
+                type: DataTypes.UUID,
                 allowNull: true,
+                defaultValue: null,
                 references: {
                     model: 'communities',
                     key: 'uid'
@@ -32,21 +33,23 @@ module.exports = {
                 onDelete: 'SET NULL'
             },
             createdAt: {
-                type: Sequelize.DATE,
-                allowNull: false
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW
             },
             updatedAt: {
-                type: Sequelize.DATE,
-                allowNull: false
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW
             },
             deletedAt: {
-                type: Sequelize.DATE,
+                type: DataTypes.DATE,
                 allowNull: true,
                 defaultValue: null
             }
         });
     },
-    down: async (queryInterface: Sequelize.QueryInterface): Promise<void> => {
+    down: async (queryInterface: any): Promise<void> => {
         await queryInterface.dropTable('users');
     }
 };

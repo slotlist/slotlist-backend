@@ -1,8 +1,8 @@
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 
+import { User } from '../../../shared/models/User';
 import SteamService from '../../../shared/services/SteamService';
-import { Users } from '../../../shared/services/Storage';
 import { log as logger } from '../../../shared/util/log';
 const log = logger.child({ route: 'auth', routeVersion: 'v1' });
 
@@ -26,16 +26,16 @@ export function verifySteamLogin(request: Hapi.Request, reply: Hapi.ReplyWithCon
 
         const steamId = await SteamService.verifySteamLogin(url);
 
-        let user = await Users.findOne({ where: { steamId: steamId }, include: [{ all: true }] });
+        let user: User = await (<any>User).findOne({ where: { steamId: steamId }, include: [{ all: true }] });
         if (_.isNil(user)) {
             log.debug({ function: 'verifySteamLogin', steamId }, 'User not found in database, retrieving nickname from Steam API before generating JWT');
 
             const steamNickname = await SteamService.getSteamNickname(steamId);
 
-            user = await Users.create({
+            user = await new User({
                 steamId: steamId,
                 nickname: steamNickname
-            });
+            }).save();
         } else {
             log.debug({ function: 'verifySteamLogin', steamId, user: user.toPublicObject() }, 'User already exists in database, generating JWT');
         }

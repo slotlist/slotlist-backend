@@ -59,6 +59,7 @@ const serializers: bunyan.Serializers = {
 };
 
 const streams: bunyan.Stream[] = [];
+// tslint:disable-next-line:strict-boolean-expressions
 if (LoggingConfig.stdout) {
     streams.push({
         level: <any>LoggingConfig.stdout,

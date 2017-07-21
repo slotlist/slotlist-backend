@@ -12,6 +12,9 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { Community } from './Community';
+import { User } from './User';
+
 /**
  * Represents a mission in database.
  * Provides database access and utility functionality for mission instances
@@ -393,16 +396,3 @@ export class Mission extends Model {
 export interface IPublicMission {
     uid: string;
 }
-
-/**
- * Model associations
- *
- * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise.
- * Imports of associated models **MUST NOT** be at the top of the file, but rather **HAVE TO BE** down here
- */
-
-import { Community } from './Community';
-import { User } from './User';
-
-Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
-Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid' });

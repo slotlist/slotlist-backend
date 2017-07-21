@@ -39,21 +39,19 @@ export class API {
         });
     }
 
-    // tslint:disable-next-line:max-func-body-length
+    // tslint:disable
     public async start(): Promise<void> {
         log.info({ HTTPConfig, JWTConfig: _.omit(JWTConfig, 'secret') }, 'Starting API server');
 
+
         log.debug('Registering inert plugin');
-        // tslint:disable-next-line:no-require-imports
         await this.server.register(require('inert'));
 
         log.debug('Registering vision plugin');
-        // tslint:disable-next-line:no-require-imports
         await this.server.register(require('vision'));
 
         log.debug('Registering good plugin');
         await this.server.register({
-            // tslint:disable-next-line:no-require-imports
             register: require('good'),
             options: {
                 ops: {
@@ -122,7 +120,6 @@ export class API {
 
         log.debug('Registering swagger plugin');
         await this.server.register({
-            // tslint:disable-next-line:no-require-imports
             register: require('hapi-swagger'),
             options: {
                 info: {
@@ -151,6 +148,7 @@ export class API {
 
         log.info({ startedAt: this.startedAt }, 'Successfully started API server');
     }
+    // tslint:enable
 
     public async stop(): Promise<void> {
         log.info('Stopping API server');

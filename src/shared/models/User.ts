@@ -17,8 +17,11 @@ import { Attribute, Options } from 'sequelize-decorators';
 import { JWT as JWTConfig } from '../config/Config';
 import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
-
 const log = logger.child({ model: 'User' });
+
+import { Community } from './Community';
+import { Mission } from './Mission';
+import { Permission } from './Permission';
 
 /**
  * Represents a user in database.
@@ -413,18 +416,3 @@ export interface IPublicUser {
     uid: string;
     nickname: string;
 }
-
-/**
- * Model associations
- *
- * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise.
- * Imports of associated models **MUST NOT** be at the top of the file, but rather **HAVE TO BE** down here
- */
-
-import { Community } from './Community';
-import { Mission } from './Mission';
-import { Permission } from './Permission';
-
-User.associations.community = User.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
-User.associations.missions = User.hasMany(Mission, { as: 'missions', foreignKey: 'creatorUid' });
-User.associations.permissions = User.hasMany(Permission, { as: 'permissions', foreignKey: 'userUid' });

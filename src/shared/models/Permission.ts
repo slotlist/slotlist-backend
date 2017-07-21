@@ -8,6 +8,8 @@ import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
 
+import { User } from './User';
+
 /**
  * Represents a permission in database.
  * Provides database access and utility functionality for permission instances
@@ -171,14 +173,3 @@ export class Permission extends Model {
 export interface IPublicPermission {
     uid: string;
 }
-
-/**
- * Model associations
- *
- * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise.
- * Imports of associated models **MUST NOT** be at the top of the file, but rather **HAVE TO BE** down here
- */
-
-import { User } from './User';
-
-Permission.associations.user = Permission.belongsTo(User, { as: 'user', foreignKey: 'userUid' });

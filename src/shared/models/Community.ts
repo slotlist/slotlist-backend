@@ -16,6 +16,10 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { Mission } from './Mission';
+import { Permission } from './Permission';
+import { User } from './User';
+
 /**
  * Represents a community in database.
  * Provides database access and utility functionality for community instances
@@ -96,7 +100,8 @@ export class Community extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: true
+        allowNull: true,
+        defaultValue: null
     })
     public website: string;
 
@@ -437,18 +442,5 @@ export class Community extends Model {
  */
 export interface IPublicCommunity {
     uid: string;
+
 }
-
-/**
- * Model associations
- *
- * ATTENTION: absolutely **HAS** to be at the very end of the file and **AFTER** complete model definition, causes cyclic dependency hell otherwise.
- * Imports of associated models **MUST NOT** be at the top of the file, but rather **HAVE TO BE** down here
- */
-
-import { Mission } from './Mission';
-import { Permission } from './Permission';
-import { User } from './User';
-
-Community.associations.members = Mission.hasMany(User, { as: 'members', foreignKey: 'communityUid' });
-Community.associations.missions = Mission.hasMany(User, { as: 'missions', foreignKey: 'communityUid' });

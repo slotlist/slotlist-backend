@@ -1,23 +1,23 @@
-import * as Sequelize from 'sequelize';
+import { DataTypes } from 'sequelize';
 
 /**
  * Creates table for Permission model
  */
 module.exports = {
-    up: async (queryInterface: Sequelize.QueryInterface): Promise<void> => {
+    up: async (queryInterface: any): Promise<void> => {
         await queryInterface.createTable('permissions', {
             uid: {
-                type: Sequelize.UUID,
+                type: DataTypes.UUID,
                 allowNull: false,
-                defaultValue: Sequelize.UUIDV4,
+                defaultValue: DataTypes.UUIDV4,
                 primaryKey: true
             },
             permission: {
-                type: Sequelize.STRING,
+                type: DataTypes.STRING,
                 allowNull: false
             },
             userUid: {
-                type: Sequelize.UUID,
+                type: DataTypes.UUID,
                 allowNull: false,
                 references: {
                     model: 'users',
@@ -26,22 +26,24 @@ module.exports = {
                 onDelete: 'CASCADE'
             },
             createdAt: {
-                type: Sequelize.DATE,
-                allowNull: false
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW
             },
             updatedAt: {
-                type: Sequelize.DATE,
-                allowNull: false
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW
             }
         });
 
-        await (<any>queryInterface).addIndex('permissions', ['userUid', 'permission'], {
+        await queryInterface.addIndex('permissions', ['userUid', 'permission'], {
             indexName: 'permissions_unique_userUid_permission',
             indicesType: 'UNIQUE',
             indexType: 'BTREE'
         });
     },
-    down: async (queryInterface: Sequelize.QueryInterface): Promise<void> => {
+    down: async (queryInterface: any): Promise<void> => {
         await queryInterface.dropTable('permissions');
     }
 };
