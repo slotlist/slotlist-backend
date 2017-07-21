@@ -89,10 +89,6 @@
   dependencies:
     "@types/node" "*"
 
-"@types/lodash@*":
-  version "4.14.70"
-  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.70.tgz#37bda4acfb3bb79143009cc9d00abd559f7dca30"
-
 "@types/lodash@^4.14.68":
   version "4.14.68"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.68.tgz#754fbab68bd2bbb69547dc8ce7574f7012eed7f6"
@@ -136,17 +132,16 @@
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@types/podium/-/podium-1.0.0.tgz#bfaa2151be2b1d6109cc69f7faa9dac2cba3bb20"
 
-"@types/sequelize@*":
-  version "4.0.65"
-  resolved "https://registry.yarnpkg.com/@types/sequelize/-/sequelize-4.0.65.tgz#68bc3ae0ca3a79bc1368ca2ef34de27549d2a680"
-  dependencies:
-    "@types/bluebird" "*"
-    "@types/lodash" "*"
-    "@types/validator" "*"
-
 "@types/sequelize@types/sequelize#09b3a901547bad6f39f5607d32880c56efa5b705":
   version "4.0.0"
   resolved "https://codeload.github.com/types/sequelize/tar.gz/09b3a901547bad6f39f5607d32880c56efa5b705"
+  dependencies:
+    "@types/bluebird" "^3.5.5"
+    "@types/validator" types/validator#83990944fcc53bcb4b05b347c3cdfcb7aa05b3c7
+
+"@types/sequelize@types/sequelize#b1a798e0865c77f7b5e9e0dc806a6c1b04cca390":
+  version "4.0.0"
+  resolved "https://codeload.github.com/types/sequelize/tar.gz/b1a798e0865c77f7b5e9e0dc806a6c1b04cca390"
   dependencies:
     "@types/bluebird" "^3.5.5"
     "@types/validator" types/validator#83990944fcc53bcb4b05b347c3cdfcb7aa05b3c7
@@ -167,21 +162,11 @@
   dependencies:
     "@types/node" "*"
 
-"@types/umzug@^1.8.32":
-  version "1.8.32"
-  resolved "https://registry.yarnpkg.com/@types/umzug/-/umzug-1.8.32.tgz#57cb1ed93f30fb77a06d78d316331e080a8f6cfb"
-  dependencies:
-    "@types/sequelize" "*"
-
 "@types/uuid@^3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@types/uuid/-/uuid-3.0.0.tgz#be93b14bcf97f59c079a9e58754960b5efd946c3"
   dependencies:
     "@types/node" "*"
-
-"@types/validator@*":
-  version "6.2.1"
-  resolved "https://registry.yarnpkg.com/@types/validator/-/validator-6.2.1.tgz#15ee3c2934b0bd03897116c598f93eef9f3a85e2"
 
 "@types/validator@types/validator#83990944fcc53bcb4b05b347c3cdfcb7aa05b3c7":
   version "5.7.0"

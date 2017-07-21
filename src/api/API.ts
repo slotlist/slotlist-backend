@@ -123,7 +123,7 @@ export class API {
             register: require('hapi-swagger'),
             options: {
                 info: {
-                    title: `${pjson.name} API Documentation`,
+                    title: 'slotlist.info API Documentation',
                     version: pjson.version,
                     contact: {
                         name: 'Nick \'MorpheusXAUT\' Mueller',

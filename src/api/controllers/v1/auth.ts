@@ -26,7 +26,7 @@ export function verifySteamLogin(request: Hapi.Request, reply: Hapi.ReplyWithCon
 
         const steamId = await SteamService.verifySteamLogin(url);
 
-        let user: User = await (<any>User).findOne({ where: { steamId: steamId }, include: [{ all: true }] });
+        let user: User = await User.findOne({ where: { steamId: steamId }, include: [{ all: true }] });
         if (_.isNil(user)) {
             log.debug({ function: 'verifySteamLogin', steamId }, 'User not found in database, retrieving nickname from Steam API before generating JWT');
 
