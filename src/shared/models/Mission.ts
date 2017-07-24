@@ -377,11 +377,17 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public async toPublicObject(): Promise<IPublicMission> {
+        if (_.isNil(this.creator)) {
+            this.creator = await this.getCreator();
+        }
+        const publicCreator = await this.creator.toPublicObject();
+
         return {
             title: this.title,
             slug: this.slug,
             shortDescription: this.shortDescription,
-            startTime: this.startTime
+            startTime: this.startTime,
+            creator: publicCreator
         };
     }
 
@@ -438,6 +444,7 @@ export interface IPublicMission {
     slug: string;
     shortDescription: string;
     startTime: Date;
+    creator: IPublicUser;
 }
 
 /**

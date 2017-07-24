@@ -1,5 +1,6 @@
 import * as Boom from 'boom';
 import * as _ from 'lodash';
+import * as moment from 'moment';
 import {
     DataTypes,
     HasMany,
@@ -453,7 +454,13 @@ export class Community extends Model {
         });
 
         if (_.isNil(this.missions)) {
-            this.missions = await this.getMissions();
+            this.missions = await this.getMissions({
+                where: {
+                    endTime: {
+                        $gt: moment.utc()
+                    }
+                }
+            });
         }
         const publicMissions = await Promise.map(this.missions, (mission: Mission) => {
             return mission.toPublicObject();

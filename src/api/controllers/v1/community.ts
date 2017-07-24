@@ -1,8 +1,11 @@
 import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
+import * as moment from 'moment';
 
 import { Community } from '../../../shared/models/Community';
+import { Mission } from '../../../shared/models/Mission';
+import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
@@ -39,7 +42,30 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
     return reply((async () => {
         const slug = request.params.slug;
 
-        const community = await Community.findOne({ where: { slug }, include: [{ all: true }] });
+        const community = await Community.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: User,
+                    as: 'members'
+                },
+                {
+                    model: Mission,
+                    as: 'missions',
+                    where: {
+                        endTime: {
+                            $gt: moment.utc()
+                        }
+                    },
+                    include: [
+                        {
+                            model: User,
+                            as: 'creator'
+                        }
+                    ]
+                }
+            ]
+        });
         if (_.isNil(community)) {
             log.debug({ slug }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -49,6 +75,46 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
 
         return {
             community: publicCommunity
+        };
+    })());
+}
+
+export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset
+        };
+
+        if (request.query.includeEnded === false) {
+            queryOptions.where = {
+                endTime: {
+                    $gt: moment.utc()
+                }
+            };
+        }
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ slug, queryOptions }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const result = await Mission.findAndCountAll(queryOptions);
+
+        const missionCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + missionCount) < result.count;
+        const missionList = await Promise.map(result.rows, (mission: Mission) => {
+            return mission.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: missionCount,
+            moreAvailable: moreAvailable,
+            missions: missionList
         };
     })());
 }
