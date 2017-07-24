@@ -12,8 +12,8 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
-import { Community } from './Community';
-import { User } from './User';
+import { Community, IPublicCommunity } from './Community';
+import { IPublicUser, User } from './User';
 
 /**
  * Represents a mission in database.
@@ -378,7 +378,47 @@ export class Mission extends Model {
      */
     public async toPublicObject(): Promise<IPublicMission> {
         return {
-            uid: this.uid
+            title: this.title,
+            slug: this.slug,
+            shortDescription: this.shortDescription,
+            startTime: this.startTime
+        };
+    }
+
+    /**
+     * Returns a detailed public representation of the mission instance, as transmitted via API
+     *
+     * @returns {Promise<IDetailedPublicMission>} Object containing detailed public mission information
+     * @memberof Mission
+     */
+    public async toDetailedPublicObject(): Promise<IDetailedPublicMission> {
+        let publicCommunity: IPublicCommunity | null = null;
+        if (!_.isNil(this.communityUid)) {
+            if (_.isNil(this.community)) {
+                this.community = await this.getCommunity();
+            }
+            publicCommunity = await this.community.toPublicObject();
+        }
+
+        if (_.isNil(this.creator)) {
+            this.creator = await this.getCreator();
+        }
+        const publicCreator = await this.creator.toPublicObject();
+
+        return {
+            title: this.title,
+            slug: this.slug,
+            description: this.description,
+            shortDescription: this.shortDescription,
+            briefingTime: this.briefingTime,
+            slottingTime: this.slottingTime,
+            startTime: this.startTime,
+            endTime: this.endTime,
+            repositoryUrl: _.isNil(this.repositoryUrl) ? null : this.repositoryUrl,
+            techSupport: _.isNil(this.techSupport) ? null : this.techSupport,
+            rules: _.isNil(this.rules) ? null : this.rules,
+            community: publicCommunity,
+            creator: publicCreator
         };
     }
 
@@ -394,5 +434,30 @@ export class Mission extends Model {
  * @interface IPublicMission
  */
 export interface IPublicMission {
-    uid: string;
+    title: string;
+    slug: string;
+    shortDescription: string;
+    startTime: Date;
+}
+
+/**
+ * Detailed public mission information as transmitted via API
+ *
+ * @export
+ * @interface IDetailedPublicMission
+ */
+export interface IDetailedPublicMission {
+    title: string;
+    slug: string;
+    description: string;
+    shortDescription: string;
+    briefingTime: Date;
+    slottingTime: Date;
+    startTime: Date;
+    endTime: Date;
+    repositoryUrl: string | null;
+    techSupport: string | null;
+    rules: string | null;
+    community: IPublicCommunity | null;
+    creator: IPublicUser;
 }

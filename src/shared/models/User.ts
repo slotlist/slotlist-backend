@@ -19,8 +19,8 @@ import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
 const log = logger.child({ model: 'User' });
 
-import { Community } from './Community';
-import { Mission } from './Mission';
+import { Community, IPublicCommunity } from './Community';
+import { IPublicMission, Mission } from './Mission';
 import { Permission } from './Permission';
 
 /**
@@ -367,6 +367,37 @@ export class User extends Model {
         };
     }
 
+    /**
+     * Returns a detailed public representation of the user instance, as transmitted via API.
+     * Also includes missions created by the user as well as the community the user belongs to
+     *
+     * @returns {Promise<IDetailedPublicUser>} Object containing detailed public user information
+     * @memberof User
+     */
+    public async toDetailedPublicObject(): Promise<IDetailedPublicUser> {
+        let publicCommunity: IPublicCommunity | null = null;
+        if (!_.isNil(this.communityUid)) {
+            if (_.isNil(this.community)) {
+                this.community = await this.getCommunity();
+            }
+            publicCommunity = await this.community.toPublicObject();
+        }
+
+        if (_.isNil(this.missions)) {
+            this.missions = await this.getMissions();
+        }
+        const publicMissions = await Promise.map(this.missions, (mission: Mission) => {
+            return mission.toPublicObject();
+        });
+
+        return {
+            uid: this.uid,
+            nickname: this.nickname,
+            community: publicCommunity,
+            missions: publicMissions
+        };
+    }
+
     ////////////////////////////////////
     // Private model instance methods //
     ////////////////////////////////////
@@ -415,4 +446,18 @@ export class User extends Model {
 export interface IPublicUser {
     uid: string;
     nickname: string;
+}
+
+/**
+ * Detailed public user information as transmitted via API.
+ * Also includes missions created by the user as well as the community the user belongs to
+ *
+ * @export
+ * @interface IDetailedPublicUser
+ */
+export interface IDetailedPublicUser {
+    uid: string;
+    nickname: string;
+    community: IPublicCommunity | null;
+    missions: IPublicMission[];
 }

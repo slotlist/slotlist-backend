@@ -37,14 +37,31 @@ export const community = [
                     communities: Joi.array().items(schemas.communitySchema.optional()).required().description('List of communities retrieved')
                 }).label('GetCommunityListResponse').description('Response containing list of currently created communities')
             },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
+                            })
+                        }
+                    }
+                }
+            },
             validate: {
                 options: {
                     abortEarly: false
                 },
+                headers: Joi.object({
+                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityList.max).default(LIMITS.communityList.default).optional()
                         .description('Limit for number of communities to retrieve, defaults to 25 (used for pagination in combination with offset)'),
-                    offset: Joi.number().integer().positive().allow(0).min(0).default(0).optional()
+                    offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of communities to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
                 })
             }
@@ -62,8 +79,41 @@ export const community = [
             tags: ['api', 'get', 'v1', 'communities', 'details'],
             response: {
                 schema: Joi.object().required().keys({
-                    url: Joi.string().required().uri().description('Steam OpenID URL to redirect to for signin')
-                }).label('GetSteamLoginRedirectURLResponse').description('Response containing Steam OpenID URL to redirect user to')
+                    community: schemas.communityDetailsSchema
+                }).label('GetComunityDetailsResponse').description('Response containing details of requested community')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
+                            })
+                        }
+                    }
+                }
+            },
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                })
             }
         }
     }

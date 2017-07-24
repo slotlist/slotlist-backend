@@ -16,9 +16,9 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
-import { Mission } from './Mission';
+import { IPublicMission, Mission } from './Mission';
 import { Permission } from './Permission';
-import { User } from './User';
+import { IPublicUser, User } from './User';
 
 /**
  * Represents a community in database.
@@ -103,7 +103,7 @@ export class Community extends Model {
         allowNull: true,
         defaultValue: null
     })
-    public website: string;
+    public website?: string;
 
     /**
      * Slug used for identifying a community in the frontend
@@ -425,7 +425,48 @@ export class Community extends Model {
      */
     public async toPublicObject(): Promise<IPublicCommunity> {
         return {
-            uid: this.uid
+            name: this.name,
+            tag: this.tag,
+            website: _.isNil(this.website) ? null : this.website,
+            slug: this.slug
+        };
+    }
+
+    /**
+     * Returns a detailed public representation of the community instance, as transmitted via API.
+     * Also includes leaders, members and missions created by members
+     *
+     * @returns {Promise<IDetailedPublicCommunity>} Object containing detailed public community information
+     * @memberof Community
+     */
+    public async toDetailedPublicObject(): Promise<IDetailedPublicCommunity> {
+        const leaders = await this.getLeaders();
+        const publicLeaders = await Promise.map(leaders, (leader: User) => {
+            return leader.toPublicObject();
+        });
+
+        if (_.isNil(this.members)) {
+            this.members = await this.getMembers();
+        }
+        const publicMembers = await Promise.map(this.members, (member: User) => {
+            return member.toPublicObject();
+        });
+
+        if (_.isNil(this.missions)) {
+            this.missions = await this.getMissions();
+        }
+        const publicMissions = await Promise.map(this.missions, (mission: Mission) => {
+            return mission.toPublicObject();
+        });
+
+        return {
+            name: this.name,
+            tag: this.tag,
+            website: _.isNil(this.website) ? null : this.website,
+            slug: this.slug,
+            leaders: publicLeaders,
+            members: _.pullAllBy(publicMembers, publicLeaders, 'uid'),
+            missions: publicMissions
         };
     }
 
@@ -441,6 +482,25 @@ export class Community extends Model {
  * @interface IPublicCommunity
  */
 export interface IPublicCommunity {
-    uid: string;
+    name: string;
+    tag: string;
+    website: string | null;
+    slug: string;
+}
 
+/**
+ * Detailed public community information as transmitted via API.
+ * Also includes leaders, members and missions created by members
+ *
+ * @export
+ * @interface IDetailedPublicCommunity
+ */
+export interface IDetailedPublicCommunity {
+    name: string;
+    tag: string;
+    website: string | null;
+    slug: string;
+    leaders: IPublicUser[];
+    members: IPublicUser[];
+    missions: IPublicMission[];
 }
