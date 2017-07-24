@@ -15,7 +15,7 @@ const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
 export function getCommunityList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const queryOptions = {
+        const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset
         };
@@ -71,10 +71,10 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             throw Boom.notFound('Community not found');
         }
 
-        const publicCommunity = await community.toDetailedPublicObject();
+        const detailedPublicCommunity = await community.toDetailedPublicObject();
 
         return {
-            community: publicCommunity
+            community: detailedPublicCommunity
         };
     })());
 }

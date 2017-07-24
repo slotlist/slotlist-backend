@@ -1,6 +1,5 @@
 import * as Joi from 'joi';
 
-import { missionSchema } from './mission';
 import { userSchema } from './user';
 
 /**
@@ -14,6 +13,10 @@ export const communitySchema = Joi.object().keys({
     slug: Joi.string().min(1).max(255).required().description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID')
         .example('spezialeinheit-luchs')
 }).required().label('Community').description('Public community information, as displayed in overview lists');
+
+// Imported below public communitySchema so circular dependencies work
+// missionDetailsSchema depends on communitySchema
+import { missionSchema } from './mission';
 
 export const communityDetailsSchema = Joi.object().keys({
     name: Joi.string().min(1).max(255).required().description('Name of the community').example('Spezialeinheit Luchs'),

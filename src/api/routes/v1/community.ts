@@ -38,7 +38,7 @@ export const community = [
                         .description('Number of communities to skip before retrieving new ones from database, as provided via query'),
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityList.max).required()
                         .description('Actual number of communities returned'),
-                    moreAvailable: Joi.bool().required().description('Indicates whether more tournaments are available and can be retrieved using pagination'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more communities are available and can be retrieved using pagination'),
                     communities: Joi.array().items(schemas.communitySchema.optional()).required().description('List of communities retrieved')
                 }).label('GetCommunityListResponse').description('Response containing list of currently created communities')
             },
@@ -78,7 +78,7 @@ export const community = [
         handler: controller.getCommunityDetails,
         config: {
             auth: false,
-            description: 'Returns a details about a specific community',
+            description: 'Returns details about a specific community',
             notes: 'Returns more detailed information about a specific community, including a short list of currently announced missions as well as a member list. ' +
             'No authentication is required to access this endpoint.',
             tags: ['api', 'get', 'v1', 'communities', 'details'],
@@ -181,7 +181,7 @@ export const community = [
                         .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().required().default(true).description('Include ended missions in retrieved list, defaults to true').optional()
+                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
                 })
             }
         }
