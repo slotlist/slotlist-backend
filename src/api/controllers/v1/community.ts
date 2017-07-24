@@ -101,6 +101,8 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
             throw Boom.notFound('Community not found');
         }
 
+        _.assign(queryOptions.where, { communityUid: community.uid });
+
         const result = await Mission.findAndCountAll(queryOptions);
 
         const missionCount = result.rows.length;
