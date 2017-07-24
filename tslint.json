@@ -6,6 +6,10 @@
         "await-promise": false,
         "export-name": false,
         "match-default-export-name": false,
+        "max-func-body-length": [
+            true,
+            125
+        ],
         "max-line-length": [
             true,
             180

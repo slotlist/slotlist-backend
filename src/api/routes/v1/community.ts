@@ -1,6 +1,7 @@
 import * as Joi from 'joi';
 
 import * as schemas from '../../../shared/schemas/community';
+import { internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
 import * as controller from '../../controllers/v1/community';
 
@@ -30,6 +31,20 @@ export const community = [
             notes: 'Returns a paginated list of all currently created communities. Up to 100 communities can be requested at once, pagination has to be used to retrieve the ' +
             'rest. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityList.max).default(LIMITS.communityList.default).optional()
+                        .description('Limit for number of communities to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of communities to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
+                })
+            },
             response: {
                 schema: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityList.max).required()
@@ -47,28 +62,10 @@ export const community = [
                     responses: {
                         500: {
                             description: 'An error occured while processing the request',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
-                            })
+                            schema: internalServerErrorSchema
                         }
                     }
                 }
-            },
-            validate: {
-                options: {
-                    abortEarly: false
-                },
-                headers: Joi.object({
-                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
-                }).unknown(),
-                query: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityList.max).default(LIMITS.communityList.default).optional()
-                        .description('Limit for number of communities to retrieve, defaults to 25 (used for pagination in combination with offset)'),
-                    offset: Joi.number().integer().min(0).default(0).optional()
-                        .description('Number of communities to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
-                })
             }
         }
     },
@@ -82,6 +79,17 @@ export const community = [
             notes: 'Returns more detailed information about a specific community, including a short list of currently announced missions as well as a member list. ' +
             'No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'details'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                })
+            },
             response: {
                 schema: Joi.object().required().keys({
                     community: schemas.communityDetailsSchema
@@ -100,25 +108,10 @@ export const community = [
                         },
                         500: {
                             description: 'An error occured while processing the request',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
-                            })
+                            schema: internalServerErrorSchema
                         }
                     }
                 }
-            },
-            validate: {
-                options: {
-                    abortEarly: false
-                },
-                headers: Joi.object({
-                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
-                }).unknown(),
-                params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
-                })
             }
         }
     },
@@ -132,6 +125,24 @@ export const community = [
             notes: 'Returns a paginated list of missions for a specific community, including already completed ones. Allows for mission lists to be ' +
             'refresh without having to fetch all other community details. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'mission', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                }),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).default(LIMITS.communityMissionList.default).optional()
+                        .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
+                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
+                })
+            },
             response: {
                 schema: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).required()
@@ -157,32 +168,10 @@ export const community = [
                         },
                         500: {
                             description: 'An error occured while processing the request',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
-                            })
+                            schema: internalServerErrorSchema
                         }
                     }
                 }
-            },
-            validate: {
-                options: {
-                    abortEarly: false
-                },
-                headers: Joi.object({
-                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
-                }).unknown(),
-                params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
-                }),
-                query: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).default(LIMITS.communityMissionList.default).optional()
-                        .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
-                    offset: Joi.number().integer().min(0).default(0).optional()
-                        .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
-                })
             }
         }
     }

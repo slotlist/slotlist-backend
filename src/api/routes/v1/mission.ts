@@ -1,5 +1,6 @@
 import * as Joi from 'joi';
 
+import { internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import * as controller from '../../controllers/v1/mission';
 
@@ -25,6 +26,21 @@ export const mission = [
             notes: 'Returns a paginated list of all currently created mission. Up to 100 mission can be requested at once, pagination has to be used to retrieve the ' +
             'rest. By default, only missions that have not ended yet are being displayed. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).default(LIMITS.missionList.default).optional()
+                        .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
+                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
+                })
+            },
             response: {
                 schema: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).required()
@@ -42,29 +58,10 @@ export const mission = [
                     responses: {
                         500: {
                             description: 'An error occured while processing the request',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
-                            })
+                            schema: internalServerErrorSchema
                         }
                     }
                 }
-            },
-            validate: {
-                options: {
-                    abortEarly: false
-                },
-                headers: Joi.object({
-                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
-                }).unknown(),
-                query: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).default(LIMITS.missionList.default).optional()
-                        .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
-                    offset: Joi.number().integer().min(0).default(0).optional()
-                        .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
-                })
             }
         }
     },
@@ -78,6 +75,17 @@ export const mission = [
             notes: 'Returns more detailed information about a specific mission, including more detailed mission times as well as a longer description and additional ' +
             'information required for participating. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'details'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).required().description('Slug of mission to retrieve').example('all-of-altis')
+                })
+            },
             response: {
                 schema: Joi.object().required().keys({
                     mission: schemas.missionDetailsSchema
@@ -96,25 +104,10 @@ export const mission = [
                         },
                         500: {
                             description: 'An error occured while processing the request',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
-                            })
+                            schema: internalServerErrorSchema
                         }
                     }
                 }
-            },
-            validate: {
-                options: {
-                    abortEarly: false
-                },
-                headers: Joi.object({
-                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
-                }).unknown(),
-                params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).required().description('Slug of mission to retrieve').example('all-of-altis')
-                })
             }
         }
     }
