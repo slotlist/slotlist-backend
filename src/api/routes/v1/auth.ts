@@ -1,5 +1,6 @@
 import * as Joi from 'joi';
 
+import { userAccountDetails } from '../../../shared/schemas/user';
 import * as controller from '../../controllers/v1/auth';
 
 /**
@@ -13,7 +14,7 @@ export const auth = [
         config: {
             auth: false,
             description: 'Returns the redirect URL for Steam OpenID signin',
-            notes: 'SSO callback returns to frontend, backend later verifies claims via POST to `/v1/auth/steam`',
+            notes: 'SSO callback returns to frontend, backend later verifies claims via POST to `/v1/auth/steam`. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'auth', 'steam'],
             response: {
                 schema: Joi.object().required().keys({
@@ -45,11 +46,11 @@ export const auth = [
             description: 'Verifies the provided Steam OpenID claims and returns a JWT on success',
             notes: 'After the verification call to Steam\'s OpenID provider succeedes, the current user database will be checked for the ' +
             'SteamID. If the user does not exist, their public Steam information will be retrieved and a new entry created. A JWT with ' +
-            'the user\'s nickname as well as permissions is then returned',
+            'the user\'s nickname as well as permissions is then returned. No authentication is required to access this endpoint',
             tags: ['api', 'post', 'v1', 'auth', 'steam', 'verify', 'jwt'],
             response: {
                 schema: Joi.object().required().keys({
-                    token: Joi.string().required().min(1).description('JWT to use for authentication')
+                    token: Joi.string().min(1).required().description('JWT to use for authentication')
                 }).label('VerifySteamLoginResponse').description('Response containing JWT to use for authentication')
             },
             plugins: {
@@ -73,6 +74,45 @@ export const auth = [
                 payload: Joi.object().required().keys({
                     url: Joi.string().required().uri().description('Steam OpenID claims in URL form, as returned to the frontend')
                 }).label('VerifySteamLogin')
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/auth/account',
+        handler: controller.getAccountDetails,
+        config: {
+            auth: 'jwt',
+            description: 'Returns the user\'s account details',
+            notes: 'Returns the user\'s account information, providing an overview over the currently logged in user as well as modifications available. ' +
+            'Regular user authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'auth', 'profile', 'authenticated'],
+            response: {
+                schema: Joi.object().required().keys({
+                    user: userAccountDetails.required().description('Detailed user information including private data for the currently logged in account')
+                }).label('GetAccountDetailsResponse').description('Response containing the user\'s account details including private information')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(500).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Internal Server Error').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().required().description('Message further describing the error').example('An internal server error occurred')
+                            })
+                        }
+                    }
+                }
+            },
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown()
             }
         }
     }

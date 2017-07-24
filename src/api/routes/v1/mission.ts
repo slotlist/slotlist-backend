@@ -23,7 +23,7 @@ export const mission = [
             auth: false,
             description: 'Returns a list of all currently created missions',
             notes: 'Returns a paginated list of all currently created mission. Up to 100 mission can be requested at once, pagination has to be used to retrieve the ' +
-            'rest. By default, only missions that have not ended yet are being displayed. No authentication is required to access this endpoint.',
+            'rest. By default, only missions that have not ended yet are being displayed. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'list'],
             response: {
                 schema: Joi.object().required().keys({
@@ -56,7 +56,7 @@ export const mission = [
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).default(LIMITS.missionList.default).optional()
@@ -76,7 +76,7 @@ export const mission = [
             auth: false,
             description: 'Returns details about a specific mission',
             notes: 'Returns more detailed information about a specific mission, including more detailed mission times as well as a longer description and additional ' +
-            'information required for participating. No authentication is required to access this endpoint.',
+            'information required for participating. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'details'],
             response: {
                 schema: Joi.object().required().keys({
@@ -110,7 +110,7 @@ export const mission = [
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(),
                 params: Joi.object().required().keys({
                     slug: Joi.string().min(1).max(255).required().description('Slug of mission to retrieve').example('all-of-altis')

@@ -28,7 +28,7 @@ export const community = [
             auth: false,
             description: 'Returns a list of all currently created communities',
             notes: 'Returns a paginated list of all currently created communities. Up to 100 communities can be requested at once, pagination has to be used to retrieve the ' +
-            'rest. No authentication is required to access this endpoint.',
+            'rest. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'list'],
             response: {
                 schema: Joi.object().required().keys({
@@ -61,7 +61,7 @@ export const community = [
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityList.max).default(LIMITS.communityList.default).optional()
@@ -80,7 +80,7 @@ export const community = [
             auth: false,
             description: 'Returns details about a specific community',
             notes: 'Returns more detailed information about a specific community, including a short list of currently announced missions as well as a member list. ' +
-            'No authentication is required to access this endpoint.',
+            'No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'details'],
             response: {
                 schema: Joi.object().required().keys({
@@ -114,7 +114,7 @@ export const community = [
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(),
                 params: Joi.object().required().keys({
                     slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
@@ -130,7 +130,7 @@ export const community = [
             auth: false,
             description: 'Returns a list of missions for a specific community',
             notes: 'Returns a paginated list of missions for a specific community, including already completed ones. Allows for mission lists to be ' +
-            'refresh without having to fetch all other community details. No authentication is required to access this endpoint.',
+            'refresh without having to fetch all other community details. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'mission', 'list'],
             response: {
                 schema: Joi.object().required().keys({
@@ -171,7 +171,7 @@ export const community = [
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    Authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(),
                 params: Joi.object().required().keys({
                     slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')

@@ -18,13 +18,7 @@ export const communitySchema = Joi.object().keys({
 // missionDetailsSchema depends on communitySchema
 import { missionSchema } from './mission';
 
-export const communityDetailsSchema = Joi.object().keys({
-    name: Joi.string().min(1).max(255).required().description('Name of the community').example('Spezialeinheit Luchs'),
-    tag: Joi.string().min(1).max(255).required().description('Community tag (without square brackets, will be added by frontend)').example('SeL'),
-    website: Joi.string().uri().allow(null).min(1).max(255).default(null).required().description('Website of the community, can be null if none exists')
-        .example('http://spezialeinheit-luchs.de'),
-    slug: Joi.string().min(1).max(255).required().description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID')
-        .example('spezialeinheit-luchs'),
+export const communityDetailsSchema = communitySchema.keys({
     leaders: Joi.array().items(userSchema.optional()).required()
         .description('Community members holding leadership permissions. This includes users with permissions `community.SLUG.*`, ' +
         '`community.SLUG.founder` and `community.SLUG.leader`'),
