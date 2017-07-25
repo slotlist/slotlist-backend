@@ -19,14 +19,16 @@ if (!module.parent) {
     // Required for circular dependencies to work properly
     createAssociations();
 
-    (<any>Raven).config(_.isString(process.env.SENTRY_DSN) ? <string>process.env.SENTRY_DSN : false, {
-        autoBreadcrumbs: true,
-        captureUnhandledRejections: true,
-        environment: process.env.NODE_ENV,
-        name: 'slotlist-backend',
-        parseUser: true,
-        release: pjson.version
-    }).install();
+    if (_.isString(process.env.SENTRY_DSN) && !_.isEmpty(process.env.SENTRY_DSN)) {
+        (<any>Raven).config(process.env.SENTRY_DSN, {
+            autoBreadcrumbs: true,
+            captureUnhandledRejections: true,
+            environment: process.env.NODE_ENV,
+            name: 'slotlist-backend',
+            parseUser: true,
+            release: pjson.version
+        }).install();
+    }
 
     const api = new API();
     // tslint:disable-next-line:no-floating-promises
