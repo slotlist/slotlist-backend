@@ -31,6 +31,7 @@ if (!module.parent) {
     const api = new API();
     // tslint:disable-next-line:no-floating-promises
     api.start().then(async () => {
+        const adminUid = process.env.DEFAULT_ADMIN_UID || undefined;
         const adminSteamId = process.env.DEFAULT_ADMIN_STEAMID;
         const adminNickname = process.env.DEFAULT_ADMIN_NICKNAME;
         if (_.isString(adminSteamId) && !_.isEmpty(adminSteamId)
@@ -48,6 +49,7 @@ if (!module.parent) {
                 log.info({ userUid: user.uid, steamId: user.steamId, nickname: user.nickname }, 'Default admin user with provided steamId already exists, skipping user creation');
             } else {
                 user = await new User({
+                    uid: adminUid,
                     steamId: adminSteamId,
                     nickname: adminNickname
                 }).save();
