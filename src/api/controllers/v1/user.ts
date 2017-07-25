@@ -64,7 +64,13 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
             throw Boom.notFound('User not found');
         }
 
-        _.assign(queryOptions.where, { creatorUid: user.uid });
+        if (_.isNil(queryOptions.where)) {
+            queryOptions.where = {
+                creatorUid: user.uid
+            };
+        } else {
+            queryOptions.where.creatorUid = user.uid;
+        }
 
         const result = await Mission.findAndCountAll(queryOptions);
 

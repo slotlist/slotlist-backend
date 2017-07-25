@@ -92,7 +92,7 @@ export class Permission extends Model {
     public userUid: string;
 
     /**
-     * Eager-loaded creator user instance.
+     * Eager-loaded user instance the permission was granted for.
      * Only included if it has been eager-loaded via sequelize
      *
      * @type {User|undefined}
@@ -137,7 +137,7 @@ export class Permission extends Model {
      * @returns {Promise<User>} User instance
      * @memberof Permission
      */
-    public getCreator: BelongsToGetAssociationMixin<User>;
+    public getUser: BelongsToGetAssociationMixin<User>;
 
     /////////////////////////
     // Model class methods //

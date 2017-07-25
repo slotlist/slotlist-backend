@@ -5,6 +5,7 @@ import {
     DataTypes,
     HasMany,
     HasManyAddAssociationMixin,
+    HasManyCreateAssociationMixin,
     HasManyGetAssociationsMixin,
     HasManyHasAssociationMixin,
     HasManyRemoveAssociationMixin,
@@ -17,6 +18,7 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
 import { Permission } from './Permission';
 import { IPublicUser, User } from './User';
@@ -40,12 +42,14 @@ export class Community extends Model {
      *
      * @static
      * @type {{
+     *         applications: HasMany
      *         members: HasMany,
      *         missions: HasMany
      *     }}
      * @memberof Community
      */
     public static associations: {
+        applications: HasMany,
         members: HasMany,
         missions: HasMany
     };
@@ -130,6 +134,15 @@ export class Community extends Model {
     }
 
     /**
+     * Eager-loaded list of member applications associated with the community
+     * Only included if the community has applications associated and it has been eager-loaded via sequelize
+     *
+     * @type {CommunityApplication[]|undefined}
+     * @memberof Community
+     */
+    public applications?: CommunityApplication[];
+
+    /**
      * Eager-loaded list of members/users associated with the community
      * Only included if the community has users associated and it has been eager-loaded via sequelize
      *
@@ -200,6 +213,25 @@ export class Community extends Model {
      * @memberof Community
      */
     public addMember: HasManyAddAssociationMixin<User, string>;
+
+    /**
+     * Creates a new application for the current community
+     *
+     * @type {HasManyCreateAssociationMixin<CommunityApplication>}
+     * @returns {Promise<CommunityApplication>} Community application created
+     * @memberof Community
+     */
+    public createApplication: HasManyCreateAssociationMixin<CommunityApplication>;
+
+    /**
+     * Retrieves the community's application instances.
+     * Returns an empty array if the community has no applications assigned
+     *
+     * @type {HasManyGetAssociationsMixin<CommunityApplication>}
+     * @returns {Promise<CommunityApplication[]>} List of community applications
+     * @memberof Community
+     */
+    public getApplications: HasManyGetAssociationsMixin<CommunityApplication>;
 
     /**
      * Retrieves the community's member instances.

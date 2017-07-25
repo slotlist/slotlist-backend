@@ -5,6 +5,7 @@ import * as moment from 'moment';
 import { Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
+import { CommunityApplication } from '../../../shared/models/CommunityApplication';
 import { Mission } from '../../../shared/models/Mission';
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
@@ -150,6 +151,98 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
     })());
 }
 
+export function applyToCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, include: [{ model: User, as: 'members' }] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'applyToCommunity', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (await community.hasMember(userUid)) {
+            log.debug({ function: 'applyToCommunity', slug, communityUid: community.uid, userUid }, 'User already is member of community, stopping to process application');
+            throw Boom.conflict('Already member of community');
+        }
+
+        log.debug({ function: 'applyToCommunity', slug, communityUid: community.uid, userUid }, 'Processing user application to community');
+
+        let application: CommunityApplication;
+        try {
+            application = await community.createApplication({ userUid });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                log.debug(
+                    { function: 'applyToCommunity', slug, communityUid: community.uid, userUid, err },
+                    'Received unique constraint error during community application creation');
+
+                throw Boom.conflict('Community application already exists');
+            }
+
+            log.warn({ function: 'applyToCommunity', slug, communityUid: community.uid, userUid, err }, 'Received error during community application creation');
+            throw err;
+        }
+
+        log.debug(
+            { function: 'applyToCommunity', slug, communityUid: community.uid, userUid, applicationUid: application.uid, applicationStatus: application.status },
+            'Successfully finished processing user application to community');
+
+        return {
+            status: application.status
+        };
+    })());
+}
+
+export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset
+        };
+
+        if (request.query.includeEnded === false) {
+            queryOptions.where = {
+                endTime: {
+                    $gt: moment.utc()
+                }
+            };
+        }
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityMemberList', slug, queryOptions }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (_.isNil(queryOptions.where)) {
+            queryOptions.where = {
+                communityUid: community.uid
+            };
+        } else {
+            queryOptions.where.communityUid = community.uid;
+        }
+
+        const result = await User.findAndCountAll(queryOptions);
+
+        const userCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + userCount) < result.count;
+        const userList = await Promise.map(result.rows, (user: User) => {
+            return user.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: userCount,
+            moreAvailable: moreAvailable,
+            members: userList
+        };
+    })());
+}
+
 export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.slug;
@@ -172,7 +265,13 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
             throw Boom.notFound('Community not found');
         }
 
-        _.assign(queryOptions.where, { communityUid: community.uid });
+        if (_.isNil(queryOptions.where)) {
+            queryOptions.where = {
+                communityUid: community.uid
+            };
+        } else {
+            queryOptions.where.communityUid = community.uid;
+        }
 
         const result = await Mission.findAndCountAll(queryOptions);
 

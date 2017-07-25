@@ -1,8 +1,10 @@
 import * as Joi from 'joi';
 
+import { COMMUNITY_APPLICATION_STATUS_SUBMITTED, COMMUNITY_APPLICATION_STATUSES } from '../../../shared/models/CommunityApplication';
 import * as schemas from '../../../shared/schemas/community';
 import { internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
+import { userSchema } from '../../../shared/schemas/user';
 import * as controller from '../../controllers/v1/community';
 
 /**
@@ -148,6 +150,15 @@ export const community = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        409: {
+                            description: 'A community with the given slug already exists or the user already has community founder permissions',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community slug already exists', 'Community founder permission already exists').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
                         500: {
                             description: 'An error occured while processing the request',
                             schema: internalServerErrorSchema
@@ -209,11 +220,11 @@ export const community = [
     {
         method: 'POST',
         path: '/v1/communities/{slug}/apply',
-        handler: controller.getCommunityDetails,
+        handler: controller.applyToCommunity,
         config: {
             auth: {
                 strategy: 'jwt',
-                mode: 'optional'
+                mode: 'required'
             },
             description: 'Applies to join the specified community',
             notes: 'Applies to join the specified community, has to be approved by community leader or members with the `community.SLUG.recruitment` permission. ' +
@@ -232,8 +243,81 @@ export const community = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    community: schemas.communityDetailsSchema
-                }).label('GetCommunityDetailsResponse').description('Response containing details of requested community')
+                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUSES).required()
+                        .description('Indicates the application\'s status. Applications are created with status `submitted` and can either be `accepted` or `denied`')
+                        .example(COMMUNITY_APPLICATION_STATUS_SUBMITTED)
+                }).label('ApplyToCommunityResponse').description('Response containing the community application status')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The user is already a member of this community or an application for this community already exists',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Already member of community', 'Community application already exists').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/communities/{slug}/members',
+        handler: controller.getCommunityMemberList,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
+            description: 'Returns a list of members of a specific community',
+            notes: 'Returns a paginated list of members of a specific community, including leadership. Allows for member lists to be ' +
+            'refresh without having to fetch all other community details. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'member', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                }),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).default(LIMITS.communityMissionList.default).optional()
+                        .description('Limit for number of members to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of members to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).required()
+                        .description('Limit for number of members to retrieve, as provided via query'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Number of members to skip before retrieving new ones from database, as provided via query'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityMissionList.max).required()
+                        .description('Actual number of members returned'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more members are available and can be retrieved using pagination'),
+                    members: Joi.array().items(userSchema.optional()).required().description('List of members retrieved')
+                }).label('GetCommunityMemberListResponse').description('Response containing list of members assigned to the community')
             },
             plugins: {
                 'hapi-swagger': {
