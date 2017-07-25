@@ -151,54 +151,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             user.permissions = await user.getPermissions();
         }
 
-        let destroyOldPermissions = true;
-        if (!_.isUndefined(payload.communitySlug) && (_.isNil(user.community) || payload.communitySlug !== user.community.slug)) {
-            if (_.isNull(payload.communitySlug)) {
-                payload.communityUid = null;
-            } else if (_.isString(payload.communitySlug) && !_.isEmpty(payload.communitySlug)) {
-                log.debug(
-                    { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug },
-                    'Trying to retrieve new community during account details update for user');
-                const community = await Community.findOne({ where: { slug: payload.communitySlug } });
-                if (_.isNil(community)) {
-                    log.debug(
-                        { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug },
-                        'No community with given slug found during account details update for user, ignoring');
-                    destroyOldPermissions = false;
-                } else {
-                    log.debug(
-                        { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug, communityUid: community.uid },
-                        'Updating communityUid with new community during accounts details update for user');
-                    payload.communityUid = community.uid;
-                }
-            }
-
-            if (destroyOldPermissions && !_.isNil(user.community)) {
-                log.debug(
-                    { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug, communityUid: user.communityUid },
-                    'Destroying all permission for old community during account details update for user');
-
-                const destroyed = await Permission.destroy({
-                    where: {
-                        userUid,
-                        permission: {
-                            $iLike: `community.${user.community.slug}.%`
-                        }
-                    }
-                });
-
-                log.debug(
-                    { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug, communityUid: user.communityUid, destroyed },
-                    'Successfully destroyed all permission for old community during account details update for user');
-
-                user.permissions = await user.getPermissions();
-            }
-
-            payload.communitySlug = undefined;
-            delete payload.communitySlug;
-        }
-
-        await user.update(payload, { allowed: ['nickname', 'communityUid'] });
+        await user.update(payload, { allowed: ['nickname'] });
 
         const permissions = _.map(user.permissions, 'permission');
 

@@ -114,7 +114,7 @@ export const community = [
             auth: 'jwt',
             description: 'Creates a new community',
             notes: 'Creates a new community and assigns the current user as its founder. Regular user authentication is required to access this endpoint',
-            tags: ['api', 'post', 'v1', 'communities', 'create'],
+            tags: ['api', 'post', 'v1', 'communities', 'create', 'authenticated'],
             validate: {
                 options: {
                     abortEarly: false

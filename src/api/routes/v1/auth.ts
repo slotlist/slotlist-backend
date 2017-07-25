@@ -35,7 +35,7 @@ export const auth = [
         }
     },
     {
-        method: 'post',
+        method: 'POST',
         path: '/v1/auth/steam',
         handler: controller.verifySteamLogin,
         config: {
@@ -120,7 +120,7 @@ export const auth = [
         config: {
             auth: 'jwt',
             description: 'Modifies the user\'s mutable account details',
-            notes: 'Allows for modification of the user\'s mutable account information. Users can update their nickname as well as join/leave an existing community (via slug)',
+            notes: 'Allows for modification of the user\'s mutable account information - users can update their nickname',
             tags: ['api', 'patch', 'v1', 'auth', 'account', 'authenticated'],
             validate: {
                 options: {
@@ -130,9 +130,7 @@ export const auth = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 payload: Joi.object().required().keys({
-                    nickname: Joi.string().min(1).max(255).optional().description('New nickname to set for current user').example('MorpheusXAUT'),
-                    communitySlug: Joi.string().allow(null).min(1).max(255).optional().description('Slug of new community to set for current user. Sending a slug of ' +
-                        '`null` unsets the community association').example('spezialeinheit-luchs')
+                    nickname: Joi.string().min(1).max(255).optional().description('New nickname to set for current user').example('MorpheusXAUT')
                 })
             },
             response: {
