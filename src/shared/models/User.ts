@@ -15,6 +15,7 @@ import {
 import { Attribute, Options } from 'sequelize-decorators';
 
 import { JWT as JWTConfig } from '../config/Config';
+import { findPermission, parsePermissions } from '../util/acl';
 import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
 const log = logger.child({ model: 'User' });
@@ -305,28 +306,21 @@ export class User extends Model {
             return false;
         }
 
-        const permissions: string[] = <any>_.map(this.permissions, 'permission');
-        const parsedPermissions: any = {};
-        _.each(permissions, (perm: string) => {
-            const permissionParts = perm.toLowerCase().split('.');
+        const permissions: string[] = _.map(this.permissions, 'permission');
+        const parsedPermissions = parsePermissions(permissions);
+        if (_.has(parsedPermissions, '*')) {
+            log.debug(
+                { function: 'hasPermission', userUid: this.uid, permission, parsedPermissions, strict, hasPermission: true },
+                'User has global wildcard permission, allowing');
 
-            let previous = parsedPermissions;
-            let part = permissionParts.shift();
-            while (!_.isNil(part)) {
-                if (_.isNil(previous[part])) {
-                    previous[part] = {};
-                }
-
-                previous = previous[part];
-                part = permissionParts.shift();
-            }
-        });
+            return true;
+        }
 
         log.debug({ function: 'hasPermission', userUid: this.uid, permission, parsedPermissions, strict }, 'Parsed user permissions, checking for permission');
 
         const requiredPermissions: string[] = _.isArray(permission) ? permission : [permission];
         const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-            return this.findPermission(parsedPermissions, requiredPermission);
+            return findPermission(parsedPermissions, requiredPermission);
         });
 
         const hasPermission = strict ? foundPermissions.length === requiredPermissions.length : foundPermissions.length > 0;
@@ -402,39 +396,6 @@ export class User extends Model {
     // Private model instance methods //
     ////////////////////////////////////
 
-    /**
-     * Recursive check for permission in permission tree
-     *
-     * @private
-     * @param {*} permissions Permission tree to recurse through
-     * @param {(string | string[])} permission Permission to check for (either as string or array of string split by `.`)
-     * @returns {boolean} Indicates whether the permission was found
-     * @memberof User
-     */
-    private findPermission(permissions: any, permission: string | string[]): boolean {
-        if (_.isNil(permissions) || !_.isObject(permissions) || _.keys(permissions).length <= 0) {
-            return false;
-        }
-
-        if (_.has(permissions, permission)) {
-            return true;
-        }
-
-        return _.some(permissions, (next: any, current: string) => {
-            const permParts = _.isString(permission) ? permission.toLowerCase().split('.') : permission;
-
-            const permPart = permParts.shift();
-            if (current === '*' || current === permPart) {
-                if (permParts.length <= 0) {
-                    return true;
-                }
-
-                return this.findPermission(next, _.clone(permParts));
-            }
-
-            return false;
-        });
-    }
 }
 
 /**

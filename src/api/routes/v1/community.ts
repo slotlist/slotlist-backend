@@ -26,7 +26,10 @@ export const community = [
         path: '/v1/communities',
         handler: controller.getCommunityList,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns a list of all currently created communities',
             notes: 'Returns a paginated list of all currently created communities. Up to 100 communities can be requested at once, pagination has to be used to retrieve the ' +
             'rest. No authentication is required to access this endpoint',
@@ -74,7 +77,10 @@ export const community = [
         path: '/v1/communities/slugAvailable',
         handler: controller.isSlugAvailable,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Checks whether the given slug is available',
             notes: 'Checks whether the given slug is available and can be used for a new community. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'communities', 'slugAvailable'],
@@ -111,7 +117,10 @@ export const community = [
         path: '/v1/communities',
         handler: controller.createCommunity,
         config: {
-            auth: 'jwt',
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
             description: 'Creates a new community',
             notes: 'Creates a new community and assigns the current user as its founder. Regular user authentication is required to access this endpoint',
             tags: ['api', 'post', 'v1', 'communities', 'create', 'authenticated'],
@@ -153,7 +162,10 @@ export const community = [
         path: '/v1/communities/{slug}',
         handler: controller.getCommunityDetails,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns details about a specific community',
             notes: 'Returns more detailed information about a specific community, including a short list of currently announced missions as well as a member list. ' +
             'No authentication is required to access this endpoint',
@@ -195,11 +207,63 @@ export const community = [
         }
     },
     {
+        method: 'POST',
+        path: '/v1/communities/{slug}/apply',
+        handler: controller.getCommunityDetails,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
+            description: 'Applies to join the specified community',
+            notes: 'Applies to join the specified community, has to be approved by community leader or members with the `community.SLUG.recruitment` permission. ' +
+            'Regular user authentication is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'communities', 'apply', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to apply to').example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    community: schemas.communityDetailsSchema
+                }).label('GetCommunityDetailsResponse').description('Response containing details of requested community')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/v1/communities/{slug}/missions',
         handler: controller.getCommunityMissionList,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns a list of missions for a specific community',
             notes: 'Returns a paginated list of missions for a specific community, including already completed ones. Allows for mission lists to be ' +
             'refresh without having to fetch all other community details. No authentication is required to access this endpoint',

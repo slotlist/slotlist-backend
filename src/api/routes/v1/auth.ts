@@ -13,7 +13,10 @@ export const auth = [
         path: '/v1/auth/steam',
         handler: controller.getSteamLoginRedirectURL,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns the redirect URL for Steam OpenID signin',
             notes: 'SSO callback returns to frontend, backend later verifies claims via POST to `/v1/auth/steam`. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'auth', 'steam'],
@@ -39,7 +42,10 @@ export const auth = [
         path: '/v1/auth/steam',
         handler: controller.verifySteamLogin,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Verifies the provided Steam OpenID claims and returns a JWT on success',
             notes: 'After the verification call to Steam\'s OpenID provider succeedes, the current user database will be checked for the ' +
             'SteamID. If the user does not exist, their public Steam information will be retrieved and a new entry created. A JWT with ' +
@@ -75,7 +81,10 @@ export const auth = [
         path: '/v1/auth/account',
         handler: controller.getAccountDetails,
         config: {
-            auth: 'jwt',
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
             description: 'Returns the user\'s account details',
             notes: 'Returns the user\'s account information, providing an overview over the currently logged in user as well as modifications available. ' +
             'Regular user authentication is required to access this endpoint',
@@ -118,9 +127,13 @@ export const auth = [
         path: '/v1/auth/account',
         handler: controller.patchAccountDetails,
         config: {
-            auth: 'jwt',
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
             description: 'Modifies the user\'s mutable account details',
-            notes: 'Allows for modification of the user\'s mutable account information - users can update their nickname',
+            notes: 'Allows for modification of the user\'s mutable account information - users can update their nickname. '
+            + 'Regular user authentication is required to access this endpoint',
             tags: ['api', 'patch', 'v1', 'auth', 'account', 'authenticated'],
             validate: {
                 options: {

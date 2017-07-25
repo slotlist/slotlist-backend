@@ -22,7 +22,10 @@ export const user = [
         path: '/v1/users/{uid}',
         handler: controller.getUserDetails,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns details about a specific user',
             notes: 'Returns more detailed information about a specific user, including a list of created missions. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'users', 'details'],
@@ -67,7 +70,10 @@ export const user = [
         path: '/v1/users/{uid}/missions',
         handler: controller.getUserMissionList,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns a list of missions for a specific user',
             notes: 'Returns a paginated list of missions for a specific user, including already completed ones. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'users', 'mission', 'list'],

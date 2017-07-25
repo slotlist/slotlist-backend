@@ -21,7 +21,10 @@ export const mission = [
         path: '/v1/missions',
         handler: controller.getMissionList,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns a list of all currently created missions',
             notes: 'Returns a paginated list of all currently created mission. Up to 100 mission can be requested at once, pagination has to be used to retrieve the ' +
             'rest. By default, only missions that have not ended yet are being displayed. No authentication is required to access this endpoint',
@@ -70,7 +73,10 @@ export const mission = [
         path: '/v1/missions/{slug}',
         handler: controller.getMissionDetails,
         config: {
-            auth: false,
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
             description: 'Returns details about a specific mission',
             notes: 'Returns more detailed information about a specific mission, including more detailed mission times as well as a longer description and additional ' +
             'information required for participating. No authentication is required to access this endpoint',

@@ -20,6 +20,10 @@ const serializers: bunyan.Serializers = {
         if (_.isString(auth.token)) {
             auth.token = '***REDACTED***';
         }
+        if (_.isString(auth.artifacts)) {
+            auth.artifacts = undefined;
+            delete auth.artifacts;
+        }
         if (_.isString(headers.authorization)) {
             headers.authorization = '***REDACTED***';
         }
@@ -55,6 +59,18 @@ const serializers: bunyan.Serializers = {
         }
 
         return head;
+    },
+    credentials: (credentials: any) => {
+        if (_.isNil(credentials)) {
+            return credentials;
+        }
+
+        const cred = _.cloneDeep(credentials);
+        if (_.isString(cred.token)) {
+            cred.token = '***REDACTED***';
+        }
+
+        return cred;
     }
 };
 

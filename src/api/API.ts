@@ -6,6 +6,7 @@ import * as moment from 'moment';
 import * as pjson from 'pjson';
 
 import { HTTP as HTTPConfig, JWT as JWTConfig } from '../shared/config/Config';
+import { findPermission, parsePermissions } from '../shared/util/acl';
 import log from '../shared/util/log';
 
 import { jwtPayloadSchema } from '../shared/schemas/auth';
@@ -115,6 +116,8 @@ export class API {
 
         this.server.auth.default('jwt');
 
+        this.server.ext('onPostAuth', this.checkACL);
+
         log.debug({ routeCount: routes.length }, 'Registering routes');
         this.server.route(routes);
 
@@ -162,15 +165,75 @@ export class API {
     }
 
     private async validateJWT(decodedJWT: any, request: Hapi.Request, next: Function): Promise<void> {
-        log.debug({ req: request, decodedJWT }, 'Validating JWT');
+        log.debug({ function: 'validateJWT', req: request, decodedJWT }, 'Validating JWT');
 
         const jwtValidationResult = jwtPayloadSchema.validate(decodedJWT);
         if (!_.isNil(jwtValidationResult.error)) {
-            log.warn({ req: request, decodedJWT, err: jwtValidationResult.error }, 'Received invalid JWT payload');
+            log.warn({ function: 'validateJWT', req: request, decodedJWT, err: jwtValidationResult.error }, 'Received invalid JWT payload');
 
             return next(Boom.forbidden('Invalid JWT payload', { decodedJWT }), false);
         }
 
         return next(null, true);
+    }
+
+    private async checkACL(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Promise<any> {
+        if (!_.isNil(request.route) &&
+            !_.isNil(request.route.settings) &&
+            !_.isNil(request.route.settings.plugins) &&
+            !_.isNil((<any>request.route.settings.plugins).acl) &&
+            !_.isNil((<any>request.route.settings.plugins).acl.permissions)) {
+            const aclConfig = (<any>request.route.settings.plugins).acl;
+            const permissions = _.isArray(aclConfig.permissions) ? aclConfig.permissions : [aclConfig.permissions];
+            const strict = aclConfig.strict === true;
+            const credentials = request.auth.credentials;
+
+            log.debug({ function: 'checkACL', req: request, aclConfig, permissions, strict, credentials }, 'Checking ACL for restricted route');
+
+            if (permissions.length <= 0) {
+                log.debug({ function: 'checkACL', permissions, strict, credentials }, 'Required permissions are empty, allowing');
+
+                return reply.continue();
+            }
+
+            if (request.auth.isAuthenticated === false) {
+                log.debug({ function: 'checkACL', req: request, aclConfig, permissions, strict, credentials }, 'User is not authenticated, rejecting');
+
+                return reply(Boom.unauthorized());
+            }
+
+            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
+            if (_.has(parsedPermissions, '*')) {
+                log.debug(
+                    { function: 'checkACL', permissions, strict, credentials, userUid: credentials.user.uid, hasPermission: true },
+                    'User has global wildcard permission, allowing');
+
+                return reply.continue();
+            }
+
+            // Permissions can include route params, specified in double curley braces (e.g. {{slug}})
+            const requiredPermissions = _.map(permissions, (permission: string) => {
+                return _.reduce(request.params, (perm: string, value: string, key: string): string => { return perm.replace(`{{${key}}}`, value); }, permission);
+            });
+            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
+                return findPermission(parsedPermissions, requiredPermission);
+            });
+
+            const hasPermission = strict ? foundPermissions.length === requiredPermissions.length : foundPermissions.length > 0;
+
+            log.debug(
+                { function: 'checkACL', requiredPermissions, strict, credentials, userUid: credentials.user.uid, hasPermission },
+                'Successfully finished checking ACL for restricted route');
+
+            if (!hasPermission) {
+                log.debug(
+                    { function: 'checkACL', req: request, requiredPermissions, strict, credentials, userUid: credentials.user.uid, hasPermission },
+                    'User tried to access restricted route without proper permission');
+
+                return reply(Boom.forbidden());
+            }
+        }
+
+        return reply.continue();
     }
 }
