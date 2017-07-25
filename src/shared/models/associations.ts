@@ -10,8 +10,8 @@ import { User } from './User';
  * @export
  */
 export function createAssociations(): void {
-    Community.associations.members = Mission.hasMany(User, { as: 'members', foreignKey: 'communityUid' });
-    Community.associations.missions = Mission.hasMany(Mission, { as: 'missions', foreignKey: 'communityUid' });
+    Community.associations.members = Community.hasMany(User, { as: 'members', foreignKey: 'communityUid' });
+    Community.associations.missions = Community.hasMany(Mission, { as: 'missions', foreignKey: 'communityUid' });
 
     Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
     Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid' });
