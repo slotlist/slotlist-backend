@@ -77,6 +77,41 @@ export const auth = [
         }
     },
     {
+        method: 'POST',
+        path: '/v1/auth/refresh',
+        handler: controller.refreshJWT,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Refreshes the user\'s JWT',
+            notes: 'Refreshes the user\'s JWT by generating a new one. The updated JWT includes the latest permissions and nickname changes - this endpoint should thus be used ' +
+            'after every modifying change (e.g. nickname change, community association, permission grants, etc.). Regular user authentication is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'auth', 'refresh', 'jwt', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                }
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    token: Joi.string().min(1).required().description('New JWT to use for authentication')
+                }).label('RefreshJWTResponse').description('Response containing new JWT to use for authentication')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/v1/auth/account',
         handler: controller.getAccountDetails,

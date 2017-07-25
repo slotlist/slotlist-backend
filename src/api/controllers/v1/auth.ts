@@ -50,6 +50,26 @@ export function verifySteamLogin(request: Hapi.Request, reply: Hapi.ReplyWithCon
     })());
 }
 
+export function refreshJWT(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const userUid = request.auth.credentials.user.uid;
+
+        log.debug({ function: 'refreshJWT', userUid }, 'Refreshing JWT for user');
+
+        const user = await User.findById(userUid, { include: [{ all: true }] });
+        if (_.isNil(user)) {
+            log.warn({ function: 'refreshJWT', userUid }, 'User not found in database anymore while refreshing JWT, aborting');
+            throw Boom.notFound('User not found');
+        }
+
+        const token = await user.generateJWT();
+
+        log.debug({ function: 'refreshJWT', userUid }, 'Successfully refreshed JWT for user');
+
+        return { token };
+    })());
+}
+
 export function getAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const userUid: string = request.auth.credentials.sub;
