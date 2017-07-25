@@ -83,7 +83,7 @@ export const mission = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).required().description('Slug of mission to retrieve').example('all-of-altis')
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve').example('all-of-altis')
                 })
             },
             response: {

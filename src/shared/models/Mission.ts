@@ -1,3 +1,4 @@
+import * as Boom from 'boom';
 import * as _ from 'lodash';
 import {
     BelongsTo,
@@ -90,6 +91,10 @@ export class Mission extends Model {
         return this.getDataValue('slug');
     }
     set slug(val: string) {
+        if (val === 'slugAvailable') {
+            throw Boom.badRequest('Disallowed slug');
+        }
+
         this.setDataValue('slug', slug(val));
     }
 

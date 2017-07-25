@@ -71,6 +71,85 @@ export const community = [
     },
     {
         method: 'GET',
+        path: '/v1/communities/slugAvailable',
+        handler: controller.isSlugAvailable,
+        config: {
+            auth: false,
+            description: 'Checks whether the given slug is available',
+            notes: 'Checks whether the given slug is available and can be used for a new community. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'slugAvailable'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                query: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug to check availability for').example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    available: Joi.boolean().required().description('Indicates whether the slug is available for usage')
+                }).label('IsCommunitySlugAvailableResponse').description('Response containing indicator if slug is available')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/communities',
+        handler: controller.createCommunity,
+        config: {
+            auth: 'jwt',
+            description: 'Creates a new community',
+            notes: 'Creates a new community and assigns the current user as its founder. Regular user authentication is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'communities', 'create'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                payload: Joi.object().required().keys({
+                    name: Joi.string().min(1).max(255).required().description('Name of the community').example('Spezialeinheit Luchs'),
+                    tag: Joi.string().min(1).max(255).required().description('Community tag (without square brackets, will be added by frontend)').example('SeL'),
+                    website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be null if none exists')
+                        .example('http://spezialeinheit-luchs.de'),
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
+                        .description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID').example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    community: schemas.communityDetailsSchema
+                }).label('CreateCommunityResponse').description('Response containing details of newly created community')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
         path: '/v1/communities/{slug}',
         handler: controller.getCommunityDetails,
         config: {
@@ -87,13 +166,13 @@ export const community = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
                 })
             },
             response: {
                 schema: Joi.object().required().keys({
                     community: schemas.communityDetailsSchema
-                }).label('GetComunityDetailsResponse').description('Response containing details of requested community')
+                }).label('GetCommunityDetailsResponse').description('Response containing details of requested community')
             },
             plugins: {
                 'hapi-swagger': {
@@ -133,7 +212,7 @@ export const community = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
                 }),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).default(LIMITS.communityMissionList.default).optional()

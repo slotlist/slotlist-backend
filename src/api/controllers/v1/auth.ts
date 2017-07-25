@@ -54,7 +54,7 @@ export function getAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
     return reply((async () => {
         const userUid: string = request.auth.credentials.sub;
 
-        log.debug({ userUid }, 'Retrieving account details for user');
+        log.debug({ function: 'getAccountDetails', userUid }, 'Retrieving account details for user');
 
         // Deliberately load all missions (even already ended ones) on account page
         const user = await User.findById(userUid, {
@@ -80,21 +80,21 @@ export function getAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
             ]
         });
         if (_.isNil(user)) {
-            log.warn({ userUid }, 'Did not find user profile for logged in user, returning 401 to force re-authentication');
+            log.warn({ function: 'getAccountDetails', userUid }, 'Did not find user profile for logged in user, returning 401 to force re-authentication');
             throw Boom.notFound('Current user not found');
         }
 
         if (_.isNil(user.missions)) {
-            log.debug({ userUid }, 'Loading user missions for account details');
+            log.debug({ function: 'getAccountDetails', userUid }, 'Loading user missions for account details');
             user.missions = await user.getMissions();
         }
         if (_.isNil(user.permissions)) {
-            log.debug({ userUid }, 'Loading user permissions for account details');
+            log.debug({ function: 'getAccountDetails', userUid }, 'Loading user permissions for account details');
             user.permissions = await user.getPermissions();
         }
 
         log.debug(
-            { userUid, communityUid: user.communityUid, missionCount: user.missions.length, permissionCount: user.permissions.length },
+            { function: 'getAccountDetails', userUid, communityUid: user.communityUid, missionCount: user.missions.length, permissionCount: user.permissions.length },
             'Successfully retrieved account details for user');
 
         const publicUser = await user.toDetailedPublicObject();
@@ -108,7 +108,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
         const userUid: string = request.auth.credentials.sub;
         const payload = request.payload;
 
-        log.debug({ userUid, payload }, 'Updating account details for user');
+        log.debug({ function: 'patchAccountDetails', userUid, payload }, 'Updating account details for user');
 
         // Deliberately load all missions (even already ended ones) on account page
         const user = await User.findById(userUid, {
@@ -134,20 +134,20 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             ]
         });
         if (_.isNil(user)) {
-            log.warn({ userUid }, 'Did not find user profile for logged in user, returning 401 to force re-authentication');
+            log.warn({ function: 'patchAccountDetails', userUid }, 'Did not find user profile for logged in user, returning 401 to force re-authentication');
             throw Boom.unauthorized('Current user not found');
         }
 
         if (_.isUndefined(user.community)) {
-            log.debug({ userUid }, 'Loading user community for account details update');
+            log.debug({ function: 'patchAccountDetails', userUid }, 'Loading user community for account details update');
             user.community = await user.getCommunity();
         }
         if (_.isNil(user.missions)) {
-            log.debug({ userUid }, 'Loading user missions for account details update');
+            log.debug({ function: 'patchAccountDetails', userUid }, 'Loading user missions for account details update');
             user.missions = await user.getMissions();
         }
         if (_.isNil(user.permissions)) {
-            log.debug({ userUid }, 'Loading user permissions for account details update');
+            log.debug({ function: 'patchAccountDetails', userUid }, 'Loading user permissions for account details update');
             user.permissions = await user.getPermissions();
         }
 
@@ -156,14 +156,18 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             if (_.isNull(payload.communitySlug)) {
                 payload.communityUid = null;
             } else if (_.isString(payload.communitySlug) && !_.isEmpty(payload.communitySlug)) {
-                log.debug({ userUid, payload, communitySlug: payload.communitySlug }, 'Trying to retrieve new community during account details update for user');
+                log.debug(
+                    { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug },
+                    'Trying to retrieve new community during account details update for user');
                 const community = await Community.findOne({ where: { slug: payload.communitySlug } });
                 if (_.isNil(community)) {
-                    log.debug({ userUid, payload, communitySlug: payload.communitySlug }, 'No community with given slug found during account details update for user, ignoring');
+                    log.debug(
+                        { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug },
+                        'No community with given slug found during account details update for user, ignoring');
                     destroyOldPermissions = false;
                 } else {
                     log.debug(
-                        { userUid, payload, communitySlug: payload.communitySlug, communityUid: community.uid },
+                        { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug, communityUid: community.uid },
                         'Updating communityUid with new community during accounts details update for user');
                     payload.communityUid = community.uid;
                 }
@@ -171,7 +175,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
 
             if (destroyOldPermissions && !_.isNil(user.community)) {
                 log.debug(
-                    { userUid, payload, communitySlug: payload.communitySlug, communityUid: user.communityUid },
+                    { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug, communityUid: user.communityUid },
                     'Destroying all permission for old community during account details update for user');
 
                 const destroyed = await Permission.destroy({
@@ -184,7 +188,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
                 });
 
                 log.debug(
-                    { userUid, payload, communitySlug: payload.communitySlug, communityUid: user.communityUid, destroyed },
+                    { function: 'patchAccountDetails', userUid, payload, communitySlug: payload.communitySlug, communityUid: user.communityUid, destroyed },
                     'Successfully destroyed all permission for old community during account details update for user');
 
                 user.permissions = await user.getPermissions();
@@ -199,7 +203,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
         const permissions = _.map(user.permissions, 'permission');
 
         log.debug(
-            { userUid, payload, communityUid: user.communityUid, missionCount: user.missions.length, permissionCount: permissions.length },
+            { function: 'patchAccountDetails', userUid, payload, communityUid: user.communityUid, missionCount: user.missions.length, permissionCount: permissions.length },
             'Successfully updated account details for user');
 
         const publicUser = await user.toDetailedPublicObject();

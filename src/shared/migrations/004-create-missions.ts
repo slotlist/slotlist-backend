@@ -1,3 +1,4 @@
+import * as Boom from 'boom';
 import { DataTypes } from 'sequelize';
 
 import slug from '../util/slug';
@@ -25,6 +26,10 @@ module.exports = {
                 unique: true,
                 // tslint:disable
                 set(val: string) {
+                    if (val === 'slugAvailable') {
+                        throw Boom.badRequest('Disallowed slug');
+                    }
+
                     (<any>this).setDataValue('slug', slug(val));
                 }
                 // tslint:enable

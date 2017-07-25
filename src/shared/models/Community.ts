@@ -122,6 +122,10 @@ export class Community extends Model {
         return this.getDataValue('slug');
     }
     set slug(val: string) {
+        if (val === 'slugAvailable') {
+            throw Boom.badRequest('Disallowed slug');
+        }
+
         this.setDataValue('slug', slug(val));
     }
 
@@ -290,16 +294,17 @@ export class Community extends Model {
      * This will set the `community.${community.slug}.leader` permission as well as add the user to the community's member list (if they were not added before)
      *
      * @param {(User | string)} userOrUserUid User or user UID to add as a community leader
+     * @param {boolean} [founder=false] Indicates whether the user should be added as a leader (false) or founder (true)
      * @returns {Promise<void>} Promise fulfilled when association is completed
      * @memberof Community
      */
-    public async addLeader(userOrUserUid: User | string): Promise<void> {
+    public async addLeader(userOrUserUid: User | string, founder: boolean = false): Promise<void> {
         let user: User;
         if (_.isString(userOrUserUid)) {
-            const u = await User.findOne(userOrUserUid);
+            const u = await User.findById(userOrUserUid);
             if (_.isNil(u)) {
-                log.warn({ function: 'addLeader', communityUid: this.uid, userUid: userOrUserUid }, 'Cannot add leader to community, user not found');
-                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
+                log.warn({ function: 'addLeader', communityUid: this.uid, userUid: userOrUserUid, founder }, 'Cannot add leader to community, user not found');
+                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid, founder });
             }
 
             user = u;
@@ -307,17 +312,12 @@ export class Community extends Model {
             user = userOrUserUid;
         }
 
-        log.debug({ function: 'addLeader', communityUid: this.uid, userUid: user.uid }, 'Adding leader to community');
+        log.debug({ function: 'addLeader', communityUid: this.uid, userUid: user.uid, founder }, 'Adding leader to community');
 
-        if (!await this.hasMember(user)) {
-            log.debug({ function: 'addLeader', communityUid: this.uid, userUid: user.uid }, 'Community does not have leader member yet, adding');
+        await this.addMember(user);
+        const permission = await user.createPermission({ permission: `community.${this.slug}.${founder ? 'founder' : 'leader'}` });
 
-            await this.addMember(user);
-        }
-
-        const permission = await user.createPermission({ permission: `community.${this.slug}.leader` });
-
-        log.debug({ function: 'addLeader', communityUid: this.uid, userUid: user.uid, permissionUid: permission.uid }, 'Successfully added leader to community');
+        log.debug({ function: 'addLeader', communityUid: this.uid, userUid: user.uid, founder, permissionUid: permission.uid }, 'Successfully added leader to community');
     }
 
     /**
@@ -391,18 +391,19 @@ export class Community extends Model {
 
     /**
      * Removes the given user or a user with the provided UID from the community's leaders
-     * This only removes the `community.${community.slug}.leader` permission, but leave `community.${community.slug}.*` or `community.${community.slug}.founder` intact
+     * This only removes the `community.${community.slug}.leader` or `community.${community.slug}.founder` permission, but leaves `community.${community.slug}.*` intact
      *
      * @param {(User | string)} userOrUserUid User instance or UID of user to remove
+     * @param {boolean} [founder=false] Indicates whether the user to remove was a leader (false) or founder (true)
      * @returns {Promise<void>} Promise fulfilled when removal is completed
      * @memberof Community
      */
-    public async removeLeader(userOrUserUid: User | string): Promise<void> {
+    public async removeLeader(userOrUserUid: User | string, founder: boolean = false): Promise<void> {
         let user: User;
         if (_.isString(userOrUserUid)) {
-            const u = await User.findOne(userOrUserUid);
+            const u = await User.findById(userOrUserUid);
             if (_.isNil(u)) {
-                log.warn({ function: 'removeLeader', communityUid: this.uid, userUid: userOrUserUid }, 'Cannot remove leader from community, user not found');
+                log.warn({ function: 'removeLeader', communityUid: this.uid, userUid: userOrUserUid, founder }, 'Cannot remove leader from community, user not found');
                 throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
             }
 
@@ -411,11 +412,11 @@ export class Community extends Model {
             user = userOrUserUid;
         }
 
-        log.debug({ function: 'removeLeader', communityUid: this.uid, userUid: user.uid }, 'Removing leader from community');
+        log.debug({ function: 'removeLeader', communityUid: this.uid, userUid: user.uid, founder }, 'Removing leader from community');
 
-        await user.removePermissionByPermissionString(`community.${this.uid}.leader`);
+        await user.removePermissionByPermissionString(`community.${this.uid}.${founder ? 'founder' : 'leader'}`);
 
-        log.debug({ function: 'removeLeader', communityUid: this.uid, userUid: user.uid }, 'Successfully removed leader from community');
+        log.debug({ function: 'removeLeader', communityUid: this.uid, userUid: user.uid, founder }, 'Successfully removed leader from community');
     }
 
     /**

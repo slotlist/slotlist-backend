@@ -24,7 +24,7 @@ export const user = [
         config: {
             auth: false,
             description: 'Returns details about a specific user',
-            notes: 'Returns more detailed information about a specific user, including a list of created missions',
+            notes: 'Returns more detailed information about a specific user, including a list of created missions. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'users', 'details'],
             validate: {
                 options: {
@@ -69,7 +69,7 @@ export const user = [
         config: {
             auth: false,
             description: 'Returns a list of missions for a specific user',
-            notes: 'Returns a paginated list of missions for a specific user, including already completed ones',
+            notes: 'Returns a paginated list of missions for a specific user, including already completed ones. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'users', 'mission', 'list'],
             validate: {
                 options: {

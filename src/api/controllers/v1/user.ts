@@ -30,7 +30,7 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
             ]
         });
         if (_.isNil(user)) {
-            log.debug({ userUid }, 'User with given UID not found');
+            log.debug({ function: 'getUserDetails', userUid }, 'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 
@@ -60,7 +60,7 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
 
         const user = await User.findById(userUid);
         if (_.isNil(user)) {
-            log.debug({ userUid, queryOptions }, 'User with given UID not found');
+            log.debug({ function: 'getUserMissionList', userUid, queryOptions }, 'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 

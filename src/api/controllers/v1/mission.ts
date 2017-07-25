@@ -64,7 +64,7 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
             ]
         });
         if (_.isNil(mission)) {
-            log.debug({ slug }, 'Mission with given slug not found');
+            log.debug({ function: 'getMissionDetails', slug }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
