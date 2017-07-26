@@ -5,7 +5,7 @@ import * as moment from 'moment';
 import { Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
-import { CommunityApplication } from '../../../shared/models/CommunityApplication';
+import { COMMUNITY_APPLICATION_STATUSES, CommunityApplication } from '../../../shared/models/CommunityApplication';
 import { Mission } from '../../../shared/models/Mission';
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
@@ -124,17 +124,13 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
                 {
                     model: Mission,
                     as: 'missions',
-                    where: {
-                        endTime: {
-                            $gt: moment.utc()
-                        }
-                    },
                     include: [
                         {
                             model: User,
                             as: 'creator'
                         }
-                    ]
+                    ],
+                    required: false
                 }
             ]
         });
@@ -191,6 +187,54 @@ export function applyToCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCon
 
         return {
             status: application.status
+        };
+    })());
+}
+
+export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const userUid = request.auth.credentials.user.uid;
+        const status = _.includes(COMMUNITY_APPLICATION_STATUSES, request.query.status) ? request.query.status : undefined;
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset
+        };
+
+        if (!_.isNil(status)) {
+            queryOptions.where = {
+                status: status
+            };
+        }
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityApplicationList', slug, userUid, status, queryOptions }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (_.isNil(queryOptions.where)) {
+            queryOptions.where = {
+                communityUid: community.uid
+            };
+        } else {
+            queryOptions.where.communityUid = community.uid;
+        }
+
+        const result = await CommunityApplication.findAndCountAll(queryOptions);
+
+        const applicationCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + applicationCount) < result.count;
+        const applicationList = await Promise.map(result.rows, (application: CommunityApplication) => {
+            return application.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: applicationCount,
+            moreAvailable: moreAvailable,
+            applications: applicationList
         };
     })());
 }

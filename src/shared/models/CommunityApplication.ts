@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
     BelongsTo,
     BelongsToGetAssociationMixin,
@@ -9,7 +10,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 import sequelize from '../util/sequelize';
 
 import { Community } from './Community';
-import { User } from './User';
+import { IPublicUser, User } from './User';
 
 export const COMMUNITY_APPLICATION_STATUS_ACCEPTED = 'accepted';
 export const COMMUNITY_APPLICATION_STATUS_DENIED = 'denied';
@@ -201,10 +202,15 @@ export class CommunityApplication extends Model {
      * @memberof CommunityApplication
      */
     public async toPublicObject(): Promise<IPublicCommunityApplication> {
+        if (_.isNil(this.user)) {
+            this.user = await this.getUser();
+        }
+        const publicUser = await this.user.toPublicObject();
+
         return {
-            status: this.status,
-            communityUid: this.communityUid,
-            userUid: this.userUid
+            uid: this.uid,
+            user: publicUser,
+            status: this.status
         };
     }
 
@@ -220,7 +226,7 @@ export class CommunityApplication extends Model {
  * @interface IPublicCommunityApplication
  */
 export interface IPublicCommunityApplication {
+    uid: string;
+    user: IPublicUser;
     status: string;
-    communityUid: string;
-    userUid: string;
 }

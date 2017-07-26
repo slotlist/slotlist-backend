@@ -2,7 +2,8 @@ import * as Joi from 'joi';
 
 import { COMMUNITY_APPLICATION_STATUS_SUBMITTED, COMMUNITY_APPLICATION_STATUSES } from '../../../shared/models/CommunityApplication';
 import * as schemas from '../../../shared/schemas/community';
-import { internalServerErrorSchema } from '../../../shared/schemas/misc';
+import { communityApplicationSchema } from '../../../shared/schemas/communityApplication';
+import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
 import { userSchema } from '../../../shared/schemas/user';
 import * as controller from '../../controllers/v1/community';
@@ -13,6 +14,10 @@ import * as controller from '../../controllers/v1/community';
 
 export const LIMITS = {
     communityList: {
+        default: 25,
+        max: 100
+    },
+    communityApplicationList: {
         default: 25,
         max: 100
     },
@@ -266,6 +271,78 @@ export const community = [
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Already member of community', 'Community application already exists').required()
                                     .description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/communities/{slug}/applications',
+        handler: controller.getCommunityApplicationList,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Retrieves a list of applications to the community',
+            notes: 'Returns a paginated list of users that have applied to the community. This endpoint can only be used by community leaders or members with the ' +
+            '`community.SLUG.recruitment` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'communities', 'application', 'list', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
+                        .example('spezialeinheit-luchs')
+                }),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityApplicationList.max).default(LIMITS.communityApplicationList.default).optional()
+                        .description('Limit for number of applications to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of applications to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
+                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUSES).optional()
+                        .description('Allows for filtering of applications with the selected status').example(COMMUNITY_APPLICATION_STATUS_SUBMITTED)
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityApplicationList.max).required()
+                        .description('Limit for number of applications to retrieve, as provided via query'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Number of applications to skip before retrieving new ones from database, as provided via query'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityApplicationList.max).required()
+                        .description('Actual number of applications returned'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more applications are available and can be retrieved using pagination'),
+                    applications: Joi.array().items(communityApplicationSchema.optional()).required().description('List of applications retrieved')
+                }).label('GetCommunityApplicationListResposne').description('Response containing the community\'s list of applications')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{slug}}.founder', 'community.{{slug}}.leader', 'community.{{slug}}.recruitment']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
