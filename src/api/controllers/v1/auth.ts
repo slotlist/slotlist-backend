@@ -30,7 +30,7 @@ export function verifySteamLogin(request: Hapi.Request, reply: Hapi.ReplyWithCon
 
         const steamId = await SteamService.verifySteamLogin(url);
 
-        let user = await User.findOne({ where: { steamId: steamId }, include: [{ all: true }] });
+        let user = await User.findOne({ where: { steamId: steamId } });
         if (_.isNil(user)) {
             log.debug({ function: 'verifySteamLogin', steamId }, 'User not found in database, retrieving nickname from Steam API before generating JWT');
 
@@ -56,7 +56,7 @@ export function refreshJWT(request: Hapi.Request, reply: Hapi.ReplyWithContinue)
 
         log.debug({ function: 'refreshJWT', userUid }, 'Refreshing JWT for user');
 
-        const user = await User.findById(userUid, { include: [{ all: true }] });
+        const user = await User.findById(userUid);
         if (_.isNil(user)) {
             log.warn({ function: 'refreshJWT', userUid }, 'User not found in database anymore while refreshing JWT, aborting');
             throw Boom.notFound('User not found');
