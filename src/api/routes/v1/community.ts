@@ -228,6 +228,68 @@ export const community = [
         }
     },
     {
+        method: 'PATCH',
+        path: '/v1/communities/{slug}',
+        handler: controller.updateCommunity,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Updates an existing community',
+            notes: 'Updates the mutable attributes of a community. This endpoint can only be used by community leaders. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'patch', 'v1', 'communities', 'update', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to update').example('spezialeinheit-luchs')
+                }),
+                payload: Joi.object().required().keys({
+                    name: Joi.string().min(1).max(255).optional().description('New name of the community').example('Spezialeinheit Luchs'),
+                    tag: Joi.string().min(1).max(255).optional().description('New community tag (without square brackets, will be added by frontend)').example('SeL'),
+                    website: Joi.string().uri().allow(null).min(1).max(255).optional().description('New website of the community, can be null if none exists')
+                        .example('http://spezialeinheit-luchs.de')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    community: schemas.communityDetailsSchema
+                }).label('UpdateCommunityResponse').description('Response containing details of the updated community')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{slug}}.founder', 'community.{{slug}}.leader']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'POST',
         path: '/v1/communities/{slug}/apply',
         handler: controller.applyToCommunity,

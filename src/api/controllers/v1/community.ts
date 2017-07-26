@@ -153,6 +153,51 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
     })());
 }
 
+export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: User,
+                    as: 'members'
+                },
+                {
+                    model: Mission,
+                    as: 'missions',
+                    include: [
+                        {
+                            model: User,
+                            as: 'creator'
+                        }
+                    ],
+                    required: false
+                }
+            ]
+        });
+        if (_.isNil(community)) {
+            log.debug({ function: 'updateCommunity', slug, payload, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Updating community');
+
+        await community.update(payload, { allowed: ['name', 'tag', 'website'] });
+
+        log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Successfully updated community');
+
+        const detailedPublicCommunity = await community.toDetailedPublicObject();
+
+        return {
+            community: detailedPublicCommunity
+        };
+    })());
+}
+
 export function applyToCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.slug;
