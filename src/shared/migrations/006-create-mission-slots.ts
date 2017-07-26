@@ -17,7 +17,7 @@ module.exports = {
                 allowNull: false
             },
             difficulty: {
-                type: DataTypes.INTEGER({ length: 1 }),
+                type: DataTypes.INTEGER,
                 allowNull: false,
                 defaultValue: 0,
                 validate: {

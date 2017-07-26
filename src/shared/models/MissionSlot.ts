@@ -87,13 +87,29 @@ export class MissionSlot extends Model {
     public title: string;
 
     /**
+     * Order number for sorting slotlist
+     *
+     * @type {number}
+     * @memberof MissionSlot
+     */
+    @Attribute({
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+        validate: {
+            min: 0
+        }
+    })
+    public orderNumber: number;
+
+    /**
      * Difficulity of the mission slot, ranging from 0 (easiest) to 4 (hardest)
      *
      * @type {number}
      * @memberof MissionSlot
      */
     @Attribute({
-        type: DataTypes.INTEGER({ length: 1 }),
+        type: DataTypes.INTEGER,
         allowNull: false,
         defaultValue: 0,
         validate: {
@@ -336,6 +352,7 @@ export class MissionSlot extends Model {
             uid: this.uid,
             missionUid: this.missionUid,
             title: this.title,
+            orderNumber: this.orderNumber,
             difficulty: this.difficulty,
             shortDescription: _.isNil(this.shortDescription) ? null : this.shortDescription,
             restricted: this.restricted,
@@ -359,6 +376,7 @@ export interface IPublicMissionSlot {
     uid: string;
     missionUid: string;
     title: string;
+    orderNumber: number;
     difficulty: number;
     shortDescription: string | null;
     restricted: boolean;
