@@ -1,6 +1,6 @@
 import * as Joi from 'joi';
 
-import { internalServerErrorSchema } from '../../../shared/schemas/misc';
+import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
 import * as controller from '../../controllers/v1/mission';
@@ -219,6 +219,85 @@ export const mission = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'PATCH',
+        path: '/v1/missions/{slug}',
+        handler: controller.updateMission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Updates an existing mission',
+            notes: 'Updates the mutable attributes of a mission. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'patch', 'v1', 'missions', 'update', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update').example('all-of-altis')
+                }),
+                payload: Joi.object().required().keys({
+                    title: Joi.string().min(1).max(255).optional().description('New title of the mission').example('All of Altis'),
+                    shortDescription: Joi.string().min(1).optional().description('New short description and summary of mission').example('Conquer all of Altis!'),
+                    description: Joi.string().min(1).optional().description('New full description of the mission. Can contain HTML for formatting')
+                        .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+                    briefingTime: Joi.date().optional().description('New date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
+                        'with leadership roles').example('2017-09-02T16:00:00.000Z'),
+                    slottingTime: Joi.date().optional().description('New date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
+                        'and choose their reserved slot at this time').example('2017-09-02T16:00:00.000Z'),
+                    startTime: Joi.date().optional().description('New date and time the missions starts (slotting/briefing times are stored separately and available ' +
+                        'via mission details').example('2017-09-02T17:00:00.000Z'),
+                    endTime: Joi.date().optional().description('New estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
+                        'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
+                    repositoryUrl: Joi.string().uri().allow(null).min(1).max(255).optional()
+                        .description('New URL of the mod repository used for the mission. Can be null if no additional mods ' +
+                        'are required. Can contain HTML for formatting').example('http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig'),
+                    techSupport: Joi.string().allow(null).min(1).optional()
+                        .description('New information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+                        .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
+                    rules: Joi.string().allow(null).min(1).optional()
+                        .description('New additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+                        .example('<ol><li>Be punctual, no join in progress!</li></ol>')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    mission: schemas.missionDetailsSchema
+                }).label('UpdateMissionResponse').description('Response containing details of the updated mission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{slug}}.creator', 'mission.{{slug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
                         404: {
                             description: 'No mission with given slug was found',
                             schema: Joi.object().required().keys({

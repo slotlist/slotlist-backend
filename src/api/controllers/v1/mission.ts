@@ -166,6 +166,46 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
     })());
 }
 
+export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: Community,
+                    as: 'community'
+                },
+                {
+                    model: User,
+                    as: 'creator'
+                }
+            ]
+        });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'updateMission', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Updating mission');
+
+        await mission.update(payload, {
+            allowed: ['title', 'description', 'shortdescription', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules']
+        });
+
+        log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission');
+
+        const detailedPublicMission = await mission.toDetailedPublicObject();
+
+        return {
+            mission: detailedPublicMission
+        };
+    })());
+}
+
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.slug;
