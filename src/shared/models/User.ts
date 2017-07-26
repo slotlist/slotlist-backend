@@ -21,6 +21,7 @@ import sequelize from '../util/sequelize';
 const log = logger.child({ model: 'User' });
 
 import { Community, IPublicCommunity } from './Community';
+import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
 import { Permission } from './Permission';
 
@@ -43,6 +44,7 @@ export class User extends Model {
      *
      * @static
      * @type {{
+     *         applications: HasMany,
      *         community: BelongsTo,
      *         missions: HasMany,
      *         permissions: HasMany
@@ -50,6 +52,7 @@ export class User extends Model {
      * @memberof User
      */
     public static associations: {
+        applications: HasMany,
         community: BelongsTo,
         missions: HasMany,
         permissions: HasMany
@@ -118,6 +121,15 @@ export class User extends Model {
         onDelete: 'SET NULL'
     })
     public communityUid?: string;
+
+    /**
+     * Eager-loaded list of community application instances.
+     * Only included if the user has applications associated and it has been eager-loaded via sequelize
+     *
+     * @type {CommunityApplication[]|undefined}
+     * @memberof User
+     */
+    public applications?: CommunityApplication[];
 
     /**
      * Eager-loaded community instance.
@@ -200,6 +212,16 @@ export class User extends Model {
      * @memberof User
      */
     public createPermission: HasManyCreateAssociationMixin<Permission>;
+
+    /**
+     * Retrieves the user's applications.
+     * Returns an empty array if the user has no applications assigned
+     *
+     * @type {HasManyGetAssociationsMixin<CommunityApplication>}
+     * @returns {Promise<CommunityApplication[]>} List of applications
+     * @memberof User
+     */
+    public getApplications: HasManyGetAssociationsMixin<CommunityApplication>;
 
     /**
      * Retrieves the user's community instance.
