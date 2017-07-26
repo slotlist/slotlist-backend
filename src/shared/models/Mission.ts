@@ -504,19 +504,15 @@ export interface IPublicMission {
  *
  * @export
  * @interface IDetailedPublicMission
+ * @extends {IPublicMission}
  */
-export interface IDetailedPublicMission {
-    title: string;
-    slug: string;
+export interface IDetailedPublicMission extends IPublicMission {
     description: string;
-    shortDescription: string;
     briefingTime: Date;
     slottingTime: Date;
-    startTime: Date;
     endTime: Date;
     repositoryUrl: string | null;
     techSupport: string | null;
     rules: string | null;
     community: IPublicCommunity | null;
-    creator: IPublicUser;
 }

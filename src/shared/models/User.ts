@@ -481,10 +481,9 @@ export interface IPublicUser {
  *
  * @export
  * @interface IDetailedPublicUser
+ * @extends {IPublicUser}
  */
-export interface IDetailedPublicUser {
-    uid: string;
-    nickname: string;
+export interface IDetailedPublicUser extends IPublicUser {
     community: IPublicCommunity | null;
     missions: IPublicMission[];
 }

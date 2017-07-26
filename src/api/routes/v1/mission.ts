@@ -2,7 +2,7 @@ import * as Joi from 'joi';
 
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
-import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
+import { missionSlotDetailsSchema, missionSlotSchema } from '../../../shared/schemas/missionSlot';
 import * as controller from '../../controllers/v1/mission';
 
 /**
@@ -359,6 +359,76 @@ export const mission = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions/{slug}/slots',
+        handler: controller.createMissionSlot,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Creates one or multiple new slots for the given mission',
+            notes: 'Creates one or multiple new slots for the given mission. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` ' +
+            'permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'slot', 'create', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create slots for').example('all-of-altis')
+                }),
+                payload: Joi.array().min(1).items({
+                    title: Joi.string().min(1).max(255).required().description('Title of the slot').example('Platoon Lead'),
+                    orderNumber: Joi.number().integer().positive().allow(0).min(0).required().description('Order number for sorting slotlist').example(0),
+                    difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).required().description('Difficulity of the slot, ranging from 0 (easiest) ' +
+                        'to 4 (hardest)').example(4),
+                    shortDescription: Joi.string().allow(null).min(1).default(null).optional().description('Optional short description of the slot')
+                        .example('Leads Platoon Luchs and coordinates logistics'),
+                    description: Joi.string().allow(null).min(1).default(null).optional().description('Detailed, optional description of the mission slot, further ' +
+                        'explaining the responsibilities and the selected role').example('<div>Actually know what they are doing!</div>'),
+                    restricted: Joi.bool().required().description('Indicates whether the slot is restricted (true, not available for public registration) or whether ' +
+                        'everyone can register (false)').example(true),
+                    reserve: Joi.bool().required().description('Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
+                        'filled) or a regular one (false)').example(false)
+                }).required()
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slots: Joi.array().min(1).items(missionSlotDetailsSchema).required()
+                }).label('CreateMissionSlotResponse').description('Response containing details of newly created mission slot')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{slug}}.creator', 'mission.{{slug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
                         404: {
                             description: 'No mission with given slug was found',
                             schema: Joi.object().required().keys({

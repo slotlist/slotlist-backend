@@ -241,3 +241,48 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
         };
     })());
 }
+
+export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        // Assign mission UID to every slot to be created
+        _.each(payload, (slot: any) => {
+            slot.missionUid = mission.uid;
+        });
+
+        log.debug({ function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission slots');
+
+        return sequelize.transaction(async (t: Transaction) => {
+            const slots = await Promise.map(payload, async (load: any) => {
+                log.debug({ function: 'createMissionSlot', slug, payload: load, userUid, missionUid: mission.uid }, 'Creating new mission slot');
+
+                const slot = await new MissionSlot(load).save();
+
+                log.debug(
+                    { function: 'createMissionSlot', slug, payload: load, userUid, missionUid: mission.uid, missionSlotUid: slot.uid },
+                    'Successfully created new mission slot');
+
+                return slot;
+            });
+
+            log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
+
+            const detailedPublicSlots = await Promise.map(slots, (slot: MissionSlot) => {
+                return slot.toDetailedPublicObject();
+            });
+
+            return {
+                slots: detailedPublicSlots
+            };
+        });
+    })());
+}

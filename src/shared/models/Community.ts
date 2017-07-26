@@ -537,12 +537,9 @@ export interface IPublicCommunity {
  *
  * @export
  * @interface IDetailedPublicCommunity
+ * @extends {IPublicCommunity}
  */
-export interface IDetailedPublicCommunity {
-    name: string;
-    tag: string;
-    website: string | null;
-    slug: string;
+export interface IDetailedPublicCommunity extends IPublicCommunity {
     leaders: IPublicUser[];
     members: IPublicUser[];
     missions: IPublicMission[];
