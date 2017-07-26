@@ -5,7 +5,13 @@ import * as moment from 'moment';
 import { Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
-import { COMMUNITY_APPLICATION_STATUSES, CommunityApplication } from '../../../shared/models/CommunityApplication';
+import {
+    COMMUNITY_APPLICATION_STATUS_ACCEPTED,
+    COMMUNITY_APPLICATION_STATUS_DENIED,
+    COMMUNITY_APPLICATION_STATUS_SUBMITTED,
+    COMMUNITY_APPLICATION_STATUSES,
+    CommunityApplication
+} from '../../../shared/models/CommunityApplication';
 import { Mission } from '../../../shared/models/Mission';
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
@@ -236,6 +242,68 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
             moreAvailable: moreAvailable,
             applications: applicationList
         };
+    })());
+}
+
+export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const applicationUid = request.params.uid;
+        const userUid = request.auth.credentials.user.uid;
+        const status = _.includes([COMMUNITY_APPLICATION_STATUS_ACCEPTED, COMMUNITY_APPLICATION_STATUS_DENIED], request.payload.status) ? request.payload.status : undefined;
+
+        if (_.isNil(status)) {
+            log.debug({ function: 'updateCommunityApplication', slug, applicationUid, userUid, status }, 'Invalid status provided during community applicaiton update');
+            throw Boom.badRequest('Invalid community application status');
+        }
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'updateCommunityApplication', slug, applicationUid, userUid, status }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const applications = await community.getApplications({ where: { uid: applicationUid } });
+        if (_.isNil(applications) || _.isEmpty(applications)) {
+            log.debug({ function: 'updateCommunityApplication', slug, applicationUid, userUid, status }, 'Community application with given UID not found');
+            throw Boom.notFound('Community application not found');
+        }
+        let application = applications[0];
+
+        if (application.status !== COMMUNITY_APPLICATION_STATUS_SUBMITTED) {
+            log.debug(
+                { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
+                'Community application has already been processed, cannot update');
+            throw Boom.conflict('Community application already processed');
+        }
+
+        log.debug({ function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid }, 'Updating community application');
+
+        return sequelize.transaction(async (t: Transaction) => {
+            application = await application.update({ status });
+
+            log.debug(
+                { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
+                'Successfully updated community application');
+
+            if (status === COMMUNITY_APPLICATION_STATUS_ACCEPTED) {
+                log.debug(
+                    { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
+                    'Community application was accepted, adding member');
+
+                await community.addMember(application.userUid);
+
+                log.debug(
+                    { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
+                    'Successfully added community member');
+            }
+
+            const publicApplication = await application.toPublicObject();
+
+            return {
+                application: publicApplication
+            };
+        });
     })());
 }
 

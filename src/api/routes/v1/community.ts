@@ -1,6 +1,11 @@
 import * as Joi from 'joi';
 
-import { COMMUNITY_APPLICATION_STATUS_SUBMITTED, COMMUNITY_APPLICATION_STATUSES } from '../../../shared/models/CommunityApplication';
+import {
+    COMMUNITY_APPLICATION_STATUS_ACCEPTED,
+    COMMUNITY_APPLICATION_STATUS_DENIED,
+    COMMUNITY_APPLICATION_STATUS_SUBMITTED,
+    COMMUNITY_APPLICATION_STATUSES
+} from '../../../shared/models/CommunityApplication';
 import * as schemas from '../../../shared/schemas/community';
 import { communityApplicationSchema } from '../../../shared/schemas/communityApplication';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
@@ -294,7 +299,7 @@ export const community = [
             description: 'Retrieves a list of applications to the community',
             notes: 'Returns a paginated list of users that have applied to the community. This endpoint can only be used by community leaders or members with the ' +
             '`community.SLUG.recruitment` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
-            tags: ['api', 'post', 'v1', 'communities', 'application', 'list', 'authenticated', 'restricted'],
+            tags: ['api', 'get', 'v1', 'communities', 'application', 'list', 'authenticated', 'restricted'],
             validate: {
                 options: {
                     abortEarly: false
@@ -343,6 +348,76 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'PATCH',
+        path: '/v1/communities/{slug}/applications/{uid}',
+        handler: controller.updateCommunityApplication,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Updates an existing application to the community',
+            notes: 'Updates an existing application to the community, accepting or denying it. This endpoint can only be used by community leaders or members with the ' +
+            '`community.SLUG.recruitment` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'patch', 'v1', 'communities', 'application', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
+                        .example('spezialeinheit-luchs'),
+                    uid: Joi.string().guid().length(36).required().description('UID of the community application to update').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                payload: Joi.object().required().keys({
+                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUS_ACCEPTED, COMMUNITY_APPLICATION_STATUS_DENIED).required()
+                        .description('Indicates whether the application should be accepted or denied').example(COMMUNITY_APPLICATION_STATUS_ACCEPTED)
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    application: communityApplicationSchema.description('Updated community application instance')
+                }).label('UpdateCommunityApplicationResposne').description('Response containing the updated application')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{slug}}.founder', 'community.{{slug}}.leader', 'community.{{slug}}.recruitment']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug or no application with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'Community application not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The community application has already been accepted or denied',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community application already processed').required().description('Message further describing the error')
                             })
                         },
                         500: {
