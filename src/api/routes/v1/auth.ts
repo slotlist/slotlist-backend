@@ -22,7 +22,7 @@ export const auth = [
             tags: ['api', 'get', 'v1', 'auth', 'steam'],
             response: {
                 schema: Joi.object().required().keys({
-                    url: Joi.string().required().uri().description('Steam OpenID URL to redirect to for signin')
+                    url: Joi.string().uri().required().description('Steam OpenID URL to redirect to for signin')
                 }).label('GetSteamLoginRedirectURLResponse').description('Response containing Steam OpenID URL to redirect user to')
             },
             plugins: {
@@ -56,7 +56,7 @@ export const auth = [
                     abortEarly: false
                 },
                 payload: Joi.object().required().keys({
-                    url: Joi.string().required().uri().description('Steam OpenID claims in URL form, as returned to the frontend')
+                    url: Joi.string().uri().required().description('Steam OpenID claims in URL form, as returned to the frontend')
                 }).label('VerifySteamLogin')
             },
             response: {

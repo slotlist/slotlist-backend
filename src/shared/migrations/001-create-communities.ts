@@ -26,7 +26,10 @@ module.exports = {
             website: {
                 type: DataTypes.STRING,
                 allowNull: true,
-                defaultValue: null
+                defaultValue: null,
+                validate: {
+                    isUrl: true
+                }
             },
             slug: {
                 type: DataTypes.STRING,

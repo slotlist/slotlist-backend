@@ -75,6 +75,120 @@ export const mission = [
     },
     {
         method: 'GET',
+        path: '/v1/missions/slugAvailable',
+        handler: controller.isSlugAvailable,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
+            description: 'Checks whether the given slug is available',
+            notes: 'Checks whether the given slug is available and can be used for a new mission. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'slugAvailable'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                query: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug to check availability for').example('all-of-altis')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    available: Joi.boolean().required().description('Indicates whether the slug is available for usage')
+                }).label('IsMissionSlugAvailableResponse').description('Response containing indicator if slug is available')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions',
+        handler: controller.createMission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Creates a new mission',
+            notes: 'Creates a new mission and assigns the current user as its creator. The user can optionally also associate the mission with their community. ' +
+            'Regular user authentication is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'create', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                payload: Joi.object().required().keys({
+                    title: Joi.string().min(1).max(255).required().description('Title of the mission').example('All of Altis'),
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
+                        .description('Slug used for uniquely identifying a mission in the frontend, easier to read than a UUID').example('all-of-altis'),
+                    shortDescription: Joi.string().min(1).required().description('Short description and summary of mission').example('Conquer all of Altis!'),
+                    description: Joi.string().min(1).required().description('Full description of the mission. Can contain HTML for formatting')
+                        .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+                    briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
+                        'with leadership roles').example('2017-09-02T16:00:00.000Z'),
+                    slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
+                        'and choose their reserved slot at this time').example('2017-09-02T16:00:00.000Z'),
+                    startTime: Joi.date().required().description('Date and time the missions starts (slotting/briefing times are stored separately and available ' +
+                        'via mission details').example('2017-09-02T17:00:00.000Z'),
+                    endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
+                        'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
+                    repositoryUrl: Joi.string().uri().allow(null).min(1).max(255).default(null).optional()
+                        .description('URL of the mod repository used for the mission. Can be null if no additional mods ' +
+                        'are required. Can contain HTML for formatting').example('http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig'),
+                    techSupport: Joi.string().allow(null).min(1).default(null).optional()
+                        .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+                        .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
+                    rules: Joi.string().allow(null).min(1).default(null).optional()
+                        .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+                        .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
+                    addToCommunity: Joi.boolean().default(true).optional()
+                        .description('Indicates whether the mission should also be associated with the user\'s community (if set), defaults to true')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    mission: schemas.missionDetailsSchema
+                }).label('CreateMissionResposne').description('Response containing details of newly created mission')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        409: {
+                            description: 'A mission with the given slug already exists or the user already has mission creator permissions',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission slug already exists', 'Mission creator permission already exists').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
         path: '/v1/missions/{slug}',
         handler: controller.getMissionDetails,
         config: {

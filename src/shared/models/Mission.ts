@@ -214,7 +214,10 @@ export class Mission extends Model {
     @Attribute({
         type: DataTypes.STRING,
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        validate: {
+            isUrl: true
+        }
     })
     public repositoryUrl?: string;
 

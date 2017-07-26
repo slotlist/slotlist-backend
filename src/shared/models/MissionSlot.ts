@@ -146,7 +146,7 @@ export class MissionSlot extends Model {
     public restricted: boolean;
 
     /**
-     * Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been filled) or regular one (false)
+     * Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been filled) or a regular one (false)
      *
      * @type {boolean}
      * @memberof MissionSlot

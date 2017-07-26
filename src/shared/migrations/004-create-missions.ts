@@ -85,7 +85,10 @@ module.exports = {
             repositoryUrl: {
                 type: DataTypes.STRING,
                 allowNull: true,
-                defaultValue: null
+                defaultValue: null,
+                validate: {
+                    isUrl: true
+                }
             },
             techSupport: {
                 type: DataTypes.TEXT,
