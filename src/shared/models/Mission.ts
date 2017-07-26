@@ -4,6 +4,10 @@ import {
     BelongsTo,
     BelongsToGetAssociationMixin,
     DataTypes,
+    HasMany,
+    HasManyCreateAssociationMixin,
+    HasManyGetAssociationsMixin,
+    HasManyRemoveAssociationMixin,
     Model
 } from 'sequelize';
 import { Attribute, Options } from 'sequelize-decorators';
@@ -14,6 +18,7 @@ import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
 import { Community, IPublicCommunity } from './Community';
+import { MissionSlot } from './MissionSlot';
 import { IPublicUser, User } from './User';
 
 /**
@@ -36,13 +41,15 @@ export class Mission extends Model {
      * @static
      * @type {{
      *         community: BelongsTo,
-     *         creator: BelongsTo
+     *         creator: BelongsTo,
+     *         slots: HasMany
      *     }}
      * @memberof Mission
      */
     public static associations: {
         community: BelongsTo,
-        creator: BelongsTo
+        creator: BelongsTo,
+        slots: HasMany
     };
 
     //////////////////////
@@ -253,7 +260,7 @@ export class Mission extends Model {
         allowNull: true,
         defaultValue: null,
         references: {
-            model: 'communities',
+            model: Community,
             key: 'uid'
         },
         onDelete: 'SET NULL'
@@ -295,6 +302,15 @@ export class Mission extends Model {
     public creator?: User;
 
     /**
+     * Eager-loaded list of slots associated with the mission.
+     * Only included if the mission has slots associated and it has been eager-loaded via sequelize
+     *
+     * @type {MissionSlot[]|undefined}
+     * @memberof Mission
+     */
+    public slots?: MissionSlot[];
+
+    /**
      * Time (and date) the mission instance was created
      *
      * @type {Date}
@@ -325,6 +341,15 @@ export class Mission extends Model {
     ////////////////////////////
 
     /**
+     * Creates a new slot for the current mission
+     *
+     * @type {HasManyCreateAssociationMixin<MissionSlot>}
+     * @returns {Promise<MissionSlot>} Mission slot created
+     * @memberof Mission
+     */
+    public createSlot: HasManyCreateAssociationMixin<MissionSlot>;
+
+    /**
      * Retrieves the mission's community instance.
      * Only returns a result if the mission has been associated with a community
      *
@@ -342,6 +367,25 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public getCreator: BelongsToGetAssociationMixin<User>;
+
+    /**
+     * Retrieves the mission's slot instances.
+     * Returns an empty array if the mission has no slots assigned
+     *
+     * @type {HasManyGetAssociationsMixin<MissionSlot>}
+     * @returns {Promise<MissionSlot[]>} List of mission slots
+     * @memberof Mission
+     */
+    public getSlots: HasManyGetAssociationsMixin<MissionSlot>;
+
+    /**
+     * Removes the given slot or a slot with the provided UID from the missions's slot list
+     *
+     * @type {HasManyRemoveAssociationMixin<MissionSlot, string>}
+     * @returns {Promise<void>} Promise fulfilled when removal is completed
+     * @memberof Mission
+     */
+    public removeSlot: HasManyRemoveAssociationMixin<MissionSlot, string>;
 
     /////////////////////////
     // Model class methods //

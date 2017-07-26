@@ -97,10 +97,10 @@ export class Community extends Model {
     public tag: string;
 
     /**
-     * Website URL of the community
+     * Website URL of the community.
      * Can be `undefined|null` if no website URL was provided
      *
-     * @type {string}
+     * @type {string|undefined|null}
      * @memberof Community
      */
     @Attribute({
@@ -111,7 +111,7 @@ export class Community extends Model {
     public website?: string;
 
     /**
-     * Slug used for identifying a community in the frontend
+     * Slug used for identifying a community in the frontend.
      * More user-friendly version of a UID, makes for prettier URLs
      *
      * @type {string}
@@ -134,7 +134,7 @@ export class Community extends Model {
     }
 
     /**
-     * Eager-loaded list of member applications associated with the community
+     * Eager-loaded list of member applications associated with the community.
      * Only included if the community has applications associated and it has been eager-loaded via sequelize
      *
      * @type {CommunityApplication[]|undefined}
@@ -143,7 +143,7 @@ export class Community extends Model {
     public applications?: CommunityApplication[];
 
     /**
-     * Eager-loaded list of members/users associated with the community
+     * Eager-loaded list of members/users associated with the community.
      * Only included if the community has users associated and it has been eager-loaded via sequelize
      *
      * @type {User[]|undefined}
@@ -152,7 +152,7 @@ export class Community extends Model {
     public members?: User[];
 
     /**
-     * Eager-loaded list missions associated with the community
+     * Eager-loaded list missions associated with the community.
      * Only included if the community has missions associated and it has been eager-loaded via sequelize
      *
      * @type {Mission[]|undefined}
@@ -187,8 +187,8 @@ export class Community extends Model {
     public updatedAt: Date;
 
     /**
-     * Time (and date) the community instance was deleted
-     * Will only be set once the community has been deleted, caused by paranoid table settings
+     * Time (and date) the community instance was deleted.
+     * Will only be set once the community has been deleted, caused by paranoid table settings.
      * Can be `undefined|null` until the community instance deletion
      *
      * @type {Date|undefined|null}
@@ -422,7 +422,7 @@ export class Community extends Model {
     }
 
     /**
-     * Removes the given user or a user with the provided UID from the community's leaders
+     * Removes the given user or a user with the provided UID from the community's leaders.
      * This only removes the `community.${community.slug}.leader` or `community.${community.slug}.founder` permission, but leaves `community.${community.slug}.*` intact
      *
      * @param {(User | string)} userOrUserUid User instance or UID of user to remove

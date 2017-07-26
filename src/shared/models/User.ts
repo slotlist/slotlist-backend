@@ -23,6 +23,8 @@ const log = logger.child({ model: 'User' });
 import { Community, IPublicCommunity } from './Community';
 import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
+import { MissionSlot } from './MissionSlot';
+import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { Permission } from './Permission';
 
 /**
@@ -47,6 +49,8 @@ export class User extends Model {
      *         applications: HasMany,
      *         community: BelongsTo,
      *         missions: HasMany,
+     *         missionSlots: HasMany,
+     *         missionSlotRegistrations: HasMany,
      *         permissions: HasMany
      *     }}
      * @memberof User
@@ -55,6 +59,8 @@ export class User extends Model {
         applications: HasMany,
         community: BelongsTo,
         missions: HasMany,
+        missionSlots: HasMany,
+        missionSlotRegistrations: HasMany,
         permissions: HasMany
     };
 
@@ -150,6 +156,24 @@ export class User extends Model {
     public missions?: Mission[];
 
     /**
+     * Eager-loaded list of missions slots assigned to the user.
+     * Only included if the user has mission slots associated and it has been eager-loaded via sequelize
+     *
+     * @type {MissionSlot[]|undefined}
+     * @memberof User
+     */
+    public missionSlots?: MissionSlot[];
+
+    /**
+     * Eager-loaded list of mission slot registrations assigned to the user.
+     * Only included if the user has mission slot registrations associated and it has been eager-loaded via sequelize
+     *
+     * @type {MissionSlotRegistration[]|undefined}
+     * @memberof User
+     */
+    public missionSlotRegistrations?: MissionSlotRegistration[];
+
+    /**
      * Eager-loaded list of permissions associated with the user.
      * Only included if the user has permissions associated and it has been eager-loaded via sequelize
      *
@@ -242,6 +266,26 @@ export class User extends Model {
      * @memberof User
      */
     public getMissions: HasManyGetAssociationsMixin<Mission>;
+
+    /**
+     * Retrieves the user's assigned mission slots.
+     * Returns an empty array if the user has no mission slots assigned
+     *
+     * @type {HasManyGetAssociationsMixin<MissionSlot>}
+     * @returns {Promise<MissionSlot[]>} List of mission slots
+     * @memberof User
+     */
+    public getMissionSlots: HasManyGetAssociationsMixin<MissionSlot>;
+
+    /**
+     * Retrieves the user's mission slot registrations.
+     * Returns an empty array if the user has no mission slot registrations assigned
+     *
+     * @type {HasManyGetAssociationsMixin<MissionSlotRegistration>}
+     * @returns {Promise<MissionSlotRegistration[]>} List of mission slot registrations
+     * @memberof User
+     */
+    public getMissionSlotRegistrations: HasManyGetAssociationsMixin<MissionSlotRegistration>;
 
     /**
      * Retrieves the user's permissions.
