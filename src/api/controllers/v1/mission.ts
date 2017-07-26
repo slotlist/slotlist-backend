@@ -286,3 +286,29 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         });
     })());
 }
+
+export function getMissionSlotDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const slotUid = request.params.uid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'getMissionSlotDetails', slug, slotUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slots = await mission.getSlots({ where: { uid: slotUid } });
+        if (_.isNil(slots) || _.isEmpty(slots)) {
+            log.debug({ function: 'getMissionSlotDetails', slug, mission, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+
+        const publicMissionSlot = await slots[0].toDetailedPublicObject();
+
+        return {
+            slot: publicMissionSlot
+        };
+    })());
+}

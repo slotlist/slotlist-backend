@@ -392,7 +392,7 @@ export const community = [
                         .description('Actual number of applications returned'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more applications are available and can be retrieved using pagination'),
                     applications: Joi.array().items(communityApplicationSchema.optional()).required().description('List of applications retrieved')
-                }).label('GetCommunityApplicationListResposne').description('Response containing the community\'s list of applications')
+                }).label('GetCommunityApplicationListResponse').description('Response containing the community\'s list of applications')
             },
             plugins: {
                 acl: {
@@ -454,7 +454,7 @@ export const community = [
             response: {
                 schema: Joi.object().required().keys({
                     application: communityApplicationSchema.description('Updated community application instance')
-                }).label('UpdateCommunityApplicationResposne').description('Response containing the updated application')
+                }).label('UpdateCommunityApplicationResponse').description('Response containing the updated application')
             },
             plugins: {
                 acl: {

@@ -164,7 +164,7 @@ export const mission = [
             response: {
                 schema: Joi.object().required().keys({
                     mission: schemas.missionDetailsSchema
-                }).label('CreateMissionResposne').description('Response containing details of newly created mission')
+                }).label('CreateMissionResponse').description('Response containing details of newly created mission')
             },
             plugins: {
                 'hapi-swagger': {
@@ -435,6 +435,56 @@ export const mission = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/missions/{slug}/slots/{uid}',
+        handler: controller.getMissionSlotDetails,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
+            description: 'Returns details about a specific mission slot',
+            notes: 'Returns more detailed information about a specific mission slot, including a more detailed description. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'slot', 'details'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve the slot for')
+                        .example('all-of-altis'),
+                    uid: Joi.string().guid().length(36).required().description('UID of the mission slot to retrieve').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slot: missionSlotDetailsSchema
+                }).label('GetMissionSlotDetailsResponse').description('Response containing the mission slot details')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
