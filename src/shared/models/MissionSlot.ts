@@ -87,7 +87,7 @@ export class MissionSlot extends Model {
     public title: string;
 
     /**
-     * Difficulity of the mission slot, ranging from 0 (lowest) to 4 (highest)
+     * Difficulity of the mission slot, ranging from 0 (easiest) to 4 (hardest)
      *
      * @type {number}
      * @memberof MissionSlot
