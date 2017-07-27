@@ -290,66 +290,6 @@ export const community = [
         }
     },
     {
-        method: 'POST',
-        path: '/v1/communities/{communitySlug}/apply',
-        handler: controller.applyToCommunity,
-        config: {
-            auth: {
-                strategy: 'jwt',
-                mode: 'required'
-            },
-            description: 'Applies to join the specified community',
-            notes: 'Applies to join the specified community, has to be approved by community leader or members with the `community.SLUG.recruitment` permission. ' +
-            'Regular user authentication is required to access this endpoint',
-            tags: ['api', 'post', 'v1', 'communities', 'apply', 'authenticated'],
-            validate: {
-                options: {
-                    abortEarly: false
-                },
-                headers: Joi.object({
-                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
-                }).unknown(true),
-                params: Joi.object().required().keys({
-                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to apply to').example('spezialeinheit-luchs')
-                })
-            },
-            response: {
-                schema: Joi.object().required().keys({
-                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUSES).required()
-                        .description('Indicates the application\'s status. Applications are created with status `submitted` and can either be `accepted` or `denied`')
-                        .example(COMMUNITY_APPLICATION_STATUS_SUBMITTED)
-                }).label('ApplyToCommunityResponse').description('Response containing the community application status')
-            },
-            plugins: {
-                'hapi-swagger': {
-                    responses: {
-                        404: {
-                            description: 'No community with given slug was found',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
-                            })
-                        },
-                        409: {
-                            description: 'The user is already a member of this community or an application for this community already exists',
-                            schema: Joi.object().required().keys({
-                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
-                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Already member of community', 'Community application already exists').required()
-                                    .description('Message further describing the error')
-                            })
-                        },
-                        500: {
-                            description: 'An error occured while processing the request',
-                            schema: internalServerErrorSchema
-                        }
-                    }
-                }
-            }
-        }
-    },
-    {
         method: 'GET',
         path: '/v1/communities/{communitySlug}/applications',
         handler: controller.getCommunityApplicationList,
@@ -410,6 +350,66 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/communities/{communitySlug}/applications',
+        handler: controller.createCommunityApplication,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Applies to join the specified community',
+            notes: 'Applies to join the specified community, has to be approved by community leader or members with the `community.SLUG.recruitment` permission. ' +
+            'Regular user authentication is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'communities', 'application', 'create', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to apply to').example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUSES).required()
+                        .description('Indicates the application\'s status. Applications are created with status `submitted` and can either be `accepted` or `denied`')
+                        .example(COMMUNITY_APPLICATION_STATUS_SUBMITTED)
+                }).label('CreateCommunityApplicationResponse').description('Response containing the community application status')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The user is already a member of this community or an application for this community already exists',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Already member of community', 'Community application already exists').required()
+                                    .description('Message further describing the error')
                             })
                         },
                         500: {

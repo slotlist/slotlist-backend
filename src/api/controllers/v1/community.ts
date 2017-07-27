@@ -198,50 +198,6 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
     })());
 }
 
-export function applyToCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
-    return reply((async () => {
-        const slug = request.params.communitySlug;
-        const userUid = request.auth.credentials.user.uid;
-
-        const community = await Community.findOne({ where: { slug }, include: [{ model: User, as: 'members' }] });
-        if (_.isNil(community)) {
-            log.debug({ function: 'applyToCommunity', slug, userUid }, 'Community with given slug not found');
-            throw Boom.notFound('Community not found');
-        }
-
-        if (await community.hasMember(userUid)) {
-            log.debug({ function: 'applyToCommunity', slug, communityUid: community.uid, userUid }, 'User already is member of community, stopping to process application');
-            throw Boom.conflict('Already member of community');
-        }
-
-        log.debug({ function: 'applyToCommunity', slug, communityUid: community.uid, userUid }, 'Processing user application to community');
-
-        let application: CommunityApplication;
-        try {
-            application = await community.createApplication({ userUid });
-        } catch (err) {
-            if (err.name === 'SequelizeUniqueConstraintError') {
-                log.debug(
-                    { function: 'applyToCommunity', slug, communityUid: community.uid, userUid, err },
-                    'Received unique constraint error during community application creation');
-
-                throw Boom.conflict('Community application already exists');
-            }
-
-            log.warn({ function: 'applyToCommunity', slug, communityUid: community.uid, userUid, err }, 'Received error during community application creation');
-            throw err;
-        }
-
-        log.debug(
-            { function: 'applyToCommunity', slug, communityUid: community.uid, userUid, applicationUid: application.uid, applicationStatus: application.status },
-            'Successfully finished processing user application to community');
-
-        return {
-            status: application.status
-        };
-    })());
-}
-
 export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
@@ -286,6 +242,52 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
             count: applicationCount,
             moreAvailable: moreAvailable,
             applications: applicationList
+        };
+    })());
+}
+
+export function createCommunityApplication(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, include: [{ model: User, as: 'members' }] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'createCommunityApplication', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (await community.hasMember(userUid)) {
+            log.debug(
+                { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid },
+                'User already is member of community, stopping to process application');
+            throw Boom.conflict('Already member of community');
+        }
+
+        log.debug({ function: 'createCommunityApplication', slug, communityUid: community.uid, userUid }, 'Processing user application to community');
+
+        let application: CommunityApplication;
+        try {
+            application = await community.createApplication({ userUid });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                log.debug(
+                    { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, err },
+                    'Received unique constraint error during community application creation');
+
+                throw Boom.conflict('Community application already exists');
+            }
+
+            log.warn({ function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, err }, 'Received error during community application creation');
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid, applicationStatus: application.status },
+            'Successfully finished processing user application to community');
+
+        return {
+            status: application.status
         };
     })());
 }

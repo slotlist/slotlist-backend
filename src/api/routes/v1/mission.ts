@@ -646,6 +646,66 @@ export const mission = [
         }
     },
     {
+        method: 'POST',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}/registrations',
+        handler: controller.createMissionSlotRegistration,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Registers for the selected slot for the specified mission',
+            notes: 'Creates a new mission slot registration for the current user and the selected slot for the specified mission. Regular user authentication is required ' +
+            'to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'create', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create the slot registration for')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to create registration for')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    registration: missionSlotRegistrationSchema.required().description('Created mission slot registration')
+                }).label('CreateMissionSlotRegistrationResponse').description('Response containing the newly created mission slot registration')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'A registration for this mission slot already exists for the user',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission slot registration already exists').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'PATCH',
         path: '/v1/missions/{missionSlug}/slots/{slotUid}/registrations/{registrationUid}',
         handler: controller.updateMissionSlotRegistration,
