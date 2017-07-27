@@ -388,3 +388,102 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         };
     })());
 }
+
+export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const registrationUid = request.params.registrationUid;
+        const confirmed = request.payload.confirmed === true;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slots = await mission.getSlots({ where: { uid: slotUid } });
+        if (_.isNil(slots) || _.isEmpty(slots)) {
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+        const slot = slots[0];
+
+        const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
+        if (_.isNil(registrations) || _.isEmpty(registrations)) {
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                'Mission slot registration with given UID not found');
+            throw Boom.notFound('Mission slot registration not found');
+        }
+        const registration = registrations[0];
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                'Updating mission slot registration');
+
+            if (confirmed && registration.confirmed) {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    'Mission slot registration is already confirmed, silently ignoring update');
+            } else if (confirmed && !registration.confirmed && !_.isNil(slot.assigneeUid)) {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                    'Mission slot already has assignee, rejecting confirmation');
+                throw Boom.conflict('Mission slot already assigned');
+            } else if (confirmed && !registration.confirmed && _.isNil(slot.assigneeUid)) {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    'Confirming mission slot registration');
+
+                await Promise.all([
+                    slot.setAssignee(registration.userUid),
+                    registration.update({ confirmed })
+                ]);
+
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    'Successfully confirmed mission slot registration');
+            } else if (!confirmed && registration.confirmed) {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                    'Revoking mission slot registration confirmation');
+
+                if (slot.assigneeUid === registration.userUid) {
+                    await Promise.all([
+                        slot.update({ assigneeUid: null }),
+                        registration.update({ confirmed })
+                    ]);
+
+                    log.debug(
+                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        'Successfully revoked mission slot registration confirmation');
+                } else {
+                    log.debug(
+                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        'Mission slot assignee does not match registration user, only updating registration');
+
+                    await registration.update({ confirmed });
+                }
+            } else {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    'Mission slot registration already is not confirmed, silently ignoring update');
+            }
+
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                'Successfully updated mission slot registration');
+
+            const publicMissionSlotRegistration = await registration.toPublicObject();
+
+            return {
+                registration: publicMissionSlotRegistration
+            };
+        });
+    })());
+}

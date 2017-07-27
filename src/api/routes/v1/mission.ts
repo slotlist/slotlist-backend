@@ -585,7 +585,7 @@ export const mission = [
             description: 'Returns a list of registrations for the selected slot for the given mission',
             notes: 'Returns a paginated list of registrations for the selected slot for the given mission. This endpoint can only be used by mission creators and users with the ' +
             '`mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'list'],
+            tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'list', 'authenticated', 'restricted'],
             validate: {
                 options: {
                     abortEarly: false
@@ -634,6 +634,81 @@ export const mission = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'PATCH',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}/registrations/{registrationUid}',
+        handler: controller.updateMissionSlotRegistration,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Updates an existing mission slot registration',
+            notes: 'Updates the mutable attributes of a mission slot registration, allowing for registrations to be accepted or changed. Confirming a mission slot sets the ' +
+            'assignee for the respective slot. Changing an already confirmed registration to unconfirmed removes the assignee again and allows for another assignment. ' +
+            'This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is ' +
+            'required to access this endpoint',
+            tags: ['api', 'patch', 'v1', 'missions', 'slot', 'registration', 'update', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update the slot registrations for')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to update registrations for')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+                    registrationUid: Joi.string().guid().length(36).required().description('UID of the mission slot registration to update')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                payload: Joi.object().required().keys({
+                    confirmed: Joi.bool().required().description('Indicates whether the mission slot registration is confirmed by the mission creator').example(true)
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    registration: missionSlotRegistrationSchema.required().description('Updated mission slot registration')
+                }).label('UpdateMissionSlotRegistrationResponse').description('Response containing the updated mission slot registration')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot/registration with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found', 'Mission slot registration not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The mission slot is already assigned to a user',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission slot already assigned').required().description('Message further describing the error')
                             })
                         },
                         500: {
