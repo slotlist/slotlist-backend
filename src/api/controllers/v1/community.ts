@@ -118,7 +118,7 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
 export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.communitySlug;
 
         const community = await Community.findOne({
             where: { slug },
@@ -155,7 +155,7 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
 
 export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.communitySlug;
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
@@ -200,7 +200,7 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
 export function applyToCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.communitySlug;
         const userUid = request.auth.credentials.user.uid;
 
         const community = await Community.findOne({ where: { slug }, include: [{ model: User, as: 'members' }] });
@@ -244,7 +244,7 @@ export function applyToCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCon
 
 export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.communitySlug;
         const userUid = request.auth.credentials.user.uid;
         const status = _.includes(COMMUNITY_APPLICATION_STATUSES, request.query.status) ? request.query.status : undefined;
         const queryOptions: any = {
@@ -292,8 +292,8 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
 
 export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
-        const applicationUid = request.params.uid;
+        const slug = request.params.communitySlug;
+        const applicationUid = request.params.applicationUid;
         const userUid = request.auth.credentials.user.uid;
         const status = _.includes([COMMUNITY_APPLICATION_STATUS_ACCEPTED, COMMUNITY_APPLICATION_STATUS_DENIED], request.payload.status) ? request.payload.status : undefined;
 
@@ -354,7 +354,7 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
 
 export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.communitySlug;
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset
@@ -402,7 +402,7 @@ export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyW
 
 export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.communitySlug;
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset

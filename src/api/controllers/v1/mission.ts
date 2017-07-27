@@ -138,7 +138,7 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
 export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.missionSlug;
 
         const mission = await Mission.findOne({
             where: { slug },
@@ -168,7 +168,7 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
 export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.missionSlug;
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
@@ -208,7 +208,7 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.missionSlug;
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset
@@ -244,7 +244,7 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
 
 export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
+        const slug = request.params.missionSlug;
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
@@ -289,8 +289,8 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
 export function getMissionSlotDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
-        const slotUid = request.params.uid;
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
         const userUid = request.auth.credentials.user.uid;
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
@@ -315,8 +315,8 @@ export function getMissionSlotDetails(request: Hapi.Request, reply: Hapi.ReplyWi
 
 export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const slug = request.params.slug;
-        const slotUid = request.params.uid;
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 

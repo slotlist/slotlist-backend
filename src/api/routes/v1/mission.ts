@@ -189,7 +189,7 @@ export const mission = [
     },
     {
         method: 'GET',
-        path: '/v1/missions/{slug}',
+        path: '/v1/missions/{missionSlug}',
         handler: controller.getMissionDetails,
         config: {
             auth: {
@@ -208,7 +208,7 @@ export const mission = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve').example('all-of-altis')
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve').example('all-of-altis')
                 })
             },
             response: {
@@ -238,7 +238,7 @@ export const mission = [
     },
     {
         method: 'PATCH',
-        path: '/v1/missions/{slug}',
+        path: '/v1/missions/{missionSlug}',
         handler: controller.updateMission,
         config: {
             auth: {
@@ -257,7 +257,7 @@ export const mission = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update').example('all-of-altis')
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update').example('all-of-altis')
                 }),
                 payload: Joi.object().required().keys({
                     title: Joi.string().min(1).max(255).optional().description('New title of the mission').example('All of Altis'),
@@ -290,7 +290,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{slug}}.creator', 'mission.{{slug}}.editor']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -317,7 +317,7 @@ export const mission = [
     },
     {
         method: 'GET',
-        path: '/v1/missions/{slug}/slots',
+        path: '/v1/missions/{missionSlug}/slots',
         handler: controller.getMissionSlotList,
         config: {
             auth: {
@@ -335,7 +335,7 @@ export const mission = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve slots for').example('all-of-altis')
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve slots for').example('all-of-altis')
                 }),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotList.max).default(LIMITS.missionSlotList.default).optional()
@@ -378,7 +378,7 @@ export const mission = [
     },
     {
         method: 'POST',
-        path: '/v1/missions/{slug}/slots',
+        path: '/v1/missions/{missionSlug}/slots',
         handler: controller.createMissionSlot,
         config: {
             auth: {
@@ -397,7 +397,7 @@ export const mission = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create slots for').example('all-of-altis')
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create slots for').example('all-of-altis')
                 }),
                 payload: Joi.array().min(1).items({
                     title: Joi.string().min(1).max(255).required().description('Title of the slot').example('Platoon Lead'),
@@ -421,7 +421,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{slug}}.creator', 'mission.{{slug}}.editor']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -448,7 +448,7 @@ export const mission = [
     },
     {
         method: 'GET',
-        path: '/v1/missions/{slug}/slots/{uid}',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}',
         handler: controller.getMissionSlotDetails,
         config: {
             auth: {
@@ -466,9 +466,9 @@ export const mission = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve the slot for')
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve the slot for')
                         .example('all-of-altis'),
-                    uid: Joi.string().guid().length(36).required().description('UID of the mission slot to retrieve').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to retrieve').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 })
             },
             response: {
@@ -498,7 +498,7 @@ export const mission = [
     },
     {
         method: 'PATCH',
-        path: '/v1/missions/{slug}/slots/{uid}',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}',
         handler: controller.updateMissionSlot,
         config: {
             auth: {
@@ -517,9 +517,9 @@ export const mission = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update the slot for')
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update the slot for')
                         .example('all-of-altis'),
-                    uid: Joi.string().guid().length(36).required().description('UID of the mission slot to update').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to update').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 }),
                 payload: Joi.object().required().keys({
                     title: Joi.string().min(1).max(255).optional().description('New title of the slot').example('Platoon Lead'),
@@ -543,7 +543,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{slug}}.creator', 'mission.{{slug}}.editor']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {

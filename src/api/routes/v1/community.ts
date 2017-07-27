@@ -180,7 +180,7 @@ export const community = [
     },
     {
         method: 'GET',
-        path: '/v1/communities/{slug}',
+        path: '/v1/communities/{communitySlug}',
         handler: controller.getCommunityDetails,
         config: {
             auth: {
@@ -199,7 +199,7 @@ export const community = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
                 })
             },
             response: {
@@ -229,7 +229,7 @@ export const community = [
     },
     {
         method: 'PATCH',
-        path: '/v1/communities/{slug}',
+        path: '/v1/communities/{communitySlug}',
         handler: controller.updateCommunity,
         config: {
             auth: {
@@ -248,7 +248,7 @@ export const community = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to update').example('spezialeinheit-luchs')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to update').example('spezialeinheit-luchs')
                 }),
                 payload: Joi.object().required().keys({
                     name: Joi.string().min(1).max(255).optional().description('New name of the community').example('Spezialeinheit Luchs'),
@@ -264,7 +264,7 @@ export const community = [
             },
             plugins: {
                 acl: {
-                    permissions: ['community.{{slug}}.founder', 'community.{{slug}}.leader']
+                    permissions: ['community.{{communitySlug}}.founder', 'community.{{communitySlug}}.leader']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -291,7 +291,7 @@ export const community = [
     },
     {
         method: 'POST',
-        path: '/v1/communities/{slug}/apply',
+        path: '/v1/communities/{communitySlug}/apply',
         handler: controller.applyToCommunity,
         config: {
             auth: {
@@ -310,7 +310,7 @@ export const community = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to apply to').example('spezialeinheit-luchs')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to apply to').example('spezialeinheit-luchs')
                 })
             },
             response: {
@@ -351,7 +351,7 @@ export const community = [
     },
     {
         method: 'GET',
-        path: '/v1/communities/{slug}/applications',
+        path: '/v1/communities/{communitySlug}/applications',
         handler: controller.getCommunityApplicationList,
         config: {
             auth: {
@@ -370,7 +370,7 @@ export const community = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
                         .example('spezialeinheit-luchs')
                 }),
                 query: Joi.object().required().keys({
@@ -396,7 +396,7 @@ export const community = [
             },
             plugins: {
                 acl: {
-                    permissions: ['community.{{slug}}.founder', 'community.{{slug}}.leader', 'community.{{slug}}.recruitment']
+                    permissions: ['community.{{communitySlug}}.founder', 'community.{{communitySlug}}.leader', 'community.{{communitySlug}}.recruitment']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -423,7 +423,7 @@ export const community = [
     },
     {
         method: 'PATCH',
-        path: '/v1/communities/{slug}/applications/{uid}',
+        path: '/v1/communities/{communitySlug}/applications/{applicationUid}',
         handler: controller.updateCommunityApplication,
         config: {
             auth: {
@@ -442,9 +442,10 @@ export const community = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
                         .example('spezialeinheit-luchs'),
-                    uid: Joi.string().guid().length(36).required().description('UID of the community application to update').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                    applicationUid: Joi.string().guid().length(36).required().description('UID of the community application to update')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 }),
                 payload: Joi.object().required().keys({
                     status: Joi.string().equal(COMMUNITY_APPLICATION_STATUS_ACCEPTED, COMMUNITY_APPLICATION_STATUS_DENIED).required()
@@ -458,7 +459,7 @@ export const community = [
             },
             plugins: {
                 acl: {
-                    permissions: ['community.{{slug}}.founder', 'community.{{slug}}.leader', 'community.{{slug}}.recruitment']
+                    permissions: ['community.{{communitySlug}}.founder', 'community.{{communitySlug}}.leader', 'community.{{communitySlug}}.recruitment']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -493,7 +494,7 @@ export const community = [
     },
     {
         method: 'GET',
-        path: '/v1/communities/{slug}/members',
+        path: '/v1/communities/{communitySlug}/members',
         handler: controller.getCommunityMemberList,
         config: {
             auth: {
@@ -512,7 +513,7 @@ export const community = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
                 }),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).default(LIMITS.communityMissionList.default).optional()
@@ -555,7 +556,7 @@ export const community = [
     },
     {
         method: 'GET',
-        path: '/v1/communities/{slug}/missions',
+        path: '/v1/communities/{communitySlug}/missions',
         handler: controller.getCommunityMissionList,
         config: {
             auth: {
@@ -574,7 +575,7 @@ export const community = [
                     authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve').example('spezialeinheit-luchs')
                 }),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityMissionList.max).default(LIMITS.communityMissionList.default).optional()
