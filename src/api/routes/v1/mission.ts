@@ -495,5 +495,77 @@ export const mission = [
                 }
             }
         }
+    },
+    {
+        method: 'PATCH',
+        path: '/v1/missions/{slug}/slots/{uid}',
+        handler: controller.updateMissionSlot,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Updates an existing mission slot',
+            notes: 'Updates the mutable attributes of a mission slot. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'patch', 'v1', 'missions', 'slot', 'update', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update the slot for')
+                        .example('all-of-altis'),
+                    uid: Joi.string().guid().length(36).required().description('UID of the mission slot to update').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                payload: Joi.object().required().keys({
+                    title: Joi.string().min(1).max(255).optional().description('New title of the slot').example('Platoon Lead'),
+                    orderNumber: Joi.number().integer().positive().allow(0).min(0).optional().description('New order number for sorting slotlist').example(0),
+                    difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).optional().description('New difficulity of the slot, ranging from 0 (easiest) ' +
+                        'to 4 (hardest)').example(4),
+                    shortDescription: Joi.string().allow(null).min(1).optional().description('New optional short description of the slot')
+                        .example('Leads Platoon Luchs and coordinates logistics'),
+                    description: Joi.string().allow(null).min(1).optional().description('New detailed, optional description of the mission slot, further ' +
+                        'explaining the responsibilities and the selected role').example('<div>Actually know what they are doing!</div>'),
+                    restricted: Joi.bool().optional().description('New indicator whether the slot is restricted (true, not available for public registration) or whether ' +
+                        'everyone can register (false)').example(true),
+                    reserve: Joi.bool().optional().description('New indicator whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
+                        'filled) or a regular one (false)').example(false)
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slot: missionSlotDetailsSchema
+                }).label('UpdateMissionSlotResponse').description('Response containing the updated mission slot')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{slug}}.creator', 'mission.{{slug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
     }
 ];

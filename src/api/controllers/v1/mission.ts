@@ -301,11 +301,45 @@ export function getMissionSlotDetails(request: Hapi.Request, reply: Hapi.ReplyWi
 
         const slots = await mission.getSlots({ where: { uid: slotUid } });
         if (_.isNil(slots) || _.isEmpty(slots)) {
-            log.debug({ function: 'getMissionSlotDetails', slug, mission, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            log.debug({ function: 'getMissionSlotDetails', slug, slotUid, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
 
         const publicMissionSlot = await slots[0].toDetailedPublicObject();
+
+        return {
+            slot: publicMissionSlot
+        };
+    })());
+}
+
+export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.slug;
+        const slotUid = request.params.uid;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slots = await mission.getSlots({ where: { uid: slotUid } });
+        if (_.isNil(slots) || _.isEmpty(slots)) {
+            log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+        const slot = slots[0];
+
+        log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
+
+        await slot.update(payload, { allowed: ['title', 'orderNumber', 'difficulty', 'shortDescription', 'description', 'restricted', 'reserve'] });
+
+        log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission slot');
+
+        const publicMissionSlot = await slot.toDetailedPublicObject();
 
         return {
             slot: publicMissionSlot
