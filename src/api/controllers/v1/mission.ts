@@ -207,6 +207,27 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
     })());
 }
 
+export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        log.debug({ function: 'deleteMission', slug, userUid }, 'Deleting mission');
+
+        const deleted = await Mission.destroy({ where: { slug } });
+        if (deleted <= 0) {
+            log.debug({ function: 'deleteMission', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        log.debug({ function: 'deleteMission', slug, userUid, deleted }, 'Successfully deleted mission');
+
+        return {
+            success: true
+        };
+    })());
+}
+
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
@@ -339,6 +360,37 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
         return {
             slot: publicMissionSlot
+        };
+    })());
+}
+
+export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slots = await mission.getSlots({ where: { uid: slotUid } });
+        if (_.isNil(slots) || _.isEmpty(slots)) {
+            log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+        const slot = slots[0];
+
+        log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Deleting mission slot');
+
+        await slot.destroy();
+
+        log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot');
+
+        return {
+            success: true
         };
     })());
 }
@@ -533,5 +585,55 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 registration: publicMissionSlotRegistration
             };
         });
+    })());
+}
+
+export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const registrationUid = request.params.registrationUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionSlotRegistration', slug, slotUid, registrationUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slots = await mission.getSlots({ where: { uid: slotUid } });
+        if (_.isNil(slots) || _.isEmpty(slots)) {
+            log.debug({ function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+        const slot = slots[0];
+
+        const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
+        if (_.isNil(registrations) || _.isEmpty(registrations)) {
+            log.debug(
+                { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                'Mission slot registration with given UID not found');
+            throw Boom.notFound('Mission slot registration not found');
+        }
+        const registration = registrations[0];
+
+        if (registration.userUid !== userUid) {
+            log.debug(
+                { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
+                'User tried to delete mission slot registration that was created by a different user, denying');
+            throw Boom.forbidden();
+        }
+
+        log.debug({ function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid }, 'Deleting mission slot registration');
+
+        await registration.destroy();
+
+        log.debug(
+            { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+            'Successfully deleted mission slot registration');
+
+        return {
+            success: true
+        };
     })());
 }

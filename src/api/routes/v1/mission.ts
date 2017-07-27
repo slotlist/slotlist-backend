@@ -321,6 +321,62 @@ export const mission = [
         }
     },
     {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}',
+        handler: controller.deleteMission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing mission',
+            notes: 'Deletes an existing mission, including all associated missions slots and mission slot registrations. This endpoint can only be used by mission creators. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete').example('all-of-altis')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/v1/missions/{missionSlug}/slots',
         handler: controller.getMissionSlotList,
@@ -574,6 +630,64 @@ export const mission = [
         }
     },
     {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}',
+        handler: controller.deleteMissionSlot,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing mission slot',
+            notes: 'Deletes an existing mission slot, including all associated mission slot registrations. This endpoint can only be used by mission creators and users with the ' +
+            '`mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'slot', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete the slot for')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to delete').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionSlotResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/v1/missions/{missionSlug}/slots/{slotUid}/registrations',
         handler: controller.getMissionSlotRegistrationList,
@@ -769,6 +883,65 @@ export const mission = [
                                 statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission slot already assigned').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}/registrations/{registrationUid}',
+        handler: controller.deleteMissionSlotRegistration,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing mission slot registration',
+            notes: 'Allows a user to delete their mission slot registration. Registrations can only be deleted by the user that created them. Regular user authentication ' +
+            'required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'slot', 'registration', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete the slot registrations for')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to delete registrations for')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+                    registrationUid: Joi.string().guid().length(36).required().description('UID of the mission slot registration to delete')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionSlotRegistrationResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user tried to delete a mission slot registration created by a different user',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot/registration with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found', 'Mission slot registration not found').required()
+                                    .description('Message further describing the error')
                             })
                         },
                         500: {
