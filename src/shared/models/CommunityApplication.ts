@@ -101,7 +101,9 @@ export class CommunityApplication extends Model {
         references: {
             model: Community,
             key: 'uid'
-        }
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public communityUid: string;
 
@@ -126,7 +128,9 @@ export class CommunityApplication extends Model {
         references: {
             model: User,
             key: 'uid'
-        }
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public userUid: string;
 

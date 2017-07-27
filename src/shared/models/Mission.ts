@@ -266,7 +266,8 @@ export class Mission extends Model {
             model: Community,
             key: 'uid'
         },
-        onDelete: 'SET NULL'
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
     })
     public communityUid?: string;
 
@@ -291,7 +292,9 @@ export class Mission extends Model {
         references: {
             model: User,
             key: 'uid'
-        }
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public creatorUid: string;
 

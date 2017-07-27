@@ -124,7 +124,8 @@ export class User extends Model {
             model: Community,
             key: 'uid'
         },
-        onDelete: 'SET NULL'
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
     })
     public communityUid?: string;
 

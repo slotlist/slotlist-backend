@@ -12,33 +12,35 @@ import { User } from './User';
  *
  * @export
  */
+// tslint:disable:max-line-length
 export function createAssociations(): void {
-    Community.associations.applications = Community.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'communityUid' });
-    Community.associations.members = Community.hasMany(User, { as: 'members', foreignKey: 'communityUid' });
-    Community.associations.missions = Community.hasMany(Mission, { as: 'missions', foreignKey: 'communityUid' });
+    Community.associations.applications = Community.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    Community.associations.members = Community.hasMany(User, { as: 'members', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+    Community.associations.missions = Community.hasMany(Mission, { as: 'missions', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
 
-    CommunityApplication.associations.community = CommunityApplication.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
-    CommunityApplication.associations.user = CommunityApplication.belongsTo(User, { as: 'user', foreignKey: 'userUid' });
+    CommunityApplication.associations.community = CommunityApplication.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    CommunityApplication.associations.user = CommunityApplication.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-    Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
-    Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid' });
-    Mission.associations.slots = Mission.hasMany(MissionSlot, { as: 'slots', foreignKey: 'missionUid' });
+    Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+    Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    Mission.associations.slots = Mission.hasMany(MissionSlot, { as: 'slots', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-    MissionSlot.associations.assignee = MissionSlot.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeUid' });
-    MissionSlot.associations.mission = MissionSlot.belongsTo(Mission, { as: 'mission', foreignKey: 'missionUid' });
-    MissionSlot.associations.registrations = MissionSlot.hasMany(MissionSlotRegistration, { as: 'registrations', foreignKey: 'slotUid' });
+    MissionSlot.associations.assignee = MissionSlot.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+    MissionSlot.associations.mission = MissionSlot.belongsTo(Mission, { as: 'mission', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    MissionSlot.associations.registrations = MissionSlot.hasMany(MissionSlotRegistration, { as: 'registrations', foreignKey: 'slotUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-    MissionSlotRegistration.associations.slot = MissionSlotRegistration.belongsTo(MissionSlot, { as: 'slot', foreignKey: 'slotUid' });
-    MissionSlotRegistration.associations.user = MissionSlotRegistration.belongsTo(User, { as: 'user', foreignKey: 'userUid' });
+    MissionSlotRegistration.associations.slot = MissionSlotRegistration.belongsTo(MissionSlot, { as: 'slot', foreignKey: 'slotUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    MissionSlotRegistration.associations.user = MissionSlotRegistration.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-    Permission.associations.user = Permission.belongsTo(User, { as: 'user', foreignKey: 'userUid' });
+    Permission.associations.user = Permission.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
-    User.associations.applications = User.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'userUid' });
-    User.associations.community = User.belongsTo(Community, { as: 'community', foreignKey: 'communityUid' });
-    User.associations.missions = User.hasMany(Mission, { as: 'missions', foreignKey: 'creatorUid' });
-    User.associations.missionSlots = User.hasMany(MissionSlot, { as: 'missionSlots', foreignKey: 'assigneeUid' });
-    User.associations.missionSlotRegistrations = User.hasMany(MissionSlotRegistration, { as: 'missionSlotRegistrations', foreignKey: 'userUid' });
-    User.associations.permissions = User.hasMany(Permission, { as: 'permissions', foreignKey: 'userUid' });
+    User.associations.applications = User.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.community = User.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.missions = User.hasMany(Mission, { as: 'missions', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.missionSlots = User.hasMany(MissionSlot, { as: 'missionSlots', foreignKey: 'assigneeUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.missionSlotRegistrations = User.hasMany(MissionSlotRegistration, { as: 'missionSlotRegistrations', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.permissions = User.hasMany(Permission, { as: 'permissions', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 }
+// tslint:enable:max-line-length
 
 export default createAssociations;

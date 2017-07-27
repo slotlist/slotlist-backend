@@ -53,7 +53,8 @@ module.exports = {
                     model: 'users',
                     key: 'uid'
                 },
-                onDelete: 'SET NULL'
+                onDelete: 'SET NULL',
+                onUpdate: 'CASCADE'
             },
             missionUid: {
                 type: DataTypes.UUID,
@@ -62,7 +63,8 @@ module.exports = {
                     model: 'missions',
                     key: 'uid'
                 },
-                onDelete: 'CASCADE'
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
             },
             createdAt: {
                 type: DataTypes.DATE,

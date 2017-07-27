@@ -30,7 +30,8 @@ module.exports = {
                     model: 'communities',
                     key: 'uid'
                 },
-                onDelete: 'SET NULL'
+                onDelete: 'SET NULL',
+                onUpdate: 'CASCADE'
             },
             createdAt: {
                 type: DataTypes.DATE,

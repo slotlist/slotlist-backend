@@ -23,7 +23,8 @@ module.exports = {
                     model: 'users',
                     key: 'uid'
                 },
-                onDelete: 'CASCADE'
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
             },
             createdAt: {
                 type: DataTypes.DATE,

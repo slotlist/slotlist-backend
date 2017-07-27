@@ -87,7 +87,9 @@ export class Permission extends Model {
         references: {
             model: User,
             key: 'uid'
-        }
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public userUid: string;
 
@@ -155,7 +157,8 @@ export class Permission extends Model {
      */
     public async toPublicObject(): Promise<IPublicPermission> {
         return {
-            uid: this.uid
+            uid: this.uid,
+            permission: this.permission
         };
     }
 
@@ -172,4 +175,5 @@ export class Permission extends Model {
  */
 export interface IPublicPermission {
     uid: string;
+    permission: string;
 }

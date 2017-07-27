@@ -189,7 +189,8 @@ export class MissionSlot extends Model {
             model: User,
             key: 'uid'
         },
-        onDelete: 'SET NULL'
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
     })
     public assigneeUid?: string;
 
@@ -215,7 +216,8 @@ export class MissionSlot extends Model {
             model: Mission,
             key: 'uid'
         },
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public missionUid: string;
 

@@ -107,7 +107,9 @@ module.exports = {
                 references: {
                     model: 'communities',
                     key: 'uid'
-                }
+                },
+                onDelete: 'SET NULL',
+                onUpdate: 'CASCADE'
             },
             creatorUid: {
                 type: DataTypes.UUID,
@@ -115,7 +117,9 @@ module.exports = {
                 references: {
                     model: 'users',
                     key: 'uid'
-                }
+                },
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
             },
             createdAt: {
                 type: DataTypes.DATE,

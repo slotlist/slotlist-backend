@@ -24,7 +24,8 @@ module.exports = {
                     model: 'missionSlots',
                     key: 'uid'
                 },
-                onDelete: 'CASCADE'
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
             },
             userUid: {
                 type: DataTypes.UUID,
@@ -33,7 +34,8 @@ module.exports = {
                     model: 'users',
                     key: 'uid'
                 },
-                onDelete: 'CASCADE'
+                onDelete: 'CASCADE',
+                onUpdate: 'CASCADE'
             },
             createdAt: {
                 type: DataTypes.DATE,

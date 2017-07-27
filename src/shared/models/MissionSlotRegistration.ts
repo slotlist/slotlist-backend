@@ -91,7 +91,9 @@ export class MissionSlotRegistration extends Model {
         references: {
             model: MissionSlot,
             key: 'uid'
-        }
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public slotUid: string;
 
@@ -116,7 +118,9 @@ export class MissionSlotRegistration extends Model {
         references: {
             model: User,
             key: 'uid'
-        }
+        },
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE'
     })
     public userUid: string;
 
