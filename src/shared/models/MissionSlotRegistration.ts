@@ -200,8 +200,9 @@ export class MissionSlotRegistration extends Model {
         return {
             uid: this.uid,
             confirmed: this.confirmed,
-            missionSlotUid: this.slotUid,
-            user: publicUser
+            slotUid: this.slotUid,
+            user: publicUser,
+            createdAt: this.createdAt
         };
     }
 
@@ -219,6 +220,7 @@ export class MissionSlotRegistration extends Model {
 export interface IPublicMissionSlotRegistration {
     uid: string;
     confirmed: boolean;
-    missionSlotUid: string;
+    slotUid: string;
     user: IPublicUser;
+    createdAt: Date;
 }

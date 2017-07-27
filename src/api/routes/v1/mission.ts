@@ -3,6 +3,7 @@ import * as Joi from 'joi';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionSlotDetailsSchema, missionSlotSchema } from '../../../shared/schemas/missionSlot';
+import { missionSlotRegistrationSchema } from '../../../shared/schemas/missionSlotRegistration';
 import * as controller from '../../controllers/v1/mission';
 
 /**
@@ -15,6 +16,10 @@ export const LIMITS = {
         max: 100
     },
     missionSlotList: {
+        default: 25,
+        max: 100
+    },
+    missionSlotRegistrationList: {
         default: 25,
         max: 100
     }
@@ -540,6 +545,78 @@ export const mission = [
                 schema: Joi.object().required().keys({
                     slot: missionSlotDetailsSchema
                 }).label('UpdateMissionSlotResponse').description('Response containing the updated mission slot')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}/registrations',
+        handler: controller.getMissionSlotRegistrationList,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns a list of registrations for the selected slot for the given mission',
+            notes: 'Returns a paginated list of registrations for the selected slot for the given mission. This endpoint can only be used by mission creators and users with the ' +
+            '`mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve the slot registrations for')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to retrieve registrations for')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotRegistrationList.max).default(LIMITS.missionSlotRegistrationList.default).optional()
+                        .description('Limit for number of registrations to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of registrations to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotRegistrationList.max).required()
+                        .description('Limit for number of registrations to retrieve, as provided via query'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Number of registrations to skip before retrieving new ones from database, as provided via query'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionSlotRegistrationList.max).required()
+                        .description('Actual number of registrations returned'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more registrations are available and can be retrieved using pagination'),
+                    registrations: Joi.array().items(missionSlotRegistrationSchema.optional()).required().description('List of mission slot registrations retrieved')
+                }).label('GetMissionSlotRegistrationListResponse').description('Response containing the mission slot details')
             },
             plugins: {
                 acl: {

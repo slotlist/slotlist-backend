@@ -7,6 +7,7 @@ import { Transaction } from 'sequelize';
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
 import { MissionSlot } from '../../../shared/models/MissionSlot';
+import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
@@ -343,6 +344,47 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
         return {
             slot: publicMissionSlot
+        };
+    })());
+}
+
+export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const userUid = request.auth.credentials.user.uid;
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            slotUid
+        };
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'getMissionSlotRegistrations', slug, slotUid, userUid, queryOptions }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slots = await mission.getSlots({ where: { uid: slotUid } });
+        if (_.isNil(slots) || _.isEmpty(slots)) {
+            log.debug({ function: 'getMissionSlotRegistrations', slug, slotUid, userUid, queryOptions, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+
+        const result = await MissionSlotRegistration.findAndCountAll(queryOptions);
+
+        const registrationCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + registrationCount) < result.count;
+        const registrationList = await Promise.map(result.rows, (registration: MissionSlotRegistration) => {
+            return registration.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: registrationCount,
+            moreAvailable: moreAvailable,
+            registrations: registrationList
         };
     })());
 }
