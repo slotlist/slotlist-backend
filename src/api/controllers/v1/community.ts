@@ -17,6 +17,8 @@ import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
+// tslint:disable-next-line:import-name
+import slugger from '../../../shared/util/slug';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
 /**
@@ -73,6 +75,9 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
             throw Boom.badRequest('Disallowed slug');
         }
+
+        // Make sure payload is properly "slugged"
+        payload.slug = slugger(payload.slug);
 
         log.debug({ function: 'createCommunity', payload, user }, 'Creating new community');
 

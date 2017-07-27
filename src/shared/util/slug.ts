@@ -5,15 +5,15 @@ import * as slug from 'slug';
  */
 slug.charmap['.'] = '-';
 
-slug.defaults.modes.pretty = {
+(<any>slug.defaults.modes).custom = {
     replacement: '-',
     symbols: true,
-    remove: null,
+    remove: /[%]/g, // remove `%` from slugs to avoid issues with permission removal using `iLike`
     lower: true,
     charmap: slug.charmap,
     multicharmap: slug.multicharmap
 };
 
-slug.defaults.mode = 'pretty';
+slug.defaults.mode = 'custom';
 
 export default slug;

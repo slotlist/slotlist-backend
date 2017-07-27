@@ -11,6 +11,8 @@ import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegis
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
+// tslint:disable-next-line:import-name
+import slugger from '../../../shared/util/slug';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
 /**
@@ -75,6 +77,9 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
             throw Boom.badRequest('Disallowed slug');
         }
+
+        // Make sure payload is properly "slugged"
+        payload.slug = slugger(payload.slug);
 
         const user = await User.findById(userUid, { include: [{ model: Community, as: 'community' }] });
         if (_.isNil(user)) {
