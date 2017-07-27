@@ -34,7 +34,7 @@ import { IPublicUser, User } from './User';
 @Options({
     sequelize,
     tableName: 'communities',
-    paranoid: true
+    paranoid: false
 })
 export class Community extends Model {
     /**
@@ -188,21 +188,6 @@ export class Community extends Model {
         defaultValue: DataTypes.NOW
     })
     public updatedAt: Date;
-
-    /**
-     * Time (and date) the community instance was deleted.
-     * Will only be set once the community has been deleted, caused by paranoid table settings.
-     * Can be `undefined|null` until the community instance deletion
-     *
-     * @type {Date|undefined|null}
-     * @memberof Community
-     */
-    @Attribute({
-        type: DataTypes.DATE,
-        allowNull: true,
-        defaultValue: null
-    })
-    public deletedAt?: Date;
 
     ////////////////////////////
     // Sequelize model mixins //

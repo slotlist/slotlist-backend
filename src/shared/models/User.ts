@@ -38,7 +38,7 @@ import { Permission } from './Permission';
 @Options({
     sequelize,
     tableName: 'users',
-    paranoid: true
+    paranoid: false
 })
 export class User extends Model {
     /**
@@ -208,21 +208,6 @@ export class User extends Model {
         defaultValue: DataTypes.NOW
     })
     public updatedAt: Date;
-
-    /**
-     * Time (and date) the user instance was deleted
-     * Will only be set once the user has been deleted, caused by paranoid table settings
-     * Can be `undefined|null` until the user instance deletion
-     *
-     * @type {Date|undefined|null}
-     * @memberof User
-     */
-    @Attribute({
-        type: DataTypes.DATE,
-        allowNull: true,
-        defaultValue: null
-    })
-    public deletedAt?: Date;
 
     ////////////////////////////
     // Sequelize model mixins //
