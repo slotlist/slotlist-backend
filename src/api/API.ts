@@ -226,7 +226,7 @@ export class API {
                 'Successfully finished checking ACL for restricted route');
 
             if (!hasPermission) {
-                log.debug(
+                log.info(
                     { function: 'checkACL', req: request, requiredPermissions, strict, credentials, userUid: credentials.user.uid, hasPermission },
                     'User tried to access restricted route without proper permission');
 

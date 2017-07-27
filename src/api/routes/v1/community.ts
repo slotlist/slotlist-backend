@@ -290,6 +290,62 @@ export const community = [
         }
     },
     {
+        method: 'DELETE',
+        path: '/v1/communities/{communitySlug}',
+        handler: controller.deleteCommunity,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing community',
+            notes: 'Deletes an existing community, including all associated applications. Removes all assocations with users and missions and deletes all community-related ' +
+            'permissions. This endpoint can only be used by community founders. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'communities', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to delete').example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteCommunityResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{communitySlug}}.founder']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/v1/communities/{communitySlug}/applications',
         handler: controller.getCommunityApplicationList,
@@ -422,6 +478,56 @@ export const community = [
         }
     },
     {
+        method: 'GET',
+        path: '/v1/communities/{communitySlug}/applications/status',
+        handler: controller.getCommunityApplicationStatus,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Retrieve the status of a user\'s community application',
+            notes: 'Retrieves the status of a user\'s community application, also returning the community application UID used for deleting the application. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'application', 'status', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to get the application status for')
+                        .example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    application: communityApplicationSchema.description('Community application status')
+                }).label('GetCommunityApplicationStatusResponse').description('Response containing the application status')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        404: {
+                            description: 'No community with given slug or no application with the given user UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'Community application not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'PATCH',
         path: '/v1/communities/{communitySlug}/applications/{applicationUid}',
         handler: controller.updateCommunityApplication,
@@ -442,7 +548,7 @@ export const community = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve applications for')
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to update the application for')
                         .example('spezialeinheit-luchs'),
                     applicationUid: Joi.string().guid().length(36).required().description('UID of the community application to update')
                         .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
@@ -481,6 +587,62 @@ export const community = [
                                 statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community application already processed').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/communities/{communitySlug}/applications/{applicationUid}',
+        handler: controller.deleteCommunityApplication,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing application to the community',
+            notes: 'Allows a user to delete their community application, also removing the user from the community if they were a member and deleting all their ' +
+            'community permissions. Applications can only be deleted by the user that created them. Regular user authentication required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'communities', 'application', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to delete the application for')
+                        .example('spezialeinheit-luchs'),
+                    applicationUid: Joi.string().guid().length(36).required().description('UID of the community application to delete')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteCommunityApplicationResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user tried to delete a community application created by a different user',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug or no application with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'Community application not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
@@ -543,6 +705,66 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/communities/{communitySlug}/members/{memberUid}',
+        handler: controller.removeCommunityMember,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Removes a member from the community',
+            notes: 'Removes a member from the community, also deleting their community application as well as all community permissions. This endpoint can only be used by ' +
+            'community leaders - community founders can not be removed by anyone beside admins. Regular user authentication with appropriate permissions is required to access ' +
+            'this endpoint',
+            tags: ['api', 'delete', 'v1', 'communities', 'member', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to remove member from')
+                        .example('spezialeinheit-luchs'),
+                    memberUid: Joi.string().guid().length(36).required().description('UID of the member to remove from the community')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('RemoveCommunityMemberResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{communitySlug}}.founder', 'community.{{communitySlug}}.leader']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint or tried to remove a community founder',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug or member with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'Community member not found').required().description('Message further describing the error')
                             })
                         },
                         500: {

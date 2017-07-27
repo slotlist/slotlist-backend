@@ -13,6 +13,7 @@ import {
     CommunityApplication
 } from '../../../shared/models/CommunityApplication';
 import { Mission } from '../../../shared/models/Mission';
+import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
@@ -198,6 +199,34 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
     })());
 }
 
+export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug } });
+        if (_.isNil(community)) {
+            log.debug({ function: 'deleteCommunity', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid }, 'Deleting community');
+
+            await Promise.all([
+                await community.destroy(),
+                await Permission.destroy({ where: { permission: { $iLike: `community.${slug}.%` } } })
+            ]);
+
+            log.debug({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid }, 'Successfully deleted community');
+
+            return {
+                success: true
+            };
+        });
+    })());
+}
+
 export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
@@ -292,6 +321,32 @@ export function createCommunityApplication(request: Hapi.Request, reply: Hapi.Re
     })());
 }
 
+export function getCommunityApplicationStatus(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityApplicationStatus', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const applications = await community.getApplications({ where: { userUid: userUid } });
+        if (_.isNil(applications) || _.isEmpty(applications)) {
+            log.debug({ function: 'getCommunityApplicationStatus', slug, userUid, communityUid: community.uid }, 'Community application with given user UID not found');
+            throw Boom.notFound('Community application not found');
+        }
+        const application = applications[0];
+
+        const publicApplication = await application.toPublicObject();
+
+        return {
+            application: publicApplication
+        };
+    })());
+}
+
 export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
@@ -349,6 +404,99 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
 
             return {
                 application: publicApplication
+            };
+        });
+    })());
+}
+
+export function deleteCommunityApplication(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const applicationUid = request.params.applicationUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const applications = await community.getApplications({ where: { uid: applicationUid } });
+        if (_.isNil(applications) || _.isEmpty(applications)) {
+            log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid }, 'Community application with given UID not found');
+            throw Boom.notFound('Community application not found');
+        }
+        const application = applications[0];
+
+        if (application.userUid !== userUid) {
+            log.info(
+                { function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid, applicationUserUid: application.userUid },
+                'User tried to delete community application that was created by a different user, denying');
+            throw Boom.forbidden();
+        }
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid }, 'Deleting community application');
+
+            if (await community.hasMember(userUid)) {
+                await Promise.all([
+                    application.destroy(),
+                    Permission.destroy({ where: { userUid, permission: { $iLike: `community.${slug}.%` } } }),
+                    community.removeMember(userUid)
+                ]);
+            } else {
+                await Promise.all([
+                    application.destroy(),
+                    Permission.destroy({ where: { userUid, permission: { $iLike: `community.${slug}.%` } } })
+                ]);
+            }
+
+            log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid }, 'Successfully deleted community application');
+
+            return {
+                success: true
+            };
+        });
+    })());
+}
+
+export function removeCommunityMember(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const memberUid = request.params.memberUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const members = await community.getMembers({ where: { uid: memberUid } });
+        if (_.isNil(members) || _.isEmpty(members)) {
+            log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid }, 'Community member with given UID not found');
+            throw Boom.notFound('Community member not found');
+        }
+        const member = members[0];
+
+        if (await member.hasPermission(`community.${slug}.founder`)) {
+            log.info({ function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid }, 'User tried to remove community founder, denying');
+            throw Boom.forbidden();
+        }
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid }, 'Removing community member');
+
+            await Promise.all([
+                community.removeMember(memberUid),
+                Permission.destroy({ where: { userUid: memberUid, permission: { $iLike: `community.${slug}.%` } } }),
+                CommunityApplication.destroy({ where: { userUid: memberUid, communityUid: community.uid } })
+            ]);
+
+            log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid }, 'Successfully removed community member');
+
+            return {
+                success: true
             };
         });
     })());

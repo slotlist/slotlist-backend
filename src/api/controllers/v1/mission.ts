@@ -618,7 +618,7 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         const registration = registrations[0];
 
         if (registration.userUid !== userUid) {
-            log.debug(
+            log.info(
                 { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
                 'User tried to delete mission slot registration that was created by a different user, denying');
             throw Boom.forbidden();
