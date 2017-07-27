@@ -17,17 +17,24 @@ module.exports = {
             },
             name: {
                 type: DataTypes.STRING,
-                allowNull: false
+                allowNull: false,
+                validate: {
+                    notEmpty: true
+                }
             },
             tag: {
                 type: DataTypes.STRING,
-                allowNull: false
+                allowNull: false,
+                validate: {
+                    notEmpty: true
+                }
             },
             website: {
                 type: DataTypes.STRING,
                 allowNull: true,
                 defaultValue: null,
                 validate: {
+                    notEmpty: true,
                     isUrl: true
                 }
             },
@@ -35,6 +42,9 @@ module.exports = {
                 type: DataTypes.STRING,
                 allowNull: false,
                 unique: true,
+                validate: {
+                    notEmpty: true
+                },
                 // tslint:disable
                 set(val: string) {
                     if (val === 'slugAvailable') {

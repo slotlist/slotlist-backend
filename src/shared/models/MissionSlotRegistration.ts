@@ -80,6 +80,22 @@ export class MissionSlotRegistration extends Model {
     public confirmed: boolean;
 
     /**
+     * Optional comment provided by the user during registration, can e.g. be used to state preferences
+     *
+     * @type {string}
+     * @memberof MissionSlotRegistration
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
+    })
+    public comment?: string;
+
+    /**
      * UID of the mission slot the registration is associated with.
      *
      * @type {string}
@@ -204,6 +220,7 @@ export class MissionSlotRegistration extends Model {
         return {
             uid: this.uid,
             confirmed: this.confirmed,
+            comment: _.isNil(this.comment) ? null : this.comment,
             slotUid: this.slotUid,
             user: publicUser,
             createdAt: this.createdAt
@@ -224,6 +241,7 @@ export class MissionSlotRegistration extends Model {
 export interface IPublicMissionSlotRegistration {
     uid: string;
     confirmed: boolean;
+    comment: string | null;
     slotUid: string;
     user: IPublicUser;
     createdAt: Date;

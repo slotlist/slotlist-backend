@@ -91,7 +91,10 @@ export class User extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     })
     public nickname: string;
 
@@ -105,7 +108,10 @@ export class User extends Model {
     @Attribute({
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            notEmpty: true
+        }
     })
     public steamId: string;
 

@@ -82,7 +82,10 @@ export class MissionSlot extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     })
     public title: string;
 
@@ -129,7 +132,10 @@ export class MissionSlot extends Model {
     @Attribute({
         type: DataTypes.STRING,
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
     })
     public shortDescription?: string;
 
@@ -144,7 +150,10 @@ export class MissionSlot extends Model {
     @Attribute({
         type: DataTypes.TEXT,
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
     })
     public description?: string;
 

@@ -15,12 +15,18 @@ module.exports = {
             nickname: {
                 type: DataTypes.STRING,
                 allowNull: false,
-                unique: true
+                unique: true,
+                validate: {
+                    notEmpty: true
+                }
             },
             steamId: {
                 type: DataTypes.STRING,
                 allowNull: false,
-                unique: true
+                unique: true,
+                validate: {
+                    notEmpty: true
+                }
             },
             communityUid: {
                 type: DataTypes.UUID,

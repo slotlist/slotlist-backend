@@ -14,7 +14,10 @@ module.exports = {
             },
             title: {
                 type: DataTypes.STRING,
-                allowNull: false
+                allowNull: false,
+                validate: {
+                    notEmpty: true
+                }
             },
             difficulty: {
                 type: DataTypes.INTEGER,
@@ -28,7 +31,10 @@ module.exports = {
             shortDescription: {
                 type: DataTypes.STRING,
                 allowNull: true,
-                defaultValue: null
+                defaultValue: null,
+                validate: {
+                    notEmpty: true
+                }
             },
             description: {
                 type: DataTypes.TEXT,

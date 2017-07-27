@@ -71,7 +71,10 @@ export class Permission extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     })
     public permission: string;
 

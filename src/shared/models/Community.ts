@@ -80,7 +80,10 @@ export class Community extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     })
     public name: string;
 
@@ -92,7 +95,10 @@ export class Community extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     })
     public tag: string;
 
@@ -108,6 +114,7 @@ export class Community extends Model {
         allowNull: true,
         defaultValue: null,
         validate: {
+            notEmpty: true,
             isUrl: true
         }
     })
@@ -123,7 +130,10 @@ export class Community extends Model {
     @Attribute({
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            notEmpty: true
+        }
     })
     get slug(): string {
         return this.getDataValue('slug');

@@ -14,7 +14,10 @@ module.exports = {
             },
             permission: {
                 type: DataTypes.STRING,
-                allowNull: false
+                allowNull: false,
+                validate: {
+                    notEmpty: true
+                }
             },
             userUid: {
                 type: DataTypes.UUID,

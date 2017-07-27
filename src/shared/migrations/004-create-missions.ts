@@ -18,11 +18,17 @@ module.exports = {
             },
             title: {
                 type: DataTypes.STRING,
-                allowNull: false
+                allowNull: false,
+                validate: {
+                    notEmpty: true
+                }
             },
             slug: {
                 type: DataTypes.STRING,
                 allowNull: false,
+                validate: {
+                    notEmpty: true
+                },
                 unique: true,
                 // tslint:disable
                 set(val: string) {
@@ -87,6 +93,7 @@ module.exports = {
                 allowNull: true,
                 defaultValue: null,
                 validate: {
+                    notEmpty: true,
                     isUrl: true
                 }
             },

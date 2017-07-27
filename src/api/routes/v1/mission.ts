@@ -769,8 +769,8 @@ export const mission = [
                 mode: 'required'
             },
             description: 'Registers for the selected slot for the specified mission',
-            notes: 'Creates a new mission slot registration for the current user and the selected slot for the specified mission. Regular user authentication is required ' +
-            'to access this endpoint',
+            notes: 'Creates a new mission slot registration for the current user and the selected slot for the specified mission. An optional comment for the mission creator ' +
+            'can be provided. Regular user authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'create', 'authenticated'],
             validate: {
                 options: {
@@ -784,6 +784,10 @@ export const mission = [
                         .example('all-of-altis'),
                     slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to create registration for')
                         .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                payload: Joi.object().required().keys({
+                    comment: Joi.string().allow(null).min(1).default(null).optional().description('Optional comment provided by the user during registration, can e.g. ' +
+                        'be used to state preferences').example('Would prefer to lead platoon Luchs over Wolf')
                 })
             },
             response: {

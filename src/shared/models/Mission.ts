@@ -78,7 +78,10 @@ export class Mission extends Model {
      */
     @Attribute({
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: true
+        }
     })
     public title: string;
 
@@ -92,7 +95,10 @@ export class Mission extends Model {
     @Attribute({
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
+        validate: {
+            notEmpty: true
+        }
     })
     get slug(): string {
         return this.getDataValue('slug');
@@ -216,6 +222,7 @@ export class Mission extends Model {
         allowNull: true,
         defaultValue: null,
         validate: {
+            notEmpty: true,
             isUrl: true
         }
     })

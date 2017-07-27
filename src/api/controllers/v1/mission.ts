@@ -445,45 +445,48 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
+        const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
+
+        payload.userUid = userUid;
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(mission)) {
-            log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, userUid }, 'Mission with given slug not found');
+            log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
         const slots = await mission.getSlots({ where: { uid: slotUid } });
         if (_.isNil(slots) || _.isEmpty(slots)) {
             log.debug(
-                { function: 'updateMissionSlotRegistration', slug, slotUid, userUid, missionUid: mission.uid },
+                { function: 'updateMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid },
                 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
         const slot = slots[0];
 
-        log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, userUid, missionUid: mission.uid }, 'Creating new mission slot registration');
+        log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Creating new mission slot registration');
 
         let registration: MissionSlotRegistration;
         try {
-            registration = await slot.createRegistration({ userUid });
+            registration = await slot.createRegistration(payload);
         } catch (err) {
             if (err.name === 'SequelizeUniqueConstraintError') {
                 log.debug(
-                    { function: 'createMissionSlotRegistration', slug, slotUid, userUid, missionUid: mission.uid, err },
+                    { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, err },
                     'Received unique constraint error during mission slot registration creation');
 
                 throw Boom.conflict('Mission slot registration already exists');
             }
 
             log.warn(
-                { function: 'createMissionSlotRegistration', slug, slotUid, userUid, missionUid: mission.uid, err },
+                { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, err },
                 'Received error during mission slot registration creation');
             throw err;
         }
 
         log.debug(
-            { function: 'createMissionSlotRegistration', slug, slotUid, userUid, missionUid: mission.uid, registrationUid: registration.uid },
+            { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid },
             'Successfully created new mission slot registration');
 
         const publicMissionSlotRegistration = await registration.toPublicObject();
