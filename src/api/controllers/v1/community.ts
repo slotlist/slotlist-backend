@@ -29,7 +29,8 @@ export function getCommunityList(request: Hapi.Request, reply: Hapi.ReplyWithCon
     return reply((async () => {
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['name', 'ASC']]
         };
 
         const result = await Community.findAndCountAll(queryOptions);
@@ -239,7 +240,8 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
         const status = _.includes(COMMUNITY_APPLICATION_STATUSES, request.query.status) ? request.query.status : undefined;
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['nickname', 'DESC'], ['createdAt', 'ASC']]
         };
 
         if (!_.isNil(status)) {
@@ -512,16 +514,9 @@ export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyW
         const slug = request.params.communitySlug;
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['nickname', 'ASC']]
         };
-
-        if (request.query.includeEnded === false) {
-            queryOptions.where = {
-                endTime: {
-                    $gt: moment.utc()
-                }
-            };
-        }
 
         const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(community)) {
@@ -529,13 +524,9 @@ export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyW
             throw Boom.notFound('Community not found');
         }
 
-        if (_.isNil(queryOptions.where)) {
-            queryOptions.where = {
-                communityUid: community.uid
-            };
-        } else {
-            queryOptions.where.communityUid = community.uid;
-        }
+        queryOptions.where = {
+            communityUid: community.uid
+        };
 
         const result = await User.findAndCountAll(queryOptions);
 
@@ -560,7 +551,8 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
         const slug = request.params.communitySlug;
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['startTime', 'ASC'], ['title', 'ASC']]
         };
 
         if (request.query.includeEnded === false) {

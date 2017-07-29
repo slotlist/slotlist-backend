@@ -1,7 +1,5 @@
 import * as Joi from 'joi';
 
-import { userSchema } from './user';
-
 /**
  * Schema for public community information
  */
@@ -17,6 +15,7 @@ export const communitySchema = Joi.object().keys({
 // Imported below public communitySchema so circular dependencies work
 // missionDetailsSchema depends on communitySchema
 import { missionSchema } from './mission';
+import { userSchema } from './user';
 
 export const communityDetailsSchema = communitySchema.keys({
     leaders: Joi.array().items(userSchema.optional()).required()

@@ -413,9 +413,18 @@ export class User extends Model {
      * @memberof User
      */
     public async toPublicObject(): Promise<IPublicUser> {
+        let publicCommunity: IPublicCommunity | null = null;
+        if (!_.isNil(this.communityUid)) {
+            if (_.isNil(this.community)) {
+                this.community = await this.getCommunity();
+            }
+            publicCommunity = await this.community.toPublicObject();
+        }
+
         return {
             uid: this.uid,
-            nickname: this.nickname
+            nickname: this.nickname,
+            community: publicCommunity
         };
     }
 
@@ -465,6 +474,7 @@ export class User extends Model {
 export interface IPublicUser {
     uid: string;
     nickname: string;
+    community: IPublicCommunity | null;
 }
 
 /**
@@ -476,6 +486,5 @@ export interface IPublicUser {
  * @extends {IPublicUser}
  */
 export interface IDetailedPublicUser extends IPublicUser {
-    community: IPublicCommunity | null;
     missions: IPublicMission[];
 }

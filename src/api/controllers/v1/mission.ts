@@ -23,7 +23,8 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
     return reply((async () => {
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['startTime', 'ASC'], ['title', 'ASC']]
         };
 
         if (request.query.includeEnded === false) {
@@ -238,7 +239,8 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
         const slug = request.params.missionSlug;
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['orderNumber', 'ASC'], ['title', 'ASC']]
         };
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
@@ -408,7 +410,8 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            slotUid
+            slotUid,
+            order: [['slotUid', 'ASC'], ['createdAt', 'ASC']]
         };
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });

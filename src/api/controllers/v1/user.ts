@@ -47,7 +47,8 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
         const userUid = request.params.uid;
         const queryOptions: any = {
             limit: request.query.limit,
-            offset: request.query.offset
+            offset: request.query.offset,
+            order: [['startTime', 'ASC'], ['title', 'ASC']]
         };
 
         if (request.query.includeEnded === false) {
