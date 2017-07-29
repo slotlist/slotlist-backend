@@ -2,7 +2,7 @@ import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
-import { Transaction } from 'sequelize';
+import { col, fn, Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import {
@@ -30,7 +30,7 @@ export function getCommunityList(request: Hapi.Request, reply: Hapi.ReplyWithCon
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['name', 'ASC']]
+            order: [[fn('UPPER', col('name')), 'ASC']]
         };
 
         const result = await Community.findAndCountAll(queryOptions);
@@ -241,7 +241,7 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['nickname', 'DESC'], ['createdAt', 'ASC']]
+            order: [['createdAt', 'ASC']]
         };
 
         if (!_.isNil(status)) {
@@ -515,7 +515,7 @@ export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyW
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['nickname', 'ASC']]
+            order: [[fn('UPPER', col('nickname')), 'ASC']]
         };
 
         const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
@@ -552,7 +552,7 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['startTime', 'ASC'], ['title', 'ASC']]
+            order: [['startTime', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
 
         if (request.query.includeEnded === false) {

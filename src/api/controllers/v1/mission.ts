@@ -2,7 +2,7 @@ import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
-import { Transaction } from 'sequelize';
+import { col, fn, Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
@@ -24,7 +24,7 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['startTime', 'ASC'], ['title', 'ASC']]
+            order: [['startTime', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
 
         if (request.query.includeEnded === false) {
@@ -240,7 +240,7 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['orderNumber', 'ASC'], ['title', 'ASC']]
+            order: [['orderNumber', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
