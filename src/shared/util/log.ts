@@ -45,6 +45,10 @@ const serializers: bunyan.Serializers = {
     },
     res: bunyan.stdSerializers.res,
     responsePayload: (responsePayload: any) => {
+        if (_.isNil(responsePayload)) {
+            return responsePayload;
+        }
+
         const payload = _.cloneDeep(responsePayload);
         if (_.isString(payload.token)) {
             payload.token = '***REDACTED***';
