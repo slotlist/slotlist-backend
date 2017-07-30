@@ -365,36 +365,8 @@ export class MissionSlot extends Model {
             title: this.title,
             orderNumber: this.orderNumber,
             difficulty: this.difficulty,
-            shortDescription: _.isNil(this.shortDescription) ? null : this.shortDescription,
-            restricted: this.restricted,
-            reserve: this.reserve,
-            assignee: publicAssignee
-        };
-    }
-
-    /**
-     * Returns a detailed public representation of the mission slot instance, as transmitted via API
-     *
-     * @returns {Promise<IDetailedPublicMission>} Object containing detailed public mission information
-     * @memberof Mission
-     */
-    public async toDetailedPublicObject(): Promise<IDetailedPublicMissionSlot> {
-        let publicAssignee: IPublicUser | null = null;
-        if (!_.isNil(this.assigneeUid)) {
-            if (_.isNil(this.assignee)) {
-                this.assignee = await this.getAssignee();
-            }
-            publicAssignee = await this.assignee.toPublicObject();
-        }
-
-        return {
-            uid: this.uid,
-            missionUid: this.missionUid,
-            title: this.title,
-            orderNumber: this.orderNumber,
-            difficulty: this.difficulty,
-            shortDescription: _.isNil(this.shortDescription) ? null : this.shortDescription,
             description: _.isNil(this.description) ? null : this.description,
+            shortDescription: _.isNil(this.shortDescription) ? null : this.shortDescription,
             restricted: this.restricted,
             reserve: this.reserve,
             assignee: publicAssignee
@@ -418,19 +390,9 @@ export interface IPublicMissionSlot {
     title: string;
     orderNumber: number;
     difficulty: number;
+    description: string | null;
     shortDescription: string | null;
     restricted: boolean;
     reserve: boolean;
     assignee: IPublicUser | null;
-}
-
-/**
- * Detailed public mission slot information as transmitted via API
- *
- * @export
- * @interface IDetailedPublicMissionSlot
- * @extends {IPublicMissionSlot}
- */
-export interface IDetailedPublicMissionSlot extends IPublicMissionSlot {
-    description: string | null;
 }
