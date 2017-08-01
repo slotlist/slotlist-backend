@@ -637,16 +637,43 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.forbidden();
         }
 
-        log.debug({ function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid }, 'Deleting mission slot registration');
+        return sequelize.transaction(async (t: Transaction) => {
+            if (registration.confirmed) {
+                log.debug(
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                    'Mission slot registration is confirmed, checking slot assignee');
 
-        await registration.destroy();
+                if (slot.assigneeUid === userUid) {
+                    log.debug(
+                        { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                        'Mission slot assignee is current user, removing association and deleting mission slot registration');
 
-        log.debug(
-            { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
-            'Successfully deleted mission slot registration');
+                    await Promise.all([
+                        slot.update({ assigneeUid: null }),
+                        registration.destroy()
+                    ]);
+                } else {
+                    log.debug(
+                        { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        'Mission slot assignee is different user, only deleting mission slot registration');
 
-        return {
-            success: true
-        };
+                    await registration.destroy();
+                }
+            } else {
+                log.debug(
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                    'Mission slot registration is not confirmed, only deleting mission slot registration');
+
+                await registration.destroy();
+            }
+
+            log.debug(
+                { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                'Successfully deleted mission slot registration');
+
+            return {
+                success: true
+            };
+        });
     })());
 }
