@@ -242,11 +242,32 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
             offset: request.query.offset,
             order: [['orderNumber', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
+        let userUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+        }
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(mission)) {
-            log.debug({ function: 'getMissionSlotList', slug, queryOptions }, 'Mission with given slug not found');
+            log.debug({ function: 'getMissionSlotList', slug, queryOptions, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
+        }
+
+        let registrations: MissionSlotRegistration[] = [];
+        if (!_.isNil(userUid)) {
+            log.debug({ function: 'getMissionSlotList', slug, queryOptions, userUid }, 'Retrieving registered slots for authenticated user');
+
+            registrations = await MissionSlotRegistration.findAll({
+                include: [
+                    {
+                        model: MissionSlot,
+                        as: 'slot',
+                        where: {
+                            missionUid: mission.uid
+                        }
+                    }
+                ]
+            });
         }
 
         queryOptions.where = {
@@ -257,8 +278,15 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
 
         const slotCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + slotCount) < result.count;
-        const slotList = await Promise.map(result.rows, (slot: MissionSlot) => {
-            return slot.toPublicObject();
+        const slotList = await Promise.map(result.rows, async (slot: MissionSlot) => {
+            const publicSlot = await slot.toPublicObject();
+
+            const registration = _.find(registrations, { slotUid: slot.uid });
+            if (!_.isNil(registration)) {
+                (<any>publicSlot).registrationUid = registration.uid;
+            }
+
+            return publicSlot;
         });
 
         return {

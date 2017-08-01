@@ -18,5 +18,7 @@ export const missionSlotSchema = Joi.object().keys({
         .example(true),
     reserve: Joi.bool().required().description('Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been filled) or a ' +
         'regular one (false)').example(false),
-    assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be null if no final assignment has been completed yet')
+    assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be null if no final assignment has been completed yet'),
+    registrationUid: Joi.string().guid().length(36).optional().description('Optional UID of the mission slot registration that the user retrieving the mission slotlist has ' +
+        'performed for the current slot. Omitted for unauthenticated users or slots the user didn\' register for').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
 }).required().label('MissionSlot').description('Public mission slot information, as displayed in slotlists');
