@@ -38,6 +38,7 @@ export interface ILoggingConfig {
     }[];
     src: boolean;
     stdout: string | number | false;
+    stackdriver: boolean;
 }
 
 export interface ISteamConfig {
@@ -177,6 +178,10 @@ export class Config {
                         loggingConfig.src = value.toLowerCase() === 'true';
 
                         break;
+                    } else if (configKey === 'stackdriver') {
+                        loggingConfig.stackdriver = value.toLowerCase() === 'true';
+
+                        break;
                     }
 
                     loggingConfig[configKey] = value;
@@ -214,7 +219,9 @@ export class Config {
 
         loggingConfig.files = [];
         _.each(loggingConfigFiles, (f: any) => {
-            loggingConfig.files.push(f);
+            if (!_.isEmpty(f.path)) {
+                loggingConfig.files.push(f);
+            }
         });
 
         this.database = databaseConfig;

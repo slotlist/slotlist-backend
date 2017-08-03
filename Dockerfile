@@ -5,6 +5,8 @@ ARG PRODUCTION_BUILD=true
 
 RUN set -ex \
     && apk add --no-cache \
+        libc6-compat \
+        libpq \
         netcat-openbsd \
         su-exec
 
@@ -23,9 +25,9 @@ RUN set -ex \
     && if [ "$PRODUCTION_BUILD" == "true" ]; then \
         yarn build \
         && yarn install --prod \
-        && yarn cache clean \
-        && apk del .build-deps-node; \
-    fi
+        && yarn cache clean; \
+    fi \
+    && apk del .build-deps-node
 
 ENTRYPOINT [ "/app/docker-entrypoint.sh" ]
 CMD [ "yarn", "start" ]

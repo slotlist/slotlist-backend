@@ -1,4 +1,6 @@
 import * as bunyan from 'bunyan';
+// tslint:disable-next-line
+const StackdriverLogging = require('@google-cloud/logging-bunyan');
 import * as _ from 'lodash';
 import * as pjson from 'pjson';
 
@@ -93,6 +95,13 @@ _.each(LoggingConfig.files, (logFile: { path: string; level: string | number; })
         path: logFile.path
     });
 });
+
+if (LoggingConfig.stackdriver) {
+    const stackdriverLogging = StackdriverLogging();
+    streams.push(stackdriverLogging.stream());
+}
+
+console.log(streams)
 
 export const log = bunyan.createLogger({
     name: 'slotlist-backend',
