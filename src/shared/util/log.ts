@@ -101,8 +101,6 @@ if (LoggingConfig.stackdriver) {
     streams.push(stackdriverLogging.stream());
 }
 
-console.log(streams)
-
 export const log = bunyan.createLogger({
     name: 'slotlist-backend',
     serializers: serializers,
