@@ -139,7 +139,7 @@ export class API {
                     }
                 },
                 schemes: [HTTPConfig.scheme],
-                host: `${HTTPConfig.host}:${HTTPConfig.port}`,
+                host: `${HTTPConfig.publicHost}`,
                 pathPrefixSize: 2
             }
         });
