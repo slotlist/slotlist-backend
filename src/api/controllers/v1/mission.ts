@@ -412,7 +412,7 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            slotUid,
+            where: { slotUid },
             order: [['slotUid', 'ASC'], ['createdAt', 'ASC']]
         };
 
