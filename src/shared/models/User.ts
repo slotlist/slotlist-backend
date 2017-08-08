@@ -319,10 +319,7 @@ export class User extends Model {
         const permissions = await this.getPermissions();
 
         const payload = {
-            user: {
-                uid: this.uid,
-                nickname: this.nickname
-            },
+            user: await this.toPublicObject(),
             permissions: _.map(permissions, 'permission')
         };
 

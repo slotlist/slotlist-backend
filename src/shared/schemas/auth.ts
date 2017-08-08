@@ -1,15 +1,14 @@
 import * as Joi from 'joi';
 
+import { userSchema } from './user';
+
 /**
  * Schema for (decoded) JWT payloads
  */
 export const jwtPayloadSchema = Joi.object().keys({
-    user: Joi.object().keys({
-        uid: Joi.string().guid().min(1).required().description('UID of the user the JWt has been issued for'),
-        nickname: Joi.string().min(1).required().description('Nickname of the user the JWT has been issued for')
-    }).required().description('Details of the user the JWT has been issued for'),
-    permissions: Joi.array().items(Joi.string().min(1).optional().description('Permission string to allow')).required()
-        .description('Permissions assigned to the user the JWT has been issued for'),
+    user: userSchema.required().description('Details of the user the JWT has been issued for'),
+    permissions: Joi.array().items(Joi.string().min(1).max(255).optional().description('Permission granted to user, in dotted notation')
+        .example('community.spezialeinheit-luchs.leader')).required().description('List of permissions currently assigned to the user, in dotted notation'),
     iat: Joi.number().positive().integer().required().description('Unix timestamp at which the JWT was issued at'),
     nbf: Joi.number().positive().integer().required().description('Unix timestamp before which the JWT is not valid'),
     exp: Joi.number().positive().integer().required().description('Unix timestamp of the JWT\'s expiration'),
