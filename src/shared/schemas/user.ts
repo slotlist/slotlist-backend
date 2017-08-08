@@ -25,6 +25,6 @@ export const userDetailsSchema = userSchema.keys({
 }).required().label('UserDetails').description('Detailed user information, as displayed in user profiles');
 
 export const userAccountDetailsSchema = userDetailsSchema.keys({
-    permissions: Joi.array().items(Joi.string().min(1).max(255).required().description('Permission granted to user, in dotted notation')
+    permissions: Joi.array().items(Joi.string().min(1).max(255).optional().description('Permission granted to user, in dotted notation')
         .example('community.spezialeinheit-luchs.leader')).required().description('List of permissions currently assigned to the user, in dotted notation')
 }).required().label('UserAccountDetails').description('Detailed user information including private information, as displayed in the account panel');
