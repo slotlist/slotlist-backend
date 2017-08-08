@@ -21,6 +21,7 @@ export interface IHTTPConfig {
     port: number;
     scheme: 'http' | 'https';
     opsInterval: number;
+    publicScheme: 'http' | 'https';
     publicHost: string;
 }
 
@@ -110,6 +111,8 @@ export class Config {
                 case 'http':
                     if (configKey === 'opsinterval') {
                         configKey = 'opsInterval';
+                    } else if (configKey === 'publicScheme') {
+                        configKey = 'publicScheme';
                     } else if (configKey === 'publichost') {
                         configKey = 'publicHost';
                     }

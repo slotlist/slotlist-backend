@@ -138,7 +138,7 @@ export class API {
                         url: 'https://github.com/MorpheusXAUT/slotlist-backend/blob/master/LICENSE'
                     }
                 },
-                schemes: [HTTPConfig.scheme],
+                schemes: [HTTPConfig.publicScheme],
                 host: `${HTTPConfig.publicHost}`,
                 pathPrefixSize: 2
             }
