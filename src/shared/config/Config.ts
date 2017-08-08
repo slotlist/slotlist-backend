@@ -111,7 +111,7 @@ export class Config {
                 case 'http':
                     if (configKey === 'opsinterval') {
                         configKey = 'opsInterval';
-                    } else if (configKey === 'publicScheme') {
+                    } else if (configKey === 'publicscheme') {
                         configKey = 'publicScheme';
                     } else if (configKey === 'publichost') {
                         configKey = 'publicHost';
