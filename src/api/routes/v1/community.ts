@@ -68,6 +68,8 @@ export const community = [
                         .description('Number of communities to skip before retrieving new ones from database, as provided via query'),
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityList.max).required()
                         .description('Actual number of communities returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Total number of communities stored'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more communities are available and can be retrieved using pagination'),
                     communities: Joi.array().items(schemas.communitySchema.optional()).required().description('List of communities retrieved')
                 }).label('GetCommunityListResponse').description('Response containing list of currently created communities')

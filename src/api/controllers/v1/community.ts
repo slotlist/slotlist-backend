@@ -45,6 +45,7 @@ export function getCommunityList(request: Hapi.Request, reply: Hapi.ReplyWithCon
             limit: queryOptions.limit,
             offset: queryOptions.offset,
             count: communityCount,
+            total: result.count,
             moreAvailable: moreAvailable,
             communities: communityList
         };
