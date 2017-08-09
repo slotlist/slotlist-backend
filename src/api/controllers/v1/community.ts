@@ -277,6 +277,7 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
             limit: queryOptions.limit,
             offset: queryOptions.offset,
             count: applicationCount,
+            total: result.count,
             moreAvailable: moreAvailable,
             applications: applicationList
         };
@@ -590,6 +591,7 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
             limit: queryOptions.limit,
             offset: queryOptions.offset,
             count: missionCount,
+            total: result.count,
             moreAvailable: moreAvailable,
             missions: missionList
         };

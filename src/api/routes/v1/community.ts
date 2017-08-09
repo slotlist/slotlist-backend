@@ -68,8 +68,7 @@ export const community = [
                         .description('Number of communities to skip before retrieving new ones from database, as provided via query'),
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityList.max).required()
                         .description('Actual number of communities returned'),
-                    total: Joi.number().integer().positive().allow(0).min(0).required()
-                        .description('Total number of communities stored'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of communities stored'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more communities are available and can be retrieved using pagination'),
                     communities: Joi.array().items(schemas.communitySchema.optional()).required().description('List of communities retrieved')
                 }).label('GetCommunityListResponse').description('Response containing list of currently created communities')
@@ -388,6 +387,7 @@ export const community = [
                         .description('Number of applications to skip before retrieving new ones from database, as provided via query'),
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityApplicationList.max).required()
                         .description('Actual number of applications returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of community applications stored'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more applications are available and can be retrieved using pagination'),
                     applications: Joi.array().items(communityApplicationSchema.optional()).required().description('List of applications retrieved')
                 }).label('GetCommunityApplicationListResponse').description('Response containing the community\'s list of applications')
@@ -817,6 +817,7 @@ export const community = [
                         .description('Number of missions to skip before retrieving new ones from database, as provided via query'),
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityMissionList.max).required()
                         .description('Actual number of missions returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of community missions stored'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more missions are available and can be retrieved using pagination'),
                     missions: Joi.array().items(missionSchema.optional()).required().description('List of missions retrieved')
                 }).label('GetCommunityMissionListResponse').description('Response containing list of missions assigned to the community')
