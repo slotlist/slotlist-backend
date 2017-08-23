@@ -2,7 +2,7 @@ import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
-import { col, fn, Transaction } from 'sequelize';
+import { col, fn, literal, Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
@@ -21,6 +21,16 @@ const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
 export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
+        let userUid: string | null = null;
+        let userCommunityUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
+        }
+
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
@@ -33,6 +43,40 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                     $gt: moment.utc()
                 }
             };
+        }
+
+        if (_.isNil(userUid)) {
+            queryOptions.where.visibility = 'public';
+        } else {
+            queryOptions.where = _.defaults(
+                {
+                    $or: [
+                        {
+                            visibility: 'public'
+                        },
+                        {
+                            visibility: 'hidden',
+                            $or: [
+                                {
+                                    creatorUid: userUid
+                                },
+                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "slug" || '.editor' OR "permission" = '*')`)
+                            ]
+                        },
+                        {
+                            visibility: 'private',
+                            creatorUid: userUid
+                        }
+                    ]
+                },
+                queryOptions.where);
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptions.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
         }
 
         const result = await Mission.findAndCountAll(queryOptions);
