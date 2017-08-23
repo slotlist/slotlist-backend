@@ -1,5 +1,6 @@
 import * as Joi from 'joi';
 
+import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
 import { userSchema } from './user';
 
 /**
@@ -37,6 +38,11 @@ export const missionDetailsSchema = missionSchema.keys({
     rules: Joi.string().allow(null).min(1).default(null).optional()
         .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
+    visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).required()
+        .description('Indicates the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only visible to the ' +
+        'mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission creator\'s community. The `private` ' +
+        'visibility setting restricts access to selected users, although this functionality is currently not implemented yet (as of 2017-08-23)')
+        .example(MISSION_VISIBILITY_PUBLIC),
     community: communitySchema.allow(null).default(null).optional().label('Community')
         .description('Community of the mission, if associated via user. Can be null if user is not assigned to community or removed mission association')
 }).required().label('MissionDetails').description('Detailed public mission information, as displayed on mission page. Include more detailed mission times, as well as a longer ' +

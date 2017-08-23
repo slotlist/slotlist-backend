@@ -34,7 +34,7 @@ export const MISSION_VISIBILITY_HIDDEN = 'hidden';
  */
 export const MISSION_VISIBILITY_PRIVATE = 'private';
 /**
- * Missions with `public` visibility are visibile to every user
+ * Missions with `public` visibility are visible to every user
  */
 export const MISSION_VISIBILITY_PUBLIC = 'public';
 /**
@@ -525,6 +525,7 @@ export class Mission extends Model {
             repositoryUrl: _.isNil(this.repositoryUrl) ? null : this.repositoryUrl,
             techSupport: _.isNil(this.techSupport) ? null : this.techSupport,
             rules: _.isNil(this.rules) ? null : this.rules,
+            visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator
         };
@@ -564,5 +565,6 @@ export interface IDetailedPublicMission extends IPublicMission {
     repositoryUrl: string | null;
     techSupport: string | null;
     rules: string | null;
+    visibility: string;
     community: IPublicCommunity | null;
 }
