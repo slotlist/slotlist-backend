@@ -22,6 +22,32 @@ import { MissionSlot } from './MissionSlot';
 import { IPublicUser, User } from './User';
 
 /**
+ * Missions with `community` visibility are visible to members of the mission creator's community
+ */
+export const MISSION_VISIBILITY_COMMUNITY = 'community';
+/**
+ * Missions with `hidden` visibility are only visible to the mission creator and assigned mission editors
+ */
+export const MISSION_VISIBILITY_HIDDEN = 'hidden';
+/**
+ * Missions with `private` visibility are only visible to selected users as chosen by the mission creator (not implemented as of 2017-08-23)
+ */
+export const MISSION_VISIBILITY_PRIVATE = 'private';
+/**
+ * Missions with `public` visibility are visibile to every user
+ */
+export const MISSION_VISIBILITY_PUBLIC = 'public';
+/**
+ * List of possible `visibility` settings for a mission, defining which users can view it
+ */
+export const MISSION_VISIBILITIES = [
+    MISSION_VISIBILITY_COMMUNITY,
+    MISSION_VISIBILITY_HIDDEN,
+    MISSION_VISIBILITY_PRIVATE,
+    MISSION_VISIBILITY_PUBLIC
+];
+
+/**
  * Represents a mission in database.
  * Provides database access and utility functionality for mission instances
  *
@@ -257,6 +283,20 @@ export class Mission extends Model {
         defaultValue: null
     })
     public rules?: string;
+
+    /**
+     * Indicates the visibility status of the mission.
+     * More detailed information about the visibility states can be found in the comments of the respective setting constants.
+     *
+     * @type {string}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.ENUM(MISSION_VISIBILITIES),
+        allowNull: false,
+        defaultValue: MISSION_VISIBILITY_HIDDEN
+    })
+    public visibility: string;
 
     /**
      * UID of the community the mission is associated with.
