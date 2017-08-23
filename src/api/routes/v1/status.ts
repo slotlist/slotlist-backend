@@ -40,6 +40,7 @@ export const status = [
             response: {
                 schema: Joi.object().required().keys({
                     status: Joi.string().equal(STATUS_STATUSES).required().description('Status of the API server, will basically only be `running` anyways').example('running'),
+                    version: Joi.string().min(1).required().description('Current backend version in semver format (excluding leading "v")').example('1.0.0-alpha'),
                     now: Joi.number().required().min(1).description('Current unix timestamp at time of status check').example(1504371600),
                     pong: Joi.string().min(1).optional().description('Optional ping/pong response value as provided via query').example('alive')
                 }).label('GetStatusResponse').description('Response containing status resposne')
