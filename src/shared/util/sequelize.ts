@@ -8,11 +8,12 @@ const log = logger.child({ sequelize: true });
  * Creates a new sequelize instance and allows sharing across models
  */
 
-export const sequelize = new Sequelize(DatabaseConfig.database, DatabaseConfig.username, DatabaseConfig.password, {
+const options: any = {
+    benchmark: true,
     dialect: 'postgres',
     host: DatabaseConfig.host,
-    logging: (msg: any) => {
-        log.trace(msg);
+    logging: (msg: any, executionTime: any) => {
+        log.trace({ executionTime }, msg);
     },
     native: true,
     pool: {
@@ -21,7 +22,9 @@ export const sequelize = new Sequelize(DatabaseConfig.database, DatabaseConfig.u
         min: 0
     },
     port: DatabaseConfig.port,
-    timezone: 'Etc/UCT'
-});
+    timezone: 'Etc/UTC'
+};
+
+export const sequelize = new Sequelize(DatabaseConfig.database, DatabaseConfig.username, DatabaseConfig.password, options);
 
 export default sequelize;

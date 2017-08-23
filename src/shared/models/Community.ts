@@ -457,6 +457,7 @@ export class Community extends Model {
      */
     public async toPublicObject(): Promise<IPublicCommunity> {
         return {
+            uid: this.uid,
             name: this.name,
             tag: this.tag,
             website: _.isNil(this.website) ? null : this.website,
@@ -498,6 +499,7 @@ export class Community extends Model {
         });
 
         return {
+            uid: this.uid,
             name: this.name,
             tag: this.tag,
             website: _.isNil(this.website) ? null : this.website,
@@ -520,6 +522,7 @@ export class Community extends Model {
  * @interface IPublicCommunity
  */
 export interface IPublicCommunity {
+    uid: string;
     name: string;
     tag: string;
     website: string | null;

@@ -8,6 +8,7 @@ export const userSchema = Joi.object().keys({
     nickname: Joi.string().min(1).max(255).required().description('Nickname of the user (not guaranteed to be unique, can be freely changed)').example('MorpheusXAUT'),
     // Community schema is duplicated here due to cyclic references
     community: Joi.alternatives([Joi.object().keys({
+        uid: Joi.string().guid().length(36).required().description('UID of the community').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
         name: Joi.string().min(1).max(255).required().description('Name of the community').example('Spezialeinheit Luchs'),
         tag: Joi.string().min(1).max(255).required().description('Community tag (without square brackets, will be added by frontend)').example('SeL'),
         website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be null if none exists')
