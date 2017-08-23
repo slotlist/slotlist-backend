@@ -60,7 +60,8 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                                 {
                                     creatorUid: userUid
                                 },
-                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "slug" || '.editor' OR "permission" = '*')`)
+                                // tslint:disable-next-line:max-line-length
+                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
                             ]
                         },
                         {
@@ -190,8 +191,17 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
+        let userUid: string | null = null;
+        let userCommunityUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
+        }
+
+        const queryOptions: any = {
             where: { slug },
             include: [
                 {
@@ -203,7 +213,44 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                     as: 'creator'
                 }
             ]
-        });
+        };
+
+        if (_.isNil(userUid)) {
+            queryOptions.where.visibility = 'public';
+        } else {
+            queryOptions.where = _.defaults(
+                {
+                    $or: [
+                        {
+                            visibility: 'public'
+                        },
+                        {
+                            visibility: 'hidden',
+                            $or: [
+                                {
+                                    creatorUid: userUid
+                                },
+                                // tslint:disable-next-line:max-line-length
+                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                            ]
+                        },
+                        {
+                            visibility: 'private',
+                            creatorUid: userUid
+                        }
+                    ]
+                },
+                queryOptions.where);
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptions.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
+        }
+
+        const mission = await Mission.findOne(queryOptions);
         if (_.isNil(mission)) {
             log.debug({ function: 'getMissionDetails', slug }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
