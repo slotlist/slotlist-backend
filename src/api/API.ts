@@ -117,6 +117,7 @@ export class API {
         this.server.auth.default('jwt');
 
         this.server.ext('onPostAuth', this.checkACL);
+        this.server.ext('onRequest', this.parseRealIP);
 
         log.debug({ routeCount: routes.length }, 'Registering routes');
         this.server.route(routes);
@@ -232,6 +233,23 @@ export class API {
 
                 return reply(Boom.forbidden());
             }
+        }
+
+        return reply.continue();
+    }
+
+    private parseRealIP(request: Hapi.Request, reply: Hapi.ReplyWithContinue): any {
+        if (_.isString(request.headers['cf-connecting-ip']) && !_.isEmpty(request.headers['cf-connecting-ip'])) {
+            // Retrieve the client's "real" IP from the Cloudflare header if CF is used and the feature has been enabled
+            request.info.remoteAddress = request.headers['cf-connecting-ip'];
+        } else if (_.isString(request.headers['x-forwarded-for']) && !_.isEmpty(request.headers['x-forwarded-for'])) {
+            // Alternatively try to parse the `X-Forwarded-For` header, using the first address provided. If this does not exist either, the client connected directly
+            request.info.remoteAddress = request.headers['x-forwarded-for'].split(',')[0].trim();
+        }
+
+        // Check for `X-Forwarded-Port` header separately here since `CF-Connecting-IP` does not include the port
+        if (_.isString(request.headers['x-forwarded-port']) && !_.isEmpty(request.headers['x-forwarded-port'])) {
+            request.info.remotePort = request.headers['x-forwarded-port'];
         }
 
         return reply.continue();
