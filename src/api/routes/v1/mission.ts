@@ -4,7 +4,7 @@ import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUB
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
-import { missionSlotRegistrationDetailsSchema } from '../../../shared/schemas/missionSlotRegistration';
+import { missionSlotRegistrationSchema } from '../../../shared/schemas/missionSlotRegistration';
 import * as controller from '../../controllers/v1/mission';
 
 /**
@@ -657,18 +657,18 @@ export const mission = [
         config: {
             auth: {
                 strategy: 'jwt',
-                mode: 'required'
+                mode: 'optional'
             },
             description: 'Returns a list of registrations for the selected slot for the given mission',
-            notes: 'Returns a paginated list of registrations for the selected slot for the given mission. This endpoint can only be used by mission creators and users with the ' +
-            '`mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'list', 'authenticated', 'restricted'],
+            notes: 'Returns a paginated list of registrations for the selected slot for the given mission. This endpoint can be used by all users, however ' +
+            'mission creators and users with the `mission.SLUG.editor` permission receive additional details. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'slot', 'registration', 'list'],
             validate: {
                 options: {
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
                     missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve the slot registrations for')
@@ -692,19 +692,12 @@ export const mission = [
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionSlotRegistrationList.max).required()
                         .description('Actual number of registrations returned'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more registrations are available and can be retrieved using pagination'),
-                    registrations: Joi.array().items(missionSlotRegistrationDetailsSchema.optional()).required().description('List of mission slot registrations retrieved')
+                    registrations: Joi.array().items(missionSlotRegistrationSchema.optional()).required().description('List of mission slot registrations retrieved')
                 }).label('GetMissionSlotRegistrationListResponse').description('Response containing the mission slot details')
             },
             plugins: {
-                acl: {
-                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
-                },
                 'hapi-swagger': {
                     responses: {
-                        403: {
-                            description: 'A user without appropriate permissions is accessing the endpoint',
-                            schema: forbiddenSchema
-                        },
                         404: {
                             description: 'No mission with given slug or no slot with the given UID was found',
                             schema: Joi.object().required().keys({
@@ -755,7 +748,7 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    registration: missionSlotRegistrationDetailsSchema.required().description('Created mission slot registration')
+                    registration: missionSlotRegistrationSchema.required().description('Created mission slot registration')
                 }).label('CreateMissionSlotRegistrationResponse').description('Response containing the newly created mission slot registration')
             },
             plugins: {
@@ -822,7 +815,7 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    registration: missionSlotRegistrationDetailsSchema.required().description('Updated mission slot registration')
+                    registration: missionSlotRegistrationSchema.required().description('Updated mission slot registration')
                 }).label('UpdateMissionSlotRegistrationResponse').description('Response containing the updated mission slot registration')
             },
             plugins: {

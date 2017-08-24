@@ -9,6 +9,7 @@ import { Mission } from '../../../shared/models/Mission';
 import { MissionSlot } from '../../../shared/models/MissionSlot';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
 import { User } from '../../../shared/models/User';
+import { findPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
 // tslint:disable-next-line:import-name
@@ -545,7 +546,10 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
-        const userUid = request.auth.credentials.user.uid;
+        let userUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+        }
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
@@ -559,6 +563,29 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             throw Boom.notFound('Mission not found');
         }
 
+        let includeDetails: boolean = false;
+        if (!_.isNil(userUid)) {
+            const requiredPermissions = [`mission.${slug}.creator`, `mission.${slug}.editor`];
+            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
+            if (_.has(parsedPermissions, '*')) {
+                log.debug(
+                    { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                    'User has global wildcard permission, returning slot registration details');
+
+                includeDetails = true;
+            }
+
+            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
+                return findPermission(parsedPermissions, requiredPermission);
+            });
+
+            if (foundPermissions.length > 0) {
+                log.debug(
+                    { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                    'User has mission creator or editor permission, returning slot registration details');
+            }
+        }
+
         const slots = await mission.getSlots({ where: { uid: slotUid } });
         if (_.isNil(slots) || _.isEmpty(slots)) {
             log.debug({ function: 'getMissionSlotRegistrations', slug, slotUid, userUid, queryOptions, missionUid: mission.uid }, 'Mission slot with given UID not found');
@@ -570,7 +597,7 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const registrationCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + registrationCount) < result.count;
         const registrationList = await Promise.map(result.rows, (registration: MissionSlotRegistration) => {
-            return registration.toDetailedPublicObject();
+            return registration.toPublicObject(includeDetails);
         });
 
         return {
@@ -668,7 +695,7 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid },
             'Successfully created new mission slot registration');
 
-        const publicMissionSlotRegistration = await registration.toDetailedPublicObject();
+        const publicMissionSlotRegistration = await registration.toPublicObject();
 
         return {
             registration: publicMissionSlotRegistration
@@ -766,7 +793,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                 'Successfully updated mission slot registration');
 
-            const publicMissionSlotRegistration = await registration.toDetailedPublicObject();
+            const publicMissionSlotRegistration = await registration.toPublicObject();
 
             return {
                 registration: publicMissionSlotRegistration

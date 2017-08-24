@@ -15,7 +15,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 import sequelize from '../util/sequelize';
 
 import { Mission } from './Mission';
-import { IPublicMissionSlotRegistration, MissionSlotRegistration } from './MissionSlotRegistration';
+import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { IPublicUser, User } from './User';
 
 /**
@@ -362,9 +362,6 @@ export class MissionSlot extends Model {
         if (_.isNil(this.registrations)) {
             this.registrations = await this.getRegistrations();
         }
-        const publicRegistrations = await Promise.map(this.registrations, (registration: MissionSlotRegistration) => {
-            return registration.toPublicObject();
-        });
 
         return {
             uid: this.uid,
@@ -377,7 +374,7 @@ export class MissionSlot extends Model {
             restricted: this.restricted,
             reserve: this.reserve,
             assignee: publicAssignee,
-            registrations: publicRegistrations
+            registrationCount: this.registrations.length
         };
     }
 
@@ -403,5 +400,5 @@ export interface IPublicMissionSlot {
     restricted: boolean;
     reserve: boolean;
     assignee: IPublicUser | null;
-    registrations: IPublicMissionSlotRegistration[];
+    registrationCount: number;
 }

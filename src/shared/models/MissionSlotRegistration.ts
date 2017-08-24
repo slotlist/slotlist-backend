@@ -211,36 +211,16 @@ export class MissionSlotRegistration extends Model {
      * @returns {Promise<IPublicMissionSlotRegistration>} Object containing public mission slot registration information
      * @memberof MissionSlotRegistration
      */
-    public async toPublicObject(): Promise<IPublicMissionSlotRegistration> {
+    public async toPublicObject(includeDetails: boolean = true): Promise<IPublicMissionSlotRegistration> {
         if (_.isNil(this.user)) {
             this.user = await this.getUser();
         }
         const publicUser = await this.user.toPublicObject();
 
         return {
+            uid: includeDetails ? this.uid : undefined,
             confirmed: this.confirmed,
-            slotUid: this.slotUid,
-            user: publicUser,
-            createdAt: this.createdAt
-        };
-    }
-
-    /**
-     * Returns a detailed public representation of the mission slot registration instance, as transmitted via API
-     *
-     * @returns {Promise<IDetailedPublicMissionSlotRegistration>} Object containing detailed public mission slot registration information
-     * @memberof MissionSlotRegistration
-     */
-    public async toDetailedPublicObject(): Promise<IDetailedPublicMissionSlotRegistration> {
-        if (_.isNil(this.user)) {
-            this.user = await this.getUser();
-        }
-        const publicUser = await this.user.toPublicObject();
-
-        return {
-            uid: this.uid,
-            confirmed: this.confirmed,
-            comment: _.isNil(this.comment) ? null : this.comment,
+            comment: includeDetails ? (_.isNil(this.comment) ? null : this.comment) : undefined,
             slotUid: this.slotUid,
             user: publicUser,
             createdAt: this.createdAt
@@ -259,19 +239,10 @@ export class MissionSlotRegistration extends Model {
  * @interface IPublicMissionSlotRegistration
  */
 export interface IPublicMissionSlotRegistration {
+    uid?: string;
     confirmed: boolean;
+    comment?: string | null;
     slotUid: string;
     user: IPublicUser;
     createdAt: Date;
-}
-
-/**
- * Detailed public mission slot registration information as transmitted via API
- *
- * @export
- * @interface IDetailedPublicMissionSlotRegistration
- */
-export interface IDetailedPublicMissionSlotRegistration extends IPublicMissionSlotRegistration {
-    uid: string;
-    comment: string | null;
 }

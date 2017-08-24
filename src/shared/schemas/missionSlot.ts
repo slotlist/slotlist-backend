@@ -1,6 +1,5 @@
 import * as Joi from 'joi';
 
-import { missionSlotRegistrationSchema } from './missionSlotRegistration';
 import { userSchema } from './user';
 
 /**
@@ -22,5 +21,5 @@ export const missionSlotSchema = Joi.object().keys({
     assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be null if no final assignment has been completed yet'),
     registrationUid: Joi.string().guid().length(36).optional().description('Optional UID of the mission slot registration that the user retrieving the mission slotlist has ' +
         'performed for the current slot. Omitted for unauthenticated users or slots the user didn\' register for').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
-    registrations: Joi.array().items(missionSlotRegistrationSchema.optional()).required().description('List of registrations currently submitted for the given slot')
+    registrationCount: Joi.number().integer().positive().allow(0).min(0).required().description('Number of registrations currently submitted for this slot').example(0)
 }).required().label('MissionSlot').description('Public mission slot information, as displayed in slotlists');
