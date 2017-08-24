@@ -4,7 +4,7 @@ import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUB
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
-import { missionSlotRegistrationSchema } from '../../../shared/schemas/missionSlotRegistration';
+import { missionSlotRegistrationDetailsSchema } from '../../../shared/schemas/missionSlotRegistration';
 import * as controller from '../../controllers/v1/mission';
 
 /**
@@ -692,7 +692,7 @@ export const mission = [
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionSlotRegistrationList.max).required()
                         .description('Actual number of registrations returned'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more registrations are available and can be retrieved using pagination'),
-                    registrations: Joi.array().items(missionSlotRegistrationSchema.optional()).required().description('List of mission slot registrations retrieved')
+                    registrations: Joi.array().items(missionSlotRegistrationDetailsSchema.optional()).required().description('List of mission slot registrations retrieved')
                 }).label('GetMissionSlotRegistrationListResponse').description('Response containing the mission slot details')
             },
             plugins: {
@@ -755,7 +755,7 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    registration: missionSlotRegistrationSchema.required().description('Created mission slot registration')
+                    registration: missionSlotRegistrationDetailsSchema.required().description('Created mission slot registration')
                 }).label('CreateMissionSlotRegistrationResponse').description('Response containing the newly created mission slot registration')
             },
             plugins: {
@@ -822,7 +822,7 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    registration: missionSlotRegistrationSchema.required().description('Updated mission slot registration')
+                    registration: missionSlotRegistrationDetailsSchema.required().description('Updated mission slot registration')
                 }).label('UpdateMissionSlotRegistrationResponse').description('Response containing the updated mission slot registration')
             },
             plugins: {

@@ -570,7 +570,7 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const registrationCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + registrationCount) < result.count;
         const registrationList = await Promise.map(result.rows, (registration: MissionSlotRegistration) => {
-            return registration.toPublicObject();
+            return registration.toDetailedPublicObject();
         });
 
         return {
@@ -668,7 +668,7 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid },
             'Successfully created new mission slot registration');
 
-        const publicMissionSlotRegistration = await registration.toPublicObject();
+        const publicMissionSlotRegistration = await registration.toDetailedPublicObject();
 
         return {
             registration: publicMissionSlotRegistration
@@ -766,7 +766,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                 'Successfully updated mission slot registration');
 
-            const publicMissionSlotRegistration = await registration.toPublicObject();
+            const publicMissionSlotRegistration = await registration.toDetailedPublicObject();
 
             return {
                 registration: publicMissionSlotRegistration
