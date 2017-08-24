@@ -13,10 +13,9 @@ export const auth = [
         path: '/v1/auth/steam',
         handler: controller.getSteamLoginRedirectURL,
         config: {
-            auth: {
-                strategy: 'jwt',
-                mode: 'optional'
-            },
+            // Explicitly disable auth parsing here since invalid/expired JWTs being sent by the frontend would prevent the user from ever being able to log in again
+            // See: https://github.com/MorpheusXAUT/slotlist-frontend/issues/14 and https://github.com/MorpheusXAUT/slotlist-backend/issues/6
+            auth: false,
             description: 'Returns the redirect URL for Steam OpenID signin',
             notes: 'SSO callback returns to frontend, backend later verifies claims via POST to `/v1/auth/steam`. No authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'auth', 'steam'],
@@ -42,10 +41,9 @@ export const auth = [
         path: '/v1/auth/steam',
         handler: controller.verifySteamLogin,
         config: {
-            auth: {
-                strategy: 'jwt',
-                mode: 'optional'
-            },
+            // Explicitly disable auth parsing here since invalid/expired JWTs being sent by the frontend would prevent the user from ever being able to log in again
+            // See: https://github.com/MorpheusXAUT/slotlist-frontend/issues/14 and https://github.com/MorpheusXAUT/slotlist-backend/issues/6
+            auth: false,
             description: 'Verifies the provided Steam OpenID claims and returns a JWT on success',
             notes: 'After the verification call to Steam\'s OpenID provider succeedes, the current user database will be checked for the ' +
             'SteamID. If the user does not exist, their public Steam information will be retrieved and a new entry created. A JWT with ' +
