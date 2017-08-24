@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik-ingress-controller
+  namespace: kube-system
+---
+kind: DaemonSet
+apiVersion: extensions/v1beta1
+metadata:
+  name: traefik-ingress-controller
+  namespace: kube-system
+  labels:
+    k8s-app: traefik-ingress-lb
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: traefik-ingress-lb
+        name: traefik-ingress-lb
+    spec:
+      serviceAccountName: traefik-ingress-controller
+      terminationGracePeriodSeconds: 60
+      hostNetwork: true
+      containers:
+      - image: traefik:latest
+        name: traefik-ingress-lb
+        volumeMounts:
+        - mountPath: "/config"
+          name: "config"
+        ports:
+        - name: http
+          containerPort: 80
+          hostPort: 80
+        - name: https
+          containerPort: 443
+          hostPort: 443
+        - name: admin
+          containerPort: 8080
+        securityContext:
+          privileged: true
+        args:
+        - --configFile=/config/traefik.toml
+        - --kubernetes
+        - --logLevel=INFO
+        env:
+        - name: CLOUDFLARE_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: traefik-cloudflare
+              key: email
+        - name: CLOUDFLARE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: traefik-cloudflare
+              key: api_key
+      volumes:
+        - name: config
+          configMap:
+            name: traefik-config

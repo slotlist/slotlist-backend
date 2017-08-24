@@ -1,0 +1,133 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: slotlist-backend
+  namespace: slotlist
+spec:
+  minReadySeconds: 20
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: slotlist-backend
+    spec:
+      containers:
+        - name: slotlist-backend
+          image: eu.gcr.io/slotlist-info/slotlist/backend:latest
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 100m
+              memory: 500Mi
+            requests:
+              cpu: 30m
+              memory: 250Mi
+          ports:
+            - containerPort: 3000
+          env:
+            - name: CONFIG_DATABASE_HOST
+              value: postgres
+            - name: CONFIG_DATABASE_PORT
+              value: "5432"
+            - name: CONFIG_DATABASE_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: postgres_database
+            - name: CONFIG_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: postgres_username
+            - name: CONFIG_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: postgres_password
+            - name: CONFIG_HTTP_ADDRESS
+              value: "0.0.0.0"
+            - name: CONFIG_HTTP_HOST
+              value: localhost
+            - name: CONFIG_HTTP_PORT
+              value: "3000"
+            - name: CONFIG_HTTP_SCHEME
+              value: http
+            - name: CONFIG_HTTP_OPSINTERVAL
+              value: "900000"
+            - name: CONFIG_HTTP_PUBLICSCHEME
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: http_public_scheme
+            - name: CONFIG_HTTP_PUBLICSCHEME
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: http_public_host
+            - name: CONFIG_JWT_ALGORITHMS
+              value: HS256
+            - name: CONFIG_JWT_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: jwt_audience
+            - name: CONFIG_JWT_EXPIRESIN
+              value: "3d"
+            - name: CONFIG_JWT_ISSUER
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: jwt_issuer
+            - name: CONFIG_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: jwt_secret
+            - name: CONFIG_LOGGING_SRC
+              value: "false"
+            - name: CONFIG_LOGGING_STDOUT
+              value: debug
+            - name: CONFIG_LOGGING_STACKDRIVER
+              value: "false"
+            - name: CONFIG_STEAM_OPENID_CALLBACKURL
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: steam_openid_callback_url
+            - name: CONFIG_STEAM_OPENID_REALM
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: steam_openid_realm
+            - name: CONFIG_STEAM_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: steam_api_secret
+            - name: DEFAULT_ADMIN_UID
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: default_admin_uid
+            - name: DEFAULT_ADMIN_STEAMID
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: default_admin_steamid
+            - name: DEFAULT_ADMIN_NICKNAME
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: default_admin_nickname
+            - name: NODE_ENV
+              value: production
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: sentry_dsn
