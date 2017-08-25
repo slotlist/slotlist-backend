@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, QueryTypes } from 'sequelize';
 
 import { COMMUNITY_APPLICATION_STATUS_SUBMITTED, COMMUNITY_APPLICATION_STATUSES } from '../models/CommunityApplication';
 
@@ -59,5 +59,6 @@ module.exports = {
     },
     down: async (queryInterface: any): Promise<void> => {
         await queryInterface.dropTable('communityApplications');
+        await queryInterface.sequelize.query('DROP TYPE "enum_communityApplications_status";', { type: QueryTypes.RAW });
     }
 };

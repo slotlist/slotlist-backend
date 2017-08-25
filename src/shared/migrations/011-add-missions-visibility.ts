@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize';
+import { DataTypes, QueryTypes } from 'sequelize';
 
 import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN } from '../models/Mission';
 
@@ -15,5 +15,6 @@ module.exports = {
     },
     down: async (queryInterface: any): Promise<void> => {
         await queryInterface.removeColumn('missions', 'visibility');
+        await queryInterface.sequelize.query('DROP TYPE "enum_missions_visibility";', { type: QueryTypes.RAW });
     }
 };

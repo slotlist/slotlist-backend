@@ -29,11 +29,11 @@ gulp.task('db:migrate', __('Migrate database up to latest state', function (cb) 
     });
 }));
 
-gulp.task('db:migrate:up', __('Migrate database ONE STEP UP from its current state', function () {
+gulp.task('db:migrate:up', __('Migrate database ONE STEP UP from its current state', function (cb) {
     const sequelize = require('../dist/src/shared/util/sequelize').default;
     const migrateUp = require('../dist/src/shared/util/umzug').migrateUp;
     migrateUp(false).then(() => {
-        sequelize.disconnect();
+        sequelize.close();
         cb();
     }).catch((err) => {
         gulpUtil.log(gulpUtil.colors.red('Failed to migrate database ONE STEP UP from its current state'));
@@ -43,16 +43,16 @@ gulp.task('db:migrate:up', __('Migrate database ONE STEP UP from its current sta
     });
 }));
 
-gulp.task('db:migrate:down', __('Migrate database ONE STEP DOWN from its current state', function () {
+gulp.task('db:migrate:down', __('Migrate database ONE STEP DOWN from its current state', function (cb) {
     const sequelize = require('../dist/src/shared/util/sequelize').default;
     const migrateDown = require('../dist/src/shared/util/umzug').migrateDown;
     migrateDown().then(() => {
-        sequelize.disconnect();
+        sequelize.close();
         cb();
     }).catch((err) => {
         gulpUtil.log(gulpUtil.colors.red('Failed to migrate database ONE STEP DOWN from its current state'));
         gulpUtil.log(gulpUtil.colors.red(err));
-        sequelize.disconnect();
+        sequelize.close();
         cb(err);
     });
 }));
