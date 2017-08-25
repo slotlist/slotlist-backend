@@ -2,6 +2,7 @@ import { Community } from './Community';
 import { CommunityApplication } from './CommunityApplication';
 import { Mission } from './Mission';
 import { MissionSlot } from './MissionSlot';
+import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { Permission } from './Permission';
 import { User } from './User';
@@ -23,11 +24,14 @@ export function createAssociations(): void {
 
     Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
     Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-    Mission.associations.slots = Mission.hasMany(MissionSlot, { as: 'slots', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    Mission.associations.slotGroups = Mission.hasMany(MissionSlotGroup, { as: 'slotGroups', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
     MissionSlot.associations.assignee = MissionSlot.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
-    MissionSlot.associations.mission = MissionSlot.belongsTo(Mission, { as: 'mission', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     MissionSlot.associations.registrations = MissionSlot.hasMany(MissionSlotRegistration, { as: 'registrations', foreignKey: 'slotUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    MissionSlot.associations.slotGroup = MissionSlot.belongsTo(MissionSlotGroup, { as: 'slotGroup', foreignKey: 'slotGroupUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
+    MissionSlotGroup.associations.mission = MissionSlotGroup.belongsTo(Mission, { as: 'mission', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    MissionSlotGroup.associations.slots = MissionSlotGroup.hasMany(MissionSlot, { as: 'slots', foreignKey: 'slotGroupUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
     MissionSlotRegistration.associations.slot = MissionSlotRegistration.belongsTo(MissionSlot, { as: 'slot', foreignKey: 'slotUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     MissionSlotRegistration.associations.user = MissionSlotRegistration.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });

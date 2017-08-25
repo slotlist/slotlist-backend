@@ -18,7 +18,8 @@ import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
 import { Community, IPublicCommunity } from './Community';
-import { MissionSlot } from './MissionSlot';
+import { IMissionSlotCreatePayload, MissionSlot } from './MissionSlot';
+import { MissionSlotGroup } from './MissionSlotGroup';
 import { IPublicUser, User } from './User';
 
 /**
@@ -68,14 +69,14 @@ export class Mission extends Model {
      * @type {{
      *         community: BelongsTo,
      *         creator: BelongsTo,
-     *         slots: HasMany
+     *         slotGroups: HasMany
      *     }}
      * @memberof Mission
      */
     public static associations: {
         community: BelongsTo,
         creator: BelongsTo,
-        slots: HasMany
+        slotGroups: HasMany
     };
 
     //////////////////////
@@ -355,13 +356,13 @@ export class Mission extends Model {
     public creator?: User;
 
     /**
-     * Eager-loaded list of slots associated with the mission.
-     * Only included if the mission has slots associated and it has been eager-loaded via sequelize
+     * Eager-loaded list of slot groups associated with the mission.
+     * Only included if the mission has slot groups associated and it has been eager-loaded via sequelize
      *
-     * @type {MissionSlot[]|undefined}
+     * @type {MissionSlotGroup[]|undefined}
      * @memberof Mission
      */
-    public slots?: MissionSlot[];
+    public slotGroups?: MissionSlotGroup[];
 
     /**
      * Time (and date) the mission instance was created
@@ -394,13 +395,13 @@ export class Mission extends Model {
     ////////////////////////////
 
     /**
-     * Creates a new slot for the current mission
+     * Creates a new slot group for the current mission
      *
-     * @type {HasManyCreateAssociationMixin<MissionSlot>}
-     * @returns {Promise<MissionSlot>} Mission slot created
+     * @type {HasManyCreateAssociationMixin<MissionSlotGroup>}
+     * @returns {Promise<MissionSlotGroup>} Mission slot group created
      * @memberof Mission
      */
-    public createSlot: HasManyCreateAssociationMixin<MissionSlot>;
+    public createSlotGroup: HasManyCreateAssociationMixin<MissionSlotGroup>;
 
     /**
      * Retrieves the mission's community instance.
@@ -422,23 +423,23 @@ export class Mission extends Model {
     public getCreator: BelongsToGetAssociationMixin<User>;
 
     /**
-     * Retrieves the mission's slot instances.
-     * Returns an empty array if the mission has no slots assigned
+     * Retrieves the mission's slot group instances.
+     * Returns an empty array if the mission has no slot groups assigned
      *
-     * @type {HasManyGetAssociationsMixin<MissionSlot>}
-     * @returns {Promise<MissionSlot[]>} List of mission slots
+     * @type {HasManyGetAssociationsMixin<MissionSlotGroup>}
+     * @returns {Promise<MissionSlotGroup[]>} List of mission slot groups
      * @memberof Mission
      */
-    public getSlots: HasManyGetAssociationsMixin<MissionSlot>;
+    public getSlotGroups: HasManyGetAssociationsMixin<MissionSlotGroup>;
 
     /**
-     * Removes the given slot or a slot with the provided UID from the missions's slot list
+     * Removes the given slot group or a slot group with the provided UID from the missions's slot group list
      *
-     * @type {HasManyRemoveAssociationMixin<MissionSlot, string>}
+     * @type {HasManyRemoveAssociationMixin<MissionSlotGroup, string>}
      * @returns {Promise<void>} Promise fulfilled when removal is completed
      * @memberof Mission
      */
-    public removeSlot: HasManyRemoveAssociationMixin<MissionSlot, string>;
+    public removeSlot: HasManyRemoveAssociationMixin<MissionSlotGroup, string>;
 
     /////////////////////////
     // Model class methods //
@@ -471,6 +472,55 @@ export class Mission extends Model {
     ////////////////////////////
     // Model instance methods //
     ////////////////////////////
+
+    /**
+     * Creates a new slot in the mission, automatically associating it with the provided slot group.
+     *
+     * @param {IMissionSlotCreatePayload} slotPayload Payload including slot details and slot group UID
+     * @returns {Promise<MissionSlot>} Newly created mission slot
+     * @memberof Mission
+     */
+    public async createSlot(slotPayload: IMissionSlotCreatePayload): Promise<MissionSlot> {
+        const slotGroups = await this.getSlotGroups({ where: { uid: slotPayload.slotGroupUid } });
+        if (_.isNil(slotGroups) || _.isEmpty(slotGroups)) {
+            throw Boom.notFound('Mission slot group not found');
+        }
+        const slotGroup = slotGroups[0];
+
+        return slotGroup.createSlot(slotPayload);
+    }
+
+    /**
+     * Finds a slot by its UID, skipping the requirement to load and iterate all slot groups
+     *
+     * @param {string} slotUid UID of the slot to search for
+     * @returns {(Promise<MissionSlot | null>)} Mission slot instance. Returns null if no slot was found
+     * @memberof Mission
+     */
+    public async findSlot(slotUid: string): Promise<MissionSlot | null> {
+        return MissionSlot.findById(slotUid);
+    }
+
+    /**
+     * Returns a list of all slots of a mission, optionally filtering for the provided slot group
+     *
+     * @param {(string | null)} [slotGroupUid=null] Optional slot group UID to filter for, omitting the value or providing `null` retrieves all slots
+     * @returns {Promise<MissionSlot[]>} List of mission slots retrieved
+     * @memberof Mission
+     */
+    public async getSlots(slotGroupUid: string | null = null): Promise<MissionSlot[]> {
+        const slotGroupQueryOptions: any = {};
+        if (!_.isNil(slotGroupUid) && !_.isEmpty(slotGroupUid)) {
+            slotGroupQueryOptions.where = { uid: slotGroupUid };
+        }
+        const slotGroups = await this.getSlotGroups(slotGroupQueryOptions);
+
+        return Promise.reduce(
+            slotGroups, async (slots: MissionSlot[], slotGroup: MissionSlotGroup) => {
+                return slots.concat(await slotGroup.getSlots());
+            },
+            []);
+    }
 
     /**
      * Returns a public representation of the mission instance, as transmitted via API

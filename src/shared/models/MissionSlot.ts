@@ -14,7 +14,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
 
-import { Mission } from './Mission';
+import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { IPublicUser, User } from './User';
 
@@ -45,15 +45,15 @@ export class MissionSlot extends Model {
      * @static
      * @type {{
      *         assignee: BelongsTo,
-     *         mission: BelongsTo,
-     *         registrations: HasMany
+     *         registrations: HasMany,
+     *         slotGroup: BelongsTo
      *     }}
      * @memberof MissionSlot
      */
     public static associations: {
         assignee: BelongsTo,
-        mission: BelongsTo,
-        registrations: HasMany
+        registrations: HasMany,
+        slotGroup: BelongsTo
     };
 
     //////////////////////
@@ -90,7 +90,7 @@ export class MissionSlot extends Model {
     public title: string;
 
     /**
-     * Order number for sorting slotlist
+     * Order number for sorting slots within a slot group
      *
      * @type {number}
      * @memberof MissionSlot
@@ -213,7 +213,16 @@ export class MissionSlot extends Model {
     public assignee?: User;
 
     /**
-     * UID of the mission the slot is associated with.
+     * Eager-loaded list of slot registrations associated with this slot.
+     * Only included if the slot has registrations associated and it has been eager-loaded via sequelize
+     *
+     * @type {MissionSlotRegistration[]|undefined}
+     * @memberof MissionSlot
+     */
+    public registrations?: MissionSlotRegistration[];
+
+    /**
+     * UID of the slot groups the slot is associated with.
      *
      * @type {string}
      * @memberof MissionSlot
@@ -222,31 +231,22 @@ export class MissionSlot extends Model {
         type: DataTypes.UUID,
         allowNull: false,
         references: {
-            model: Mission,
+            model: MissionSlotGroup,
             key: 'uid'
         },
         onDelete: 'CASCADE',
         onUpdate: 'CASCADE'
     })
-    public missionUid: string;
+    public slotGroupUid: string;
 
     /**
-     * Eager-loaded mission instance.
+     * Eager-loaded slot group instance.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {Mission|undefined}
+     * @type {MissionSlotGroup|undefined}
      * @memberof MissionSlot
      */
-    public mission?: Mission;
-
-    /**
-     * Eager-loaded list of slot registrations associated with this slot.
-     * Only included if the slot has registrations associated and it has been eager-loaded via sequelize
-     *
-     * @type {MissionSlotRegistration[]|undefined}
-     * @memberof MissionSlot
-     */
-    public registrations?: MissionSlotRegistration[];
+    public slotGroup?: MissionSlotGroup;
 
     /**
      * Time (and date) the mission slot instance was created
@@ -298,15 +298,6 @@ export class MissionSlot extends Model {
     public getAssignee: BelongsToGetAssociationMixin<User>;
 
     /**
-     * Retrieves the slot's mission instance.
-     *
-     * @type {BelongsToGetAssociationMixin<Mission>}
-     * @returns {Promise<Mission>} Mission instance
-     * @memberof MissionSlot
-     */
-    public getMission: BelongsToGetAssociationMixin<Mission>;
-
-    /**
      * Retrieves the slot's registration instances.
      * Returns an empty array if the slot has no registrations assigned
      *
@@ -315,6 +306,15 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public getRegistrations: HasManyGetAssociationsMixin<MissionSlotRegistration>;
+
+    /**
+     * Retrieves the slot's slot group instance.
+     *
+     * @type {BelongsToGetAssociationMixin<MissionSlotGroup>}
+     * @returns {Promise<Mission>} Slot group instance
+     * @memberof MissionSlot
+     */
+    public getSlotGroup: BelongsToGetAssociationMixin<MissionSlotGroup>;
 
     /**
      * Removes the given registration or a registration with the provided UID from the mission slot
@@ -365,7 +365,7 @@ export class MissionSlot extends Model {
 
         return {
             uid: this.uid,
-            missionUid: this.missionUid,
+            slotGroupUid: this.slotGroupUid,
             title: this.title,
             orderNumber: this.orderNumber,
             difficulty: this.difficulty,
@@ -391,7 +391,7 @@ export class MissionSlot extends Model {
  */
 export interface IPublicMissionSlot {
     uid: string;
-    missionUid: string;
+    slotGroupUid: string;
     title: string;
     orderNumber: number;
     difficulty: number;
@@ -401,4 +401,21 @@ export interface IPublicMissionSlot {
     reserve: boolean;
     assignee: IPublicUser | null;
     registrationCount: number;
+}
+
+/**
+ * Information received while creating a mission slot
+ *
+ * @export
+ * @interface IMissionSlotCreatePayload
+ */
+export interface IMissionSlotCreatePayload {
+    slotGroupUid: string;
+    title: string;
+    orderNumber: number;
+    difficulty: number;
+    shortDescription: string | null;
+    description: string | null;
+    restricted: boolean;
+    reserve: boolean;
 }

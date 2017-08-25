@@ -474,6 +474,8 @@ export const mission = [
                     missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create slots for').example('all-of-altis')
                 }),
                 payload: Joi.array().min(1).items({
+                    slotGroupUid: Joi.string().guid().length(36).required().description('UID of the slot group the slot should be added to')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     title: Joi.string().min(1).max(255).required().description('Title of the slot').example('Platoon Lead'),
                     orderNumber: Joi.number().integer().positive().allow(0).min(0).required().description('Order number for sorting slotlist').example(0),
                     difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).required().description('Difficulity of the slot, ranging from 0 (easiest) ' +

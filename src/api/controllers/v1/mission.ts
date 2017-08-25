@@ -490,12 +490,11 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission not found');
         }
 
-        const slots = await mission.getSlots({ where: { uid: slotUid } });
-        if (_.isNil(slots) || _.isEmpty(slots)) {
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
             log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
-        const slot = slots[0];
 
         log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
 
@@ -523,12 +522,11 @@ export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission not found');
         }
 
-        const slots = await mission.getSlots({ where: { uid: slotUid } });
-        if (_.isNil(slots) || _.isEmpty(slots)) {
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
             log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
-        const slot = slots[0];
 
         log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Deleting mission slot');
 
@@ -586,8 +584,8 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             }
         }
 
-        const slots = await mission.getSlots({ where: { uid: slotUid } });
-        if (_.isNil(slots) || _.isEmpty(slots)) {
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
             log.debug({ function: 'getMissionSlotRegistrations', slug, slotUid, userUid, queryOptions, missionUid: mission.uid }, 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
@@ -662,14 +660,13 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission not found');
         }
 
-        const slots = await mission.getSlots({ where: { uid: slotUid } });
-        if (_.isNil(slots) || _.isEmpty(slots)) {
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
             log.debug(
                 { function: 'updateMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid },
                 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
-        const slot = slots[0];
 
         log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Creating new mission slot registration');
 
@@ -717,14 +714,13 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission not found');
         }
 
-        const slots = await mission.getSlots({ where: { uid: slotUid } });
-        if (_.isNil(slots) || _.isEmpty(slots)) {
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
             log.debug(
                 { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
-        const slot = slots[0];
 
         const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
         if (_.isNil(registrations) || _.isEmpty(registrations)) {
@@ -852,12 +848,11 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission not found');
         }
 
-        const slots = await mission.getSlots({ where: { uid: slotUid } });
-        if (_.isNil(slots) || _.isEmpty(slots)) {
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
             log.debug({ function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
-        const slot = slots[0];
 
         const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
         if (_.isNil(registrations) || _.isEmpty(registrations)) {
