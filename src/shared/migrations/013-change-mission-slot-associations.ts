@@ -40,7 +40,7 @@ module.exports = {
             await queryInterface.sequelize.query(
                 'UPDATE "missionSlots" SET "slotGroupUid" = :slotGroupUid WHERE "uid" IN (:oldSlotUids);',
                 {
-                    type: QueryTypes.SELECT,
+                    type: QueryTypes.UPDATE,
                     replacements: {
                         slotGroupUid,
                         oldSlotUids
@@ -60,8 +60,39 @@ module.exports = {
         });
     },
     down: async (queryInterface: any): Promise<void> => {
+        const oldSlotAssociations = await queryInterface.sequelize.query(
+            'SELECT "missionSlots"."uid", "slotGroupUid", "missionUid" FROM "missionSlots" JOIN "missionSlotGroups" ON ' +
+            '"missionSlots"."slotGroupUid" = "missionSlotGroups"."uid";',
+            { type: QueryTypes.SELECT });
+
         await queryInterface.removeColumn('missionSlots', 'slotGroupUid');
         await queryInterface.addColumn('missionSlots', 'missionUid', {
+            type: DataTypes.UUID,
+            allowNull: true,
+            references: {
+                model: 'missions',
+                key: 'uid'
+            },
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE'
+        });
+
+        let slotGroupsToDelete: string[] = [];
+        await Promise.each(oldSlotAssociations, (slotAssociation: any) => {
+            slotGroupsToDelete.push(slotAssociation.slotGroupUid);
+
+            return queryInterface.sequelize.query(
+                'UPDATE "missionSlots" SET "missionUid" = :missionUid WHERE "uid" = :slotUid;',
+                {
+                    type: QueryTypes.UPDATE,
+                    replacements: {
+                        slotUid: slotAssociation.uid,
+                        missionUid: slotAssociation.missionUid
+                    }
+                });
+        });
+
+        await queryInterface.changeColumn('missionSlots', 'missionUid', {
             type: DataTypes.UUID,
             allowNull: false,
             references: {
@@ -71,6 +102,15 @@ module.exports = {
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE'
         });
-        // TODO 2017-08-25: revert associations to old missions, similar to code above
+
+        slotGroupsToDelete = _.uniq(slotGroupsToDelete);
+        await queryInterface.sequelize.query(
+            'DELETE FROM "missionSlotGroups" WHERE uid IN (:slotGroupUids);',
+            {
+                type: QueryTypes.DELETE,
+                replacements: {
+                    slotGroupUids: slotGroupsToDelete
+                }
+            });
     }
 };
