@@ -6,7 +6,8 @@ import { col, fn, literal, Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
-import { MissionSlot } from '../../../shared/models/MissionSlot';
+import { IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
+import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
 import { User } from '../../../shared/models/User';
 import { findPermission, parsePermissions } from '../../../shared/util/acl';
@@ -327,6 +328,7 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 }
 
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
 
@@ -340,11 +342,6 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
             }
         }
 
-        const queryOptionsSlotList: any = {
-            limit: request.query.limit,
-            offset: request.query.offset,
-            order: [['orderNumber', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
-        };
         const queryOptionsMission: any = {
             where: { slug },
             attributes: ['uid']
@@ -387,52 +384,51 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
 
         const mission = await Mission.findOne(queryOptionsMission);
         if (_.isNil(mission)) {
-            log.debug({ function: 'getMissionSlotList', slug, queryOptionsSlotList, queryOptionsMission, userUid }, 'Mission with given slug not found');
+            log.debug({ function: 'getMissionSlotList', slug, queryOptionsMission, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
+        let missionSlotGroups = await mission.getSlotGroups();
+        missionSlotGroups = _.orderBy(missionSlotGroups, ['orderNumber', (g: MissionSlotGroup) => { return g.title.toUpperCase(); }], ['asc', 'asc']);
+
+        const publicMissionSlotGroups = await Promise.map(missionSlotGroups, (slotGroup: MissionSlotGroup) => {
+            return slotGroup.toPublicObject();
+        });
+
+        const slotUids = _.reduce(
+            publicMissionSlotGroups,
+            (uids: string[], slotGroup: IPublicMissionSlotGroup) => {
+                return uids.concat(_.map(slotGroup.slots, (slot: IPublicMissionSlot) => {
+                    return slot.uid;
+                }));
+            },
+            []);
+
         let registrations: MissionSlotRegistration[] = [];
         if (!_.isNil(userUid)) {
-            log.debug({ function: 'getMissionSlotList', slug, queryOptionsSlotList, queryOptionsMission, userUid }, 'Retrieving registered slots for authenticated user');
+            log.debug({ function: 'getMissionSlotList', slug, queryOptionsMission, userUid }, 'Retrieving registered slots for authenticated user');
 
             registrations = await MissionSlotRegistration.findAll({
-                include: [
-                    {
-                        model: MissionSlot,
-                        as: 'slot',
-                        where: {
-                            missionUid: mission.uid
-                        }
-                    }
-                ]
+                where: {
+                    slotUid: {
+                        $in: slotUids
+                    },
+                    userUid: userUid
+                }
             });
         }
 
-        queryOptionsSlotList.where = {
-            missionUid: mission.uid
-        };
-
-        const result = await MissionSlot.findAndCountAll(queryOptionsSlotList);
-
-        const slotCount = result.rows.length;
-        const moreAvailable = (queryOptionsSlotList.offset + slotCount) < result.count;
-        const slotList = await Promise.map(result.rows, async (slot: MissionSlot) => {
-            const publicSlot = await slot.toPublicObject();
-
-            const registration = _.find(registrations, { slotUid: slot.uid });
-            if (!_.isNil(registration)) {
-                (<any>publicSlot).registrationUid = registration.uid;
-            }
-
-            return publicSlot;
+        _.each(publicMissionSlotGroups, (slotGroup: IPublicMissionSlotGroup) => {
+            _.each(slotGroup.slots, (slot: IPublicMissionSlot) => {
+                const registration = _.find(registrations, { slotUid: slot.uid });
+                if (!_.isNil(registration)) {
+                    (<any>slot).registrationUid = registration.uid;
+                }
+            });
         });
 
         return {
-            limit: queryOptionsSlotList.limit,
-            offset: queryOptionsSlotList.offset,
-            count: slotCount,
-            moreAvailable: moreAvailable,
-            slots: slotList
+            slotGroups: publicMissionSlotGroups
         };
     })());
 }

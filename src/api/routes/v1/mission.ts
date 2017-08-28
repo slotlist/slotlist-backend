@@ -4,6 +4,7 @@ import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUB
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
+import { missionSlotGroupSchema } from '../../../shared/schemas/missionSlotGroup';
 import { missionSlotRegistrationSchema } from '../../../shared/schemas/missionSlotRegistration';
 import * as controller from '../../controllers/v1/mission';
 
@@ -398,8 +399,9 @@ export const mission = [
                 strategy: 'jwt',
                 mode: 'optional'
             },
-            description: 'Returns a list of all slots for the given mission',
-            notes: 'Returns a paginated list of slots for the given mission. No authentication is required to access this endpoint',
+            description: 'Returns a list of all slots (in their respective slot groups) for the given mission',
+            notes: 'Returns a list of slots (in their respective slot groups) for the given mission. Due to the separation into groups, no pagiation can be provided. No ' +
+            'authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'slot', 'list'],
             validate: {
                 options: {
@@ -410,25 +412,12 @@ export const mission = [
                 }).unknown(true),
                 params: Joi.object().required().keys({
                     missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve slots for').example('all-of-altis')
-                }),
-                query: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotList.max).default(LIMITS.missionSlotList.default).optional()
-                        .description('Limit for number of slots to retrieve, defaults to 25 (used for pagination in combination with offset)'),
-                    offset: Joi.number().integer().min(0).default(0).optional()
-                        .description('Number of slots to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
                 })
             },
             response: {
                 schema: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotList.max).required()
-                        .description('Limit for number of slots to retrieve, as provided via query'),
-                    offset: Joi.number().integer().positive().allow(0).min(0).required()
-                        .description('Number of slots to skip before retrieving new ones from database, as provided via query'),
-                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionSlotList.max).required()
-                        .description('Actual number of slots returned'),
-                    moreAvailable: Joi.bool().required().description('Indicates whether more slots are available and can be retrieved using pagination'),
-                    slots: Joi.array().items(missionSlotSchema.optional()).required().description('List of mission slots retrieved')
-                }).label('GetMissionSlotListResponse').description('Response containing the mission\'s slot list')
+                    slotGroups: Joi.array().items(missionSlotGroupSchema.optional()).required().description('List of mission slot groups retrieved')
+                }).label('GetMissionSlotListResponse').description('Response containing the mission\'s slot list (in slot groups)')
             },
             plugins: {
                 'hapi-swagger': {

@@ -243,7 +243,7 @@ export class MissionSlotGroup extends Model {
             title: this.title,
             orderNumber: this.orderNumber,
             description: _.isNil(this.description) ? null : this.description,
-            slots: publicSlots
+            slots: _.orderBy(publicSlots, ['orderNumber', (s: IPublicMissionSlot) => { return s.title.toUpperCase(); }], ['asc', 'asc'])
         };
     }
 
