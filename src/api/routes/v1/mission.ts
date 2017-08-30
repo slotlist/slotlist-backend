@@ -64,6 +64,7 @@ export const mission = [
                         .description('Number of missions to skip before retrieving new ones from database, as provided via query'),
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionList.max).required()
                         .description('Actual number of missions returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of missions stored'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more missions are available and can be retrieved using pagination'),
                     missions: Joi.array().items(schemas.missionSchema.optional()).required().description('List of missions retrieved')
                 }).label('GetMissionListResponse').description('Response containing list of currently created missions')

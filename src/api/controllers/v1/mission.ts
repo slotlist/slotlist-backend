@@ -94,6 +94,7 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
             limit: queryOptions.limit,
             offset: queryOptions.offset,
             count: missionCount,
+            total: result.count,
             moreAvailable: moreAvailable,
             missions: missionList
         };
