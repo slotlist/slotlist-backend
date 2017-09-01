@@ -7,6 +7,8 @@ import { DataTypes, QueryTypes } from 'sequelize';
  */
 module.exports = {
     up: async (queryInterface: any): Promise<void> => {
+        await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', { type: QueryTypes.RAW });
+
         const oldSlotAssociations = await queryInterface.sequelize.query('SELECT "uid", "missionUid" FROM "missionSlots";', { type: QueryTypes.SELECT });
 
         await queryInterface.removeColumn('missionSlots', 'missionUid');
@@ -37,15 +39,17 @@ module.exports = {
 
             const oldSlotUids = _.map(_.filter(oldSlotAssociations, { missionUid: missionUid.uid }), 'uid');
 
-            await queryInterface.sequelize.query(
-                'UPDATE "missionSlots" SET "slotGroupUid" = :slotGroupUid WHERE "uid" IN (:oldSlotUids);',
-                {
-                    type: QueryTypes.UPDATE,
-                    replacements: {
-                        slotGroupUid,
-                        oldSlotUids
-                    }
-                });
+            if (!_.isEmpty(oldSlotUids)) {
+                await queryInterface.sequelize.query(
+                    'UPDATE "missionSlots" SET "slotGroupUid" = :slotGroupUid WHERE "uid" IN (:oldSlotUids);',
+                    {
+                        type: QueryTypes.UPDATE,
+                        replacements: {
+                            slotGroupUid,
+                            oldSlotUids
+                        }
+                    });
+            }
         });
 
         await queryInterface.changeColumn('missionSlots', 'slotGroupUid', {
@@ -104,13 +108,15 @@ module.exports = {
         });
 
         slotGroupsToDelete = _.uniq(slotGroupsToDelete);
-        await queryInterface.sequelize.query(
-            'DELETE FROM "missionSlotGroups" WHERE uid IN (:slotGroupUids);',
-            {
-                type: QueryTypes.DELETE,
-                replacements: {
-                    slotGroupUids: slotGroupsToDelete
-                }
-            });
+        if (!_.isEmpty(slotGroupsToDelete)) {
+            await queryInterface.sequelize.query(
+                'DELETE FROM "missionSlotGroups" WHERE uid IN (:slotGroupUids);',
+                {
+                    type: QueryTypes.DELETE,
+                    replacements: {
+                        slotGroupUids: slotGroupsToDelete
+                    }
+                });
+        }
     }
 };
