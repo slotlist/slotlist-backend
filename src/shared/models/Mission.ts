@@ -439,7 +439,7 @@ export class Mission extends Model {
      * @returns {Promise<void>} Promise fulfilled when removal is completed
      * @memberof Mission
      */
-    public removeSlot: HasManyRemoveAssociationMixin<MissionSlotGroup, string>;
+    public removeSlotGroup: HasManyRemoveAssociationMixin<MissionSlotGroup, string>;
 
     /////////////////////////
     // Model class methods //

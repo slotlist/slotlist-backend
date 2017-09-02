@@ -434,6 +434,65 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
     })());
 }
 
+export function createMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'createMissionSlotGroup', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        log.debug({ function: 'createMissionSlotGroup', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission slot group');
+
+        const slotGroup = await mission.createSlotGroup(payload);
+
+        log.debug(
+            { function: 'createMissionSlotGroup', payload, userUid, missionUid: mission.uid, missionSlotGroupUid: slotGroup.uid },
+            'Successfully created new mission slot group');
+
+        const publicSlotGroup = await slotGroup.toPublicObject();
+
+        return {
+            slotGroup: publicSlotGroup
+        };
+    })());
+}
+
+export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotGroupUid = request.params.slotGroupUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slotGroups = await mission.getSlotGroups({ where: { uid: slotGroupUid } });
+        if (_.isNil(slotGroups) || _.isEmpty(slotGroups)) {
+            log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Mission slot group with given UID not found');
+            throw Boom.notFound('Mission slot group not found');
+        }
+        const slotGroup = slotGroups[0];
+
+        log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Deleting mission slot group');
+
+        await slotGroup.destroy();
+
+        log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot group');
+
+        return {
+            success: true
+        };
+    })());
+}
+
 export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
