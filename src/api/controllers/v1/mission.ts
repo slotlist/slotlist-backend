@@ -9,6 +9,7 @@ import { Mission } from '../../../shared/models/Mission';
 import { IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
 import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
+import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { findPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
@@ -312,19 +313,26 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         const slug = request.params.missionSlug;
         const userUid = request.auth.credentials.user.uid;
 
-        log.debug({ function: 'deleteMission', slug, userUid }, 'Deleting mission');
-
-        const deleted = await Mission.destroy({ where: { slug } });
-        if (deleted <= 0) {
+        const mission = await Mission.findOne({ where: { slug } });
+        if (_.isNil(mission)) {
             log.debug({ function: 'deleteMission', slug, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
-        log.debug({ function: 'deleteMission', slug, userUid, deleted }, 'Successfully deleted mission');
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Deleting Mission');
 
-        return {
-            success: true
-        };
+            await Promise.all([
+                await mission.destroy(),
+                await Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } })
+            ]);
+
+            log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Successfully deleted mission');
+
+            return {
+                success: true
+            };
+        });
     })());
 }
 
