@@ -5,5 +5,5 @@ steps:
     args: [ 'build', '-t', 'eu.gcr.io/$PROJECT_ID/slotlist/backend:$COMMIT_SHA', '.' ]
 
 images:
-  'eu.gcr.io/$PROJECT_ID/slotlist/backend:latest'
-  'eu.gcr.io/$PROJECT_ID/slotlist/backend:$COMMIT_SHA'
+  - 'eu.gcr.io/$PROJECT_ID/slotlist/backend:latest'
+  - 'eu.gcr.io/$PROJECT_ID/slotlist/backend:$COMMIT_SHA'
