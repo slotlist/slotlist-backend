@@ -15,7 +15,7 @@
     "dev:docker": "./node_modules/.bin/gulp db:migrate | ./node_modules/.bin/bunyan && ./node_modules/.bin/nodemon -L -e js,json -w dist/src --delay 2.5 | ./node_modules/.bin/bunyan",
     "start": "node ./dist/src/index.js | ./node_modules/.bin/bunyan",
     "test": "./node_modules/.bin/mocha -c -A ./dist/src/test/index.js",
-    "migrate": "yarn global add gulp && gulp db:migrate"
+    "migrate": "yarn && ./node_modules/.bin/gulp db:migrate"
   },
   "dependencies": {
     "@google-cloud/logging-bunyan": "^0.5.0",
