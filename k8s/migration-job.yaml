@@ -12,4 +12,24 @@ spec:
       - name: slotlist-migration
         image: eu.gcr.io/slotlist-info/slotlist/backend:latest
         command: ["yarn", "migrate"]
+        env:
+          - name: CONFIG_DATABASE_HOST
+            value: postgres
+          - name: CONFIG_DATABASE_PORT
+            value: "5432"
+          - name: CONFIG_DATABASE_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: slotlist-backend
+                key: postgres_database
+          - name: CONFIG_DATABASE_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: slotlist-backend
+                key: postgres_username
+          - name: CONFIG_DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: slotlist-backend
+                key: postgres_password
       restartPolicy: Never
