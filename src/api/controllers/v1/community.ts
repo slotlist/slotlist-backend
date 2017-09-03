@@ -70,10 +70,10 @@ export function isSlugAvailable(request: Hapi.Request, reply: Hapi.ReplyWithCont
 export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const payload = request.payload;
-        const user = request.auth.credentials.user;
+        const userUid = request.auth.credentials.user.uid;
 
         if (payload.slug === 'slugAvailable') {
-            log.debug({ function: 'createCommunity', payload, user }, 'Received `slugAvailable` slug, rejecting');
+            log.debug({ function: 'createCommunity', payload, userUid }, 'Received `slugAvailable` slug, rejecting');
 
             throw Boom.badRequest('Disallowed slug');
         }
@@ -81,7 +81,13 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
         // Make sure payload is properly "slugged"
         payload.slug = slugger(payload.slug);
 
-        log.debug({ function: 'createCommunity', payload, user }, 'Creating new community');
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'createCommunity', payload, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        log.debug({ function: 'createCommunity', payload, userUid }, 'Creating new community');
 
         return sequelize.transaction(async (t: Transaction) => {
             let community: Community;
@@ -89,36 +95,38 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
                 community = await new Community(payload).save();
             } catch (err) {
                 if (err.name === 'SequelizeUniqueConstraintError') {
-                    log.debug({ function: 'createCommunity', payload, user, err }, 'Received unique constraint error during community creation');
+                    log.debug({ function: 'createCommunity', payload, userUid, err }, 'Received unique constraint error during community creation');
 
                     throw Boom.conflict('Community slug already exists');
                 }
 
-                log.warn({ function: 'createCommunity', payload, user, err }, 'Received error during community creation');
+                log.warn({ function: 'createCommunity', payload, userUid, err }, 'Received error during community creation');
                 throw err;
             }
 
-            log.debug({ function: 'createCommunity', payload, user, communityUid: community.uid }, 'Created new community, adding user as founder');
+            log.debug({ function: 'createCommunity', payload, userUid, communityUid: community.uid }, 'Created new community, adding user as founder');
 
             try {
                 await community.addLeader(user.uid, true);
             } catch (err) {
                 if (err.name === 'SequelizeUniqueConstraintError') {
-                    log.debug({ function: 'createCommunity', payload, user, err }, 'Received unique constraint error during founder permission creation');
+                    log.debug({ function: 'createCommunity', payload, userUid, err }, 'Received unique constraint error during founder permission creation');
 
                     throw Boom.conflict('Community founder permission already exists');
                 }
 
-                log.warn({ function: 'createCommunity', payload, user, err }, 'Received error during founder permission creation');
+                log.warn({ function: 'createCommunity', payload, userUid, err }, 'Received error during founder permission creation');
                 throw err;
             }
 
-            log.debug({ function: 'createCommunity', payload, user, communityUid: community.uid }, 'Successfully created new community');
+            log.debug({ function: 'createCommunity', payload, userUid, communityUid: community.uid }, 'Successfully created new community');
 
             const detailedPublicCommunity = await community.toDetailedPublicObject();
+            const token = await user.generateJWT();
 
             return {
-                community: detailedPublicCommunity
+                community: detailedPublicCommunity,
+                token: token
             };
         });
     })());
@@ -211,6 +219,12 @@ export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
         const slug = request.params.communitySlug;
         const userUid = request.auth.credentials.user.uid;
 
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'deleteCommunity', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
         const community = await Community.findOne({ where: { slug } });
         if (_.isNil(community)) {
             log.debug({ function: 'deleteCommunity', slug, userUid }, 'Community with given slug not found');
@@ -227,8 +241,11 @@ export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
             log.debug({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid }, 'Successfully deleted community');
 
+            const token = await user.generateJWT();
+
             return {
-                success: true
+                success: true,
+                token: token
             };
         });
     })());

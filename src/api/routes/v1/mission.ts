@@ -177,12 +177,22 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    mission: schemas.missionDetailsSchema
+                    mission: schemas.missionDetailsSchema,
+                    token: Joi.string().min(1).required().description('Refreshed JWT including updated permissions')
                 }).label('CreateMissionResponse').description('Response containing details of newly created mission')
             },
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        401: {
+                            description: 'The user from the provided JWT was not found in the database',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Token user not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
                         409: {
                             description: 'A mission with the given slug already exists or the user already has mission creator permissions',
                             schema: Joi.object().required().keys({
@@ -361,7 +371,8 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)'),
+                    token: Joi.string().min(1).required().description('Refreshed JWT including updated permissions')
                 }).label('DeleteMissionResponse').description('Response containing results of the delete operation')
             },
             plugins: {
@@ -370,6 +381,15 @@ export const mission = [
                 },
                 'hapi-swagger': {
                     responses: {
+                        401: {
+                            description: 'The user from the provided JWT was not found in the database',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Token user not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
                         403: {
                             description: 'A user without appropriate permissions is accessing the endpoint',
                             schema: forbiddenSchema

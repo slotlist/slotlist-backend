@@ -133,9 +133,8 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
         const user = await User.findById(userUid, { include: [{ model: Community, as: 'community' }] });
         if (_.isNil(user)) {
-            log.debug({ function: 'createMission', payload, userUid }, 'User not find during community creation');
-
-            throw Boom.notFound('User not found');
+            log.debug({ function: 'createMission', payload, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
         }
 
         payload.creatorUid = user.uid;
@@ -184,9 +183,11 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid }, 'Successfully created new mission');
 
             const detailedPublicMission = await mission.toDetailedPublicObject();
+            const token = await user.generateJWT();
 
             return {
-                mission: detailedPublicMission
+                mission: detailedPublicMission,
+                token: token
             };
         });
     })());
@@ -313,6 +314,12 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         const slug = request.params.missionSlug;
         const userUid = request.auth.credentials.user.uid;
 
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'deleteMission', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
         const mission = await Mission.findOne({ where: { slug } });
         if (_.isNil(mission)) {
             log.debug({ function: 'deleteMission', slug, userUid }, 'Mission with given slug not found');
@@ -329,8 +336,11 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Successfully deleted mission');
 
+            const token = await user.generateJWT();
+
             return {
-                success: true
+                success: true,
+                token: token
             };
         });
     })());
