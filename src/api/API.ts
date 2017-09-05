@@ -27,7 +27,14 @@ export class API {
         this.server = new Hapi.Server({
             connections: {
                 routes: {
-                    cors: true
+                    cors: true,
+                    security: {
+                        hsts: { maxAge: 31536000, includeSubdomains: true },
+                        noOpen: true,
+                        noSniff: true,
+                        xframe: true,
+                        xss: true
+                    }
                 }
             },
             debug: false
@@ -43,7 +50,6 @@ export class API {
     // tslint:disable
     public async start(): Promise<void> {
         log.info({ HTTPConfig, JWTConfig: _.omit(JWTConfig, 'secret') }, 'Starting API server');
-
 
         log.debug('Registering inert plugin');
         await this.server.register(require('inert'));
@@ -118,6 +124,7 @@ export class API {
 
         this.server.ext('onPostAuth', this.checkACL);
         this.server.ext('onRequest', this.parseRealIP);
+        this.server.ext('onPreResponse', this.setAdditionalHeaders);
 
         log.debug({ routeCount: routes.length }, 'Registering routes');
         this.server.route(routes);
@@ -253,5 +260,16 @@ export class API {
         }
 
         return reply.continue();
+    }
+
+    private setAdditionalHeaders(request: Hapi.Request, reply: Hapi.ReplyWithContinue): any {
+        const response = request.response;
+        if (!_.isNil(response) && response.isBoom && !_.isNil(response.output)) {
+            response.output.headers['Referrer-Policy'] = 'no-referrer-when-downgrade';
+        } else if (!_.isNil(response)) {
+            response.header('Referrer-Policy', 'no-referrer-when-downgrade');
+        }
+
+        reply.continue();
     }
 }
