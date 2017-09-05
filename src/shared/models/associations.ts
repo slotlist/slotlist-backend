@@ -1,7 +1,5 @@
 import { Community } from './Community';
 import { CommunityApplication } from './CommunityApplication';
-import { Language } from './Language';
-import { LanguageTranslation } from './LanguageTranslation';
 import { Mission } from './Mission';
 import { MissionSlot } from './MissionSlot';
 import { MissionSlotGroup } from './MissionSlotGroup';
@@ -23,10 +21,6 @@ export function createAssociations(): void {
 
     CommunityApplication.associations.community = CommunityApplication.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     CommunityApplication.associations.user = CommunityApplication.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-
-    Language.associations.translations = Language.hasMany(LanguageTranslation, { as: 'translations', foreignKey: 'languageShortCode', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
-
-    LanguageTranslation.associations.language = LanguageTranslation.belongsTo(Language, { as: 'translation', foreignKey: 'languageShortCode', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
     Mission.associations.community = Mission.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
     Mission.associations.creator = Mission.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
