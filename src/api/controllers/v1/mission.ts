@@ -330,12 +330,13 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Deleting Mission');
 
             await Promise.all([
-                await mission.destroy(),
-                await Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } })
+                mission.destroy(),
+                Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } })
             ]);
 
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Successfully deleted mission');
 
+            await user.reload();
             const token = await user.generateJWT();
 
             return {

@@ -122,6 +122,7 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
             log.debug({ function: 'createCommunity', payload, userUid, communityUid: community.uid }, 'Successfully created new community');
 
             const detailedPublicCommunity = await community.toDetailedPublicObject();
+            await user.reload();
             const token = await user.generateJWT();
 
             return {
@@ -235,12 +236,13 @@ export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
             log.debug({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid }, 'Deleting community');
 
             await Promise.all([
-                await community.destroy(),
-                await Permission.destroy({ where: { permission: { $iLike: `community.${slug}.%` } } })
+                community.destroy(),
+                Permission.destroy({ where: { permission: { $iLike: `community.${slug}.%` } } })
             ]);
 
             log.debug({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid }, 'Successfully deleted community');
 
+            await user.reload();
             const token = await user.generateJWT();
 
             return {
