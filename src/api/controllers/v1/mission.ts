@@ -11,6 +11,7 @@ import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/model
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
+import ImageService from '../../../shared/services/ImageService';
 import { findPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
@@ -294,6 +295,10 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         }
 
         log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Updating mission');
+
+        if (_.isString(payload.description) && !_.isEmpty(payload.description)) {
+            payload.description = await ImageService.parseMissionDescription(slug, payload.description);
+        }
 
         await mission.update(payload, {
             allowed: ['title', 'description', 'shortdescription', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@google-cloud/logging-bunyan": "^0.5.0",
+    "@google-cloud/storage": "^1.2.1",
     "axios": "^0.16.2",
     "bluebird": "^3.5.0",
     "boom": "^5.2.0",
@@ -47,6 +48,7 @@
     "slug": "^0.9.1",
     "source-map-support": "^0.4.16",
     "umzug": "^2.0.1",
+    "url-join": "^2.0.2",
     "uuid": "^3.1.0",
     "vision": "^4.1.1"
   },
@@ -69,6 +71,7 @@
     "@types/sequelize": "types/sequelize#2b7c034ae44746996e23d4644ce83696e71a3ab3",
     "@types/slug": "^0.9.0",
     "@types/source-map-support": "^0.4.0",
+    "@types/url-join": "^0.8.2",
     "@types/uuid": "^3.4.1",
     "gulp": "^3.9.1",
     "gulp-bump": "^2.7.0",

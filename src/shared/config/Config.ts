@@ -53,6 +53,13 @@ export interface ISteamConfig {
     };
 }
 
+export interface IStorageConfig {
+    bucketName: string;
+    projectId: string;
+    keyFilename: string;
+    imageCacheControlMaxAge: string;
+}
+
 /**
  * Configuration class for storing all application-revelant config
  *
@@ -65,6 +72,7 @@ export class Config {
     public jwt: IJWTConfig;
     public logging: ILoggingConfig;
     public steam: ISteamConfig;
+    public storage: IStorageConfig;
 
     // tslint:disable:cyclomatic-complexity max-func-body-length
     constructor() {
@@ -80,6 +88,7 @@ export class Config {
         const jwtConfig: any = {};
         const loggingConfig: any = {};
         const steamConfig: any = {};
+        const storageConfig: any = {};
 
         const loggingConfigFiles: { [key: string]: { path: string, level: string } } = {};
 
@@ -218,6 +227,20 @@ export class Config {
                     steamConfig[configKey][subConfigKey] = value;
 
                     break;
+                case 'storage':
+                    if (configKey === 'bucketname') {
+                        configKey = 'bucketName';
+                    } else if (configKey === 'projectid') {
+                        configKey = 'projectId';
+                    } else if (configKey === 'keyfilename') {
+                        configKey = 'keyFilename';
+                    } else if (configKey === 'imagecachecontrolmaxage') {
+                        configKey = 'imageCacheControlMaxAge';
+                    }
+
+                    storageConfig[configKey] = value;
+
+                    break;
                 default:
                     console.error(`Skipping configEnvVariable '${name}' with value '${value}': unknown type`);
             }
@@ -235,6 +258,7 @@ export class Config {
         this.jwt = jwtConfig;
         this.logging = loggingConfig;
         this.steam = steamConfig;
+        this.storage = storageConfig;
     }
     // tslint:enable:cyclomatic-complexity max-func-body-length
 }
@@ -248,4 +272,5 @@ export const HTTP = instance.http;
 export const JWT = instance.jwt;
 export const Logging = instance.logging;
 export const Steam = instance.steam;
+export const Storage = instance.storage;
 // tslint:enable:variable-name
