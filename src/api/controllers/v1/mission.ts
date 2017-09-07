@@ -149,6 +149,8 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             delete payload.addToCommunity;
         }
 
+        payload.description = await ImageService.parseMissionDescription(payload.slug, payload.description);
+
         log.debug({ function: 'createMission', payload, userUid }, 'Creating new mission');
 
         return sequelize.transaction(async (t: Transaction) => {

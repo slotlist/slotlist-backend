@@ -133,6 +133,9 @@ export const mission = [
             description: 'Creates a new mission',
             notes: 'Creates a new mission and assigns the current user as its creator. The user can optionally also associate the mission with their community. ' +
             'Regular user authentication is required to access this endpoint',
+            payload: {
+                maxBytes: 15728640 // Payload size limit increated to 15 Mebibyte
+            },
             tags: ['api', 'post', 'v1', 'missions', 'create', 'authenticated'],
             validate: {
                 options: {
@@ -273,6 +276,9 @@ export const mission = [
             notes: 'Updates the mutable attributes of a mission. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. ' +
             'Regular user authentication with appropriate permissions is required to access this endpoint',
             tags: ['api', 'patch', 'v1', 'missions', 'update', 'authenticated', 'restricted'],
+            payload: {
+                maxBytes: 15728640 // Payload size limit increated to 15 Mebibyte
+            },
             validate: {
                 options: {
                     abortEarly: false
