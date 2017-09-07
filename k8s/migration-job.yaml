@@ -14,7 +14,7 @@ spec:
         command: ["yarn", "migrate"]
         env:
           - name: CONFIG_DATABASE_HOST
-            value: postgres
+            value: postgres.kube-system.svc.cluster.local
           - name: CONFIG_DATABASE_PORT
             value: "5432"
           - name: CONFIG_DATABASE_DATABASE

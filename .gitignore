@@ -63,3 +63,5 @@ dist/
 # Ignore traefik.toml file for kubernetes since it contains sensitive information
 k8s/traefik.toml
 .kube
+k8s/backend-secrets.yaml
+k8s/credentials.json

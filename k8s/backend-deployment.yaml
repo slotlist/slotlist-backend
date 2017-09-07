@@ -29,9 +29,13 @@ spec:
               memory: 250Mi
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - mountPath: "/credentials"
+              name: "credentials"
+              readOnly: true
           env:
             - name: CONFIG_DATABASE_HOST
-              value: postgres
+              value: postgres.kube-system.svc.cluster.local
             - name: CONFIG_DATABASE_PORT
               value: "5432"
             - name: CONFIG_DATABASE_DATABASE
@@ -109,6 +113,20 @@ spec:
                 secretKeyRef:
                   name: slotlist-backend
                   key: steam_api_secret
+            - name: CONFIG_STORAGE_BUCKETNAME
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: storage_bucket_name
+            - name: CONFIG_STORAGE_PROJECTID
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: storage_project_id
+            - name: CONFIG_STORAGE_KEYFILENAME
+              value: "/credentials/credentials.json"
+            - name: CONFIG_STORAGE_IMAGECACHECONTROLMAXAGE
+              value: "2592000"
             - name: DEFAULT_ADMIN_UID
               valueFrom:
                 secretKeyRef:
@@ -131,3 +149,7 @@ spec:
                 secretKeyRef:
                   name: slotlist-backend
                   key: sentry_dsn
+      volumes:
+        - name: credentials
+          secret:
+            secretName: slotlist-backend-credentials
