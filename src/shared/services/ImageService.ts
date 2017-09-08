@@ -92,7 +92,7 @@ export class ImageService {
             fileStream.on('finish', () => {
                 log.debug({ function: 'processImage', imageType, imagePath }, 'Finished uploading image');
 
-                const imageUrl = urlJoin('https://storage.googleapis.com', StorageConfig.bucketName, imagePath);
+                const imageUrl = urlJoin(`https://${StorageConfig.bucketName}.storage.googleapis.com`, imagePath);
 
                 log.debug({ function: 'processImage', imageType, imagePath, imageUrl }, 'Finished processing image');
 
