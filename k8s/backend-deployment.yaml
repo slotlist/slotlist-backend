@@ -64,11 +64,8 @@ spec:
             - name: CONFIG_HTTP_OPSINTERVAL
               value: "900000"
             - name: CONFIG_HTTP_PUBLICSCHEME
-              valueFrom:
-                secretKeyRef:
-                  name: slotlist-backend
-                  key: http_public_scheme
-            - name: CONFIG_HTTP_PUBLICSCHEME
+              value: https
+            - name: CONFIG_HTTP_PUBLICHOST
               valueFrom:
                 secretKeyRef:
                   name: slotlist-backend
