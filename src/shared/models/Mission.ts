@@ -240,17 +240,17 @@ export class Mission extends Model {
     /**
      * URL of the repository used for the mission.
      * Can be `undefined|null` if no repository is required
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
      *
      * @type {string|undefined|null}
      * @memberof Mission
      */
     @Attribute({
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true,
         defaultValue: null,
         validate: {
-            notEmpty: true,
-            isUrl: true
+            notEmpty: true
         }
     })
     public repositoryUrl?: string;
@@ -266,7 +266,10 @@ export class Mission extends Model {
     @Attribute({
         type: DataTypes.TEXT,
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
     })
     public techSupport?: string;
 
@@ -281,7 +284,10 @@ export class Mission extends Model {
     @Attribute({
         type: DataTypes.TEXT,
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
     })
     public rules?: string;
 

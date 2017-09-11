@@ -29,9 +29,9 @@ export const missionDetailsSchema = missionSchema.keys({
         'at this time').example('2017-09-02T16:00:00.000Z'),
     endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an estimation by the mission ' +
         'creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
-    repositoryUrl: Joi.string().uri().allow(null).min(1).max(255).default(null).optional()
-        .description('URL of the mod repository used for the mission. Can be null if no additional mods ' +
-        'are required. Can contain HTML for formatting').example('http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig'),
+    repositoryUrl: Joi.string().allow(null).min(1).default(null).optional()
+        .description('URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
+        .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),
     techSupport: Joi.string().allow(null).min(1).default(null).optional()
         .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
