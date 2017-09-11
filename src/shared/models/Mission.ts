@@ -152,11 +152,10 @@ export class Mission extends Model {
             notEmpty: true
         }
     })
-    public description: string;
+    public detailedDescription: string;
 
     /**
      * (Short) summary description of the mission.
-     * Will be added as HTML in frontend, thus allows for regular HTML styling
      *
      * @type {string}
      * @memberof Mission
@@ -168,7 +167,7 @@ export class Mission extends Model {
             notEmpty: true
         }
     })
-    public shortDescription: string;
+    public description: string;
 
     /**
      * Time (and date) the mission briefing starts.
@@ -543,7 +542,7 @@ export class Mission extends Model {
         return {
             title: this.title,
             slug: this.slug,
-            shortDescription: this.shortDescription,
+            description: this.description,
             startTime: this.startTime,
             creator: publicCreator
         };
@@ -573,7 +572,7 @@ export class Mission extends Model {
             title: this.title,
             slug: this.slug,
             description: this.description,
-            shortDescription: this.shortDescription,
+            detailedDescription: this.detailedDescription,
             briefingTime: this.briefingTime,
             slottingTime: this.slottingTime,
             startTime: this.startTime,
@@ -601,7 +600,7 @@ export class Mission extends Model {
 export interface IPublicMission {
     title: string;
     slug: string;
-    shortDescription: string;
+    description: string;
     startTime: Date;
     creator: IPublicUser;
 }
@@ -614,7 +613,7 @@ export interface IPublicMission {
  * @extends {IPublicMission}
  */
 export interface IDetailedPublicMission extends IPublicMission {
-    description: string;
+    detailedDescription: string;
     briefingTime: Date;
     slottingTime: Date;
     endTime: Date;

@@ -137,7 +137,7 @@ export class MissionSlot extends Model {
             notEmpty: true
         }
     })
-    public shortDescription?: string;
+    public description?: string;
 
     /**
      * Detailed, optional description of the mission slot, further explaining the responsibilities and the selected role.
@@ -155,7 +155,7 @@ export class MissionSlot extends Model {
             notEmpty: true
         }
     })
-    public description?: string;
+    public detailedDescription?: string;
 
     /**
      * Indicates whether the slot is restricted (true, not available for public registration) or whether everyone can register (false)
@@ -370,7 +370,7 @@ export class MissionSlot extends Model {
             orderNumber: this.orderNumber,
             difficulty: this.difficulty,
             description: _.isNil(this.description) ? null : this.description,
-            shortDescription: _.isNil(this.shortDescription) ? null : this.shortDescription,
+            detailedDescription: _.isNil(this.detailedDescription) ? null : this.detailedDescription,
             restricted: this.restricted,
             reserve: this.reserve,
             assignee: publicAssignee,
@@ -395,8 +395,8 @@ export interface IPublicMissionSlot {
     title: string;
     orderNumber: number;
     difficulty: number;
+    detailedDescription: string | null;
     description: string | null;
-    shortDescription: string | null;
     restricted: boolean;
     reserve: boolean;
     assignee: IPublicUser | null;
@@ -414,7 +414,7 @@ export interface IMissionSlotCreatePayload {
     title: string;
     orderNumber: number;
     difficulty: number;
-    shortDescription: string | null;
+    detailedDescription: string | null;
     description: string | null;
     restricted: boolean;
     reserve: boolean;

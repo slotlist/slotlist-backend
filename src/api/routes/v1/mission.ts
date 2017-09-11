@@ -148,8 +148,8 @@ export const mission = [
                     title: Joi.string().min(1).max(255).required().description('Title of the mission').example('All of Altis'),
                     slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
                         .description('Slug used for uniquely identifying a mission in the frontend, easier to read than a UUID').example('all-of-altis'),
-                    shortDescription: Joi.string().min(1).required().description('Short description and summary of mission').example('Conquer all of Altis!'),
-                    description: Joi.string().min(1).required().description('Full description of the mission. Can contain HTML for formatting')
+                    description: Joi.string().min(1).required().description('Short description and summary of mission').example('Conquer all of Altis!'),
+                    detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
                         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
                     briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
                         'with leadership roles').example('2017-09-02T16:00:00.000Z'),
@@ -291,8 +291,8 @@ export const mission = [
                 }),
                 payload: Joi.object().required().keys({
                     title: Joi.string().min(1).max(255).optional().description('New title of the mission').example('All of Altis'),
-                    shortDescription: Joi.string().min(1).optional().description('New short description and summary of mission').example('Conquer all of Altis!'),
-                    description: Joi.string().min(1).optional().description('New full description of the mission. Can contain HTML for formatting')
+                    description: Joi.string().min(1).optional().description('New short description and summary of mission').example('Conquer all of Altis!'),
+                    detailedDescription: Joi.string().min(1).optional().description('New full, detailed description of the mission. Can contain HTML for formatting')
                         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
                     briefingTime: Joi.date().optional().description('New date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
                         'with leadership roles').example('2017-09-02T16:00:00.000Z'),
@@ -615,9 +615,9 @@ export const mission = [
                     orderNumber: Joi.number().integer().positive().allow(0).min(0).required().description('Order number for sorting slotlist').example(0),
                     difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).required().description('Difficulity of the slot, ranging from 0 (easiest) ' +
                         'to 4 (hardest)').example(4),
-                    shortDescription: Joi.string().allow(null).min(1).default(null).optional().description('Optional short description of the slot')
+                    description: Joi.string().allow(null).min(1).default(null).optional().description('Optional short description of the slot')
                         .example('Leads Platoon Luchs and coordinates logistics'),
-                    description: Joi.string().allow(null).min(1).default(null).optional().description('Detailed, optional description of the mission slot, further ' +
+                    detailedDescription: Joi.string().allow(null).min(1).default(null).optional().description('Detailed, optional description of the mission slot, further ' +
                         'explaining the responsibilities and the selected role').example('<div>Actually know what they are doing!</div>'),
                     restricted: Joi.bool().required().description('Indicates whether the slot is restricted (true, not available for public registration) or whether ' +
                         'everyone can register (false)').example(true),
@@ -687,9 +687,9 @@ export const mission = [
                     orderNumber: Joi.number().integer().positive().allow(0).min(0).optional().description('New order number for sorting slotlist').example(0),
                     difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).optional().description('New difficulity of the slot, ranging from 0 (easiest) ' +
                         'to 4 (hardest)').example(4),
-                    shortDescription: Joi.string().allow(null).min(1).optional().description('New optional short description of the slot')
+                    description: Joi.string().allow(null).min(1).optional().description('New optional short description of the slot')
                         .example('Leads Platoon Luchs and coordinates logistics'),
-                    description: Joi.string().allow(null).min(1).optional().description('New detailed, optional description of the mission slot, further ' +
+                    detailedDescription: Joi.string().allow(null).min(1).optional().description('New detailed, optional description of the mission slot, further ' +
                         'explaining the responsibilities and the selected role').example('<div>Actually know what they are doing!</div>'),
                     restricted: Joi.bool().optional().description('New indicator whether the slot is restricted (true, not available for public registration) or whether ' +
                         'everyone can register (false)').example(true),
