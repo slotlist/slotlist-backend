@@ -18,6 +18,7 @@ export function createAssociations(): void {
     Community.associations.applications = Community.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     Community.associations.members = Community.hasMany(User, { as: 'members', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
     Community.associations.missions = Community.hasMany(Mission, { as: 'missions', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+    Community.associations.restrictedSlots = Community.hasMany(MissionSlot, { as: 'restrictedSlots', foreignKey: 'restrictedCommunityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
 
     CommunityApplication.associations.community = CommunityApplication.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     CommunityApplication.associations.user = CommunityApplication.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
@@ -28,6 +29,7 @@ export function createAssociations(): void {
 
     MissionSlot.associations.assignee = MissionSlot.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
     MissionSlot.associations.registrations = MissionSlot.hasMany(MissionSlotRegistration, { as: 'registrations', foreignKey: 'slotUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    MissionSlot.associations.restrictedCommunity = MissionSlot.belongsTo(Community, { as: 'restrictedCommunity', foreignKey: 'restrictedCommunityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
     MissionSlot.associations.slotGroup = MissionSlot.belongsTo(MissionSlotGroup, { as: 'slotGroup', foreignKey: 'slotGroupUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
     MissionSlotGroup.associations.mission = MissionSlotGroup.belongsTo(Mission, { as: 'mission', foreignKey: 'missionUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });

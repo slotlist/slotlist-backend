@@ -33,6 +33,25 @@ export function getCommunityList(request: Hapi.Request, reply: Hapi.ReplyWithCon
             order: [[fn('UPPER', col('name')), 'ASC']]
         };
 
+        if (!_.isNil(request.query.search)) {
+            queryOptions.where = {
+                $or: [
+                    {
+                        name: {
+                            $iLike: `%${request.query.search}%`
+                        }
+                    },
+                    {
+                        tag: {
+                            $iLike: `%${request.query.search}%`
+                        }
+                    }
+                ]
+            };
+
+            log.debug({ function: 'getCommunityList', queryOptions }, 'Including search parameter in query options');
+        }
+
         const result = await Community.findAndCountAll(queryOptions);
 
         const communityCount = result.rows.length;

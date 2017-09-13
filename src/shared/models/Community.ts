@@ -44,14 +44,16 @@ export class Community extends Model {
      * @type {{
      *         applications: HasMany
      *         members: HasMany,
-     *         missions: HasMany
+     *         missions: HasMany,
+     *         restrictedSlots: HasMany
      *     }}
      * @memberof Community
      */
     public static associations: {
         applications: HasMany,
         members: HasMany,
-        missions: HasMany
+        missions: HasMany,
+        restrictedSlots: HasMany
     };
 
     //////////////////////

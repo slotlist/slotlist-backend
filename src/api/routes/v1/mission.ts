@@ -619,8 +619,8 @@ export const mission = [
                         .example('Leads Platoon Luchs and coordinates logistics'),
                     detailedDescription: Joi.string().allow(null).min(1).default(null).optional().description('Detailed, optional description of the mission slot, further ' +
                         'explaining the responsibilities and the selected role').example('<div>Actually know what they are doing!</div>'),
-                    restricted: Joi.bool().required().description('Indicates whether the slot is restricted (true, not available for public registration) or whether ' +
-                        'everyone can register (false)').example(true),
+                    restrictedCommunityUid: Joi.string().allow(null).guid().length(36).default(null).optional().description('UID of the community the slot is restricted to. ' +
+                        'Setting this to `null` removes the restriction and opens the slot to everyone').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     reserve: Joi.bool().required().description('Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
                         'filled) or a regular one (false)').example(false)
                 }).required()
@@ -691,8 +691,8 @@ export const mission = [
                         .example('Leads Platoon Luchs and coordinates logistics'),
                     detailedDescription: Joi.string().allow(null).min(1).optional().description('New detailed, optional description of the mission slot, further ' +
                         'explaining the responsibilities and the selected role').example('<div>Actually know what they are doing!</div>'),
-                    restricted: Joi.bool().optional().description('New indicator whether the slot is restricted (true, not available for public registration) or whether ' +
-                        'everyone can register (false)').example(true),
+                    restrictedCommunityUid: Joi.string().allow(null).guid().length(36).optional().description('New UID of the community the slot is restricted to. ' +
+                        'Setting this to `null` removes the restriction and opens the slot to everyone').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     reserve: Joi.bool().optional().description('New indicator whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
                         'filled) or a regular one (false)').example(false)
                 })
@@ -891,6 +891,14 @@ export const mission = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        403: {
+                            description: 'A user tried to register for a restricted slot without being a member of the restricted community',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(403).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Not a member of restricted community').required().description('Message further describing the error')
+                            })
+                        },
                         404: {
                             description: 'No mission with given slug or no slot with the given UID was found',
                             schema: Joi.object().required().keys({

@@ -57,7 +57,9 @@ export const community = [
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.communityList.max).default(LIMITS.communityList.default).optional()
                         .description('Limit for number of communities to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
-                        .description('Number of communities to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
+                        .description('Number of communities to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
+                    search: Joi.string().min(1).allow(null).default(null).optional().description('Value used for searching communities, retrieving only those that ' +
+                        'have a name or tag containing the provided value').example('spezialein')
                 })
             },
             response: {

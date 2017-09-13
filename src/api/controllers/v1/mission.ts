@@ -750,6 +750,16 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission slot not found');
         }
 
+        if (!_.isNil(slot.restrictedCommunityUid) && !_.isEqual(userCommunityUid, slot.restrictedCommunityUid)) {
+            log.debug(
+                {
+                    function: 'createMissionSlotRegistration',
+                    slug, slotUid, payload, userUid, missionUid: mission.uid, userCommunityUid, restrictedCommunityUid: slot.restrictedCommunityUid
+                },
+                'User tried to register for a restricted slot, but is not member of the restricted community, rejecting');
+            throw Boom.forbidden('Not a member of restricted community');
+        }
+
         log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Creating new mission slot registration');
 
         let registration: MissionSlotRegistration;
