@@ -1,15 +1,15 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: slotlist-migration
+  name: slotlist-migration-job
   namespace: slotlist
 spec:
   template:
     metadata:
-      name: slotlist-migration
+      name: slotlist-migration-job
     spec:
       containers:
-      - name: slotlist-migration
+      - name: slotlist-migration-job
         image: eu.gcr.io/slotlist-info/slotlist/backend:latest
         command: ["yarn", "migrate"]
         env:

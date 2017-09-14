@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: traefik-populate-job
+  namespace: kube-system
+spec:
+  template:
+    metadata:
+      name: traefik-populate-job
+    spec:
+      containers:
+        - name: traefik-ingress-lb
+          image: traefik:1.4-alpine
+          volumeMounts:
+            - mountPath: "/config"
+              name: "config"
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+            - containerPort: 8080
+          env:
+            - name: CLOUDFLARE_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: traefik-cloudflare
+                  key: email
+            - name: CLOUDFLARE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: traefik-cloudflare
+                  key: api_key
+          args:
+            - storeconfig
+            - --configfile=/config/traefik.toml
+      volumes:
+        - name: config
+          configMap:
+            name: traefik-config
+      restartPolicy: Never

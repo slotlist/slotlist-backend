@@ -1,19 +1,31 @@
-kind: Service
+---
 apiVersion: v1
+kind: Service
 metadata:
-  name: traefik-ingress-service
   namespace: kube-system
+  name: traefik
+  labels:
+    k8s-app: traefik-ingress-lb
 spec:
   selector:
     k8s-app: traefik-ingress-lb
   ports:
-    - protocol: TCP
-      port: 80
-      name: web
-    - protocol: TCP
-      port: 443
-      name: webs
-    - protocol: TCP
-      port: 8080
-      name: admin
-  type: NodePort
+    - port: 80
+      name: http
+    - port: 443
+      name: https
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: kube-system
+  name: traefik-dashboard
+  labels:
+    k8s-app: traefik-ingress-lb
+spec:
+  selector:
+    k8s-app: traefik-ingress-lb
+  ports:
+    - port: 8080
+      name: webui
