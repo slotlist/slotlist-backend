@@ -10,7 +10,7 @@ export const missionSchema = Joi.object().keys({
     title: Joi.string().min(1).max(255).required().description('Title of the mission').example('All of Altis'),
     slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
         .description('Slug used for uniquely identifying a mission in the frontend, easier to read than a UUID').example('all-of-altis'),
-    shortDescription: Joi.string().min(1).required().description('Short description and summary of mission').example('Conquer all of Altis!'),
+    description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
     startTime: Joi.date().required().description('Date and time the missions starts (slotting/briefing times are stored separately and available via mission details')
         .example('2017-09-02T17:00:00.000Z'),
     creator: userSchema.required().description('Creator of the mission')
@@ -21,7 +21,7 @@ export const missionSchema = Joi.object().keys({
 import { communitySchema } from './community';
 
 export const missionDetailsSchema = missionSchema.keys({
-    description: Joi.string().min(1).required().description('Full description of the mission. Can contain HTML for formatting')
+    detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
     briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players with leadership roles')
         .example('2017-09-02T16:00:00.000Z'),

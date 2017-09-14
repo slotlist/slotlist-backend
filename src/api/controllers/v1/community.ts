@@ -33,6 +33,25 @@ export function getCommunityList(request: Hapi.Request, reply: Hapi.ReplyWithCon
             order: [[fn('UPPER', col('name')), 'ASC']]
         };
 
+        if (!_.isNil(request.query.search)) {
+            queryOptions.where = {
+                $or: [
+                    {
+                        name: {
+                            $iLike: `%${request.query.search}%`
+                        }
+                    },
+                    {
+                        tag: {
+                            $iLike: `%${request.query.search}%`
+                        }
+                    }
+                ]
+            };
+
+            log.debug({ function: 'getCommunityList', queryOptions }, 'Including search parameter in query options');
+        }
+
         const result = await Community.findAndCountAll(queryOptions);
 
         const communityCount = result.rows.length;
@@ -90,6 +109,22 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
         log.debug({ function: 'createCommunity', payload, userUid }, 'Creating new community');
 
         return sequelize.transaction(async (t: Transaction) => {
+            if (!_.isNil(user.communityUid)) {
+                log.debug({ function: 'createCommunity', payload, userUid, communityUid: user.communityUid }, 'User is already in a community, removing associations first');
+
+                if (_.isNil(user.community)) {
+                    user.community = await user.getCommunity();
+                }
+
+                await Promise.all([
+                    CommunityApplication.destroy({ where: { userUid, communityUid: user.communityUid } }),
+                    Permission.destroy({ where: { userUid, permission: { $iLike: `community.${user.community.slug}.%` } } }),
+                    user.community.removeMember(userUid)
+                ]);
+
+                log.debug({ function: 'createCommunity', payload, userUid, communityUid: user.communityUid }, 'Successfully removed old community associations from user');
+            }
+
             let community: Community;
             try {
                 community = await new Community(payload).save();

@@ -14,6 +14,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
 
+import { Community, IPublicCommunity } from './Community';
 import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { IPublicUser, User } from './User';
@@ -46,6 +47,7 @@ export class MissionSlot extends Model {
      * @type {{
      *         assignee: BelongsTo,
      *         registrations: HasMany,
+     *         restrictedCommunity: BelongsTo,
      *         slotGroup: BelongsTo
      *     }}
      * @memberof MissionSlot
@@ -53,6 +55,7 @@ export class MissionSlot extends Model {
     public static associations: {
         assignee: BelongsTo,
         registrations: HasMany,
+        restrictedCommunity: BelongsTo,
         slotGroup: BelongsTo
     };
 
@@ -137,7 +140,7 @@ export class MissionSlot extends Model {
             notEmpty: true
         }
     })
-    public shortDescription?: string;
+    public description?: string;
 
     /**
      * Detailed, optional description of the mission slot, further explaining the responsibilities and the selected role.
@@ -155,20 +158,7 @@ export class MissionSlot extends Model {
             notEmpty: true
         }
     })
-    public description?: string;
-
-    /**
-     * Indicates whether the slot is restricted (true, not available for public registration) or whether everyone can register (false)
-     *
-     * @type {boolean}
-     * @memberof MissionSlot
-     */
-    @Attribute({
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false
-    })
-    public restricted: boolean;
+    public detailedDescription?: string;
 
     /**
      * Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been filled) or a regular one (false)
@@ -205,7 +195,7 @@ export class MissionSlot extends Model {
 
     /**
      * Eager-loaded assigned user instance.
-     * Only included if the mission has a user assigned and it has been eager-loaded via sequelize
+     * Only included if the slot has a user assigned and it has been eager-loaded via sequelize
      *
      * @type {User|undefined}
      * @memberof MissionSlot
@@ -220,6 +210,35 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public registrations?: MissionSlotRegistration[];
+
+    /**
+     * UID of the community the slot is restricted to. If set, only members of this community can register for the slot.
+     * Setting this to `null` removes the restrictions and opens the slot to everyone
+     *
+     * @type {string|null}
+     * @memberof MissionSlot
+     */
+    @Attribute({
+        type: DataTypes.UUID,
+        allowNull: true,
+        defaultValue: null,
+        references: {
+            model: Community,
+            key: 'uid'
+        },
+        onDelete: 'SET NULL',
+        onUpdate: 'CASCADE'
+    })
+    public restrictedCommunityUid: string;
+
+    /**
+     * Eager-loaded instance of restricted community.
+     * Only included if the slot is restricted to a community and it has been eager-loaded via sequelize
+     *
+     * @type {Community|undefined}
+     * @memberof MissionSlot
+     */
+    public restrictedCommunity?: Community;
 
     /**
      * UID of the slot groups the slot is associated with.
@@ -308,6 +327,16 @@ export class MissionSlot extends Model {
     public getRegistrations: HasManyGetAssociationsMixin<MissionSlotRegistration>;
 
     /**
+     * Retrieves the slot's restricted community instance.
+     * Only returns a result if the slot has been restricted to a community
+     *
+     * @type {BelongsToGetAssociationMixin<Community>}
+     * @returns {Promise<MissionSlotRegistration[]>} Community the slot was restricted to
+     * @memberof MissionSlot
+     */
+    public getRestrictedCommunity: BelongsToGetAssociationMixin<Community>;
+
+    /**
      * Retrieves the slot's slot group instance.
      *
      * @type {BelongsToGetAssociationMixin<MissionSlotGroup>}
@@ -336,6 +365,17 @@ export class MissionSlot extends Model {
      */
     public setAssignee: BelongsToSetAssociationMixin<User, string>;
 
+    /**
+     * Sets the slot's restricted community to the given community or a community with the provided UID.
+     * Passing `undefined|null` removes the association.
+     * Overwrites any former assignment (if it exists)
+     *
+     * @type {BelongsToSetAssociationMixin<Community>}
+     * @returns {Promise<void>} Promise fulfilled when association is completed
+     * @memberof MissionSlot
+     */
+    public setRestrictedCommunity: BelongsToSetAssociationMixin<Community, string>;
+
     /////////////////////////
     // Model class methods //
     /////////////////////////
@@ -363,6 +403,14 @@ export class MissionSlot extends Model {
             this.registrations = await this.getRegistrations();
         }
 
+        let publicRestrictedCommunity: IPublicCommunity | null = null;
+        if (!_.isNil(this.restrictedCommunityUid)) {
+            if (_.isNil(this.restrictedCommunity)) {
+                this.restrictedCommunity = await this.getRestrictedCommunity();
+            }
+            publicRestrictedCommunity = await this.restrictedCommunity.toPublicObject();
+        }
+
         return {
             uid: this.uid,
             slotGroupUid: this.slotGroupUid,
@@ -370,8 +418,8 @@ export class MissionSlot extends Model {
             orderNumber: this.orderNumber,
             difficulty: this.difficulty,
             description: _.isNil(this.description) ? null : this.description,
-            shortDescription: _.isNil(this.shortDescription) ? null : this.shortDescription,
-            restricted: this.restricted,
+            detailedDescription: _.isNil(this.detailedDescription) ? null : this.detailedDescription,
+            restrictedCommunity: publicRestrictedCommunity,
             reserve: this.reserve,
             assignee: publicAssignee,
             registrationCount: this.registrations.length
@@ -395,9 +443,9 @@ export interface IPublicMissionSlot {
     title: string;
     orderNumber: number;
     difficulty: number;
+    detailedDescription: string | null;
     description: string | null;
-    shortDescription: string | null;
-    restricted: boolean;
+    restrictedCommunity: IPublicCommunity | null;
     reserve: boolean;
     assignee: IPublicUser | null;
     registrationCount: number;
@@ -414,8 +462,8 @@ export interface IMissionSlotCreatePayload {
     title: string;
     orderNumber: number;
     difficulty: number;
-    shortDescription: string | null;
+    detailedDescription: string | null;
     description: string | null;
-    restricted: boolean;
+    restrictedCommunityUid: string | null;
     reserve: boolean;
 }
