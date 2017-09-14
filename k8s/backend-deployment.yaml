@@ -33,6 +33,13 @@ spec:
             - mountPath: "/credentials"
               name: "credentials"
               readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /v1/status
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
           env:
             - name: CONFIG_DATABASE_HOST
               value: postgres.kube-system.svc.cluster.local
@@ -146,6 +153,10 @@ spec:
                 secretKeyRef:
                   name: slotlist-backend
                   key: sentry_dsn
+            - name: POD_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
       volumes:
         - name: credentials
           secret:

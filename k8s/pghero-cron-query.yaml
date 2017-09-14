@@ -1,0 +1,29 @@
+apiVersion: batch/v2alpha1
+kind: CronJob
+metadata:
+  name: pghero-cron-query
+  namespace: kube-system
+  labels:
+    app: pghero-cron-query
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: pghero-cron-query
+            image: ankane/pghero
+            args:
+            - bin/rake
+            - pghero:capture_query_stats
+            env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: slotlist-backend
+                  key: pghero_database_url
+          restartPolicy: Never

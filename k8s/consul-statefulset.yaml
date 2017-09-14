@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: kube-system
+  name: traefik-consul
+  labels:
+    app: traefik-consul
+spec:
+  ports:
+    - name: http
+      port: 8500
+    - name: rpc
+      port: 8400
+    - name: serflan
+      port: 8301
+    - name: serfwan
+      port: 8302
+    - name: server
+      port: 8300
+    - name: consuldns
+      port: 8600
+  clusterIP: None
+  selector:
+    app: traefik-consul
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  namespace: kube-system
+  name: traefik-consul
+  labels:
+    app: traefik-consul
+spec:
+  serviceName: "traefik-consul"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: traefik-consul
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+      - name: traefik-consul
+        image: consul:0.9.3
+        args:
+          - "agent"
+          - "-server"
+          - "-client"
+          - "0.0.0.0"
+          - "-recursor"
+          - "8.8.8.8"
+          - "-bootstrap-expect"
+          - "3"
+          - "-retry-join"
+          - "traefik-consul"
+          - "-ui"
+        ports:
+          - containerPort: 8500
+            name: ui-port
+          - containerPort: 8400
+            name: alt-port
+          - containerPort: 53
+            name: udp-port
+          - containerPort: 443
+            name: https-port
+          - containerPort: 8080
+            name: http-port
+          - containerPort: 8301
+            name: serflan
+          - containerPort: 8302
+            name: serfwan
+          - containerPort: 8600
+            name: consuldns
+          - containerPort: 8300
+            name: server
+        volumeMounts:
+          - name: traefik-consul-data
+            mountPath: /data
+        env:
+          - name: POD_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+  volumeClaimTemplates:
+  - metadata:
+      name: traefik-consul-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi

@@ -1,6 +1,6 @@
 ---
-kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
 metadata:
   name: traefik-ingress-controller
 rules:
@@ -24,8 +24,8 @@ rules:
       - list
       - watch
 ---
-kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
 metadata:
   name: traefik-ingress-controller
 roleRef:
@@ -34,5 +34,11 @@ roleRef:
   name: traefik-ingress-controller
 subjects:
 - kind: ServiceAccount
+  name: traefik-ingress-controller
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
   name: traefik-ingress-controller
   namespace: kube-system
