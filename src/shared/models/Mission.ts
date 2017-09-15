@@ -170,6 +170,21 @@ export class Mission extends Model {
     public description: string;
 
     /**
+     * Optional URL of banner iamge to display on mission details.
+     * Can be `null` if not defined by mission creator/editor
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            notEmpty: true,
+            isUrl: true
+        }
+    })
+    public bannerImageUrl: string;
+
+    /**
      * Time (and date) the mission briefing starts.
      * The mission briefing is mainly intended for players in leadership roles
      *
@@ -573,6 +588,7 @@ export class Mission extends Model {
             slug: this.slug,
             description: this.description,
             detailedDescription: this.detailedDescription,
+            bannerImageUrl: _.isNil(this.bannerImageUrl) ? null : this.bannerImageUrl,
             briefingTime: this.briefingTime,
             slottingTime: this.slottingTime,
             startTime: this.startTime,
@@ -614,6 +630,7 @@ export interface IPublicMission {
  */
 export interface IDetailedPublicMission extends IPublicMission {
     detailedDescription: string;
+    bannerImageUrl: string | null;
     briefingTime: Date;
     slottingTime: Date;
     endTime: Date;

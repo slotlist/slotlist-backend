@@ -34,8 +34,11 @@ const serializers: bunyan.Serializers = {
             if (_.isString(payload.token)) {
                 payload.token = '***REDACTED***';
             }
-            if (_.isString(payload.description)) {
-                payload.description = '***SNIP***';
+            if (_.isString(payload.detailedDescription)) {
+                payload.detailedDescription = '***SNIP***';
+            }
+            if (!_.isNil(payload.image)) {
+                payload.image = '***SNIP***';
             }
         }
 
@@ -65,8 +68,12 @@ const serializers: bunyan.Serializers = {
             payload.token = '***REDACTED***';
         }
 
-        if (_.isObject(payload.mission) && _.isString(payload.mission.description)) {
-            payload.mission.description = '***SNIP***';
+        if (_.isObject(payload.mission) && _.isString(payload.mission.detailedDescription)) {
+            payload.mission.detailedDescription = '***SNIP***';
+        }
+
+        if (_.isObject(payload.mission) && !_.isNil(payload.mission.image)) {
+            payload.mission.image = '***SNIP***';
         }
 
         return payload;
@@ -80,8 +87,11 @@ const serializers: bunyan.Serializers = {
         if (_.isString(payload.token)) {
             payload.token = '***REDACTED***';
         }
-        if (_.isString(payload.description)) {
-            payload.description = '***SNIP***';
+        if (_.isString(payload.detailedDescription)) {
+            payload.detailedDescription = '***SNIP***';
+        }
+        if (!_.isNil(payload.image)) {
+            payload.image = '***SNIP***';
         }
 
         return payload;
@@ -95,8 +105,11 @@ const serializers: bunyan.Serializers = {
         if (_.isString(pay.token)) {
             pay.token = '***REDACTED***';
         }
-        if (_.isString(pay.description)) {
-            pay.description = '***SNIP***';
+        if (_.isString(pay.detailedDescription)) {
+            pay.detailedDescription = '***SNIP***';
+        }
+        if (_.isNil(pay.image)) {
+            pay.image = '***SNIP***';
         }
 
         return pay;

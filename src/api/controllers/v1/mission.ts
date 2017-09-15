@@ -3,6 +3,8 @@ import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
 import { col, fn, literal, Transaction } from 'sequelize';
+import * as urlJoin from 'url-join';
+import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
@@ -357,6 +359,60 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 token: token
             };
         });
+    })());
+}
+
+export function setMissionBannerImage(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const imageType = request.payload.imageType;
+        const image = request.payload.image;
+
+        if (_.isNil(imageType) || _.isNil(image)) {
+            log.debug({ function: 'setMissionBannerImage', slug, userUid }, 'Missing mission banner image data, aborting');
+
+            throw Boom.badRequest('Missing mission banner image data');
+        }
+
+        const mission = await Mission.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: Community,
+                    as: 'community'
+                },
+                {
+                    model: User,
+                    as: 'creator'
+                }
+            ]
+        });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'setMissionBannerImage', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const imageFolder = urlJoin('/images/uploads/missions', slug);
+        const imageName = uuid.v4();
+        const imageData = Buffer.from(image, 'base64');
+
+        log.debug({ function: 'setMissionBannerImage', slug, userUid, missionUid: mission.uid, imageFolder, imageName }, 'Uploading mission banner image');
+
+        const imageUrl = await ImageService.uploadImage(imageData, imageName, imageFolder, imageType);
+
+        log.debug({ function: 'setMissionBannerImage', slug, userUid, missionUid: mission.uid, imageUrl }, 'Finished uploading mission banner image, updating mission');
+
+        await mission.update({ bannerImageUrl: imageUrl });
+
+        log.debug({ function: 'setMissionBannerImage', slug, userUid, missionUid: mission.uid, imageUrl }, 'Successfully updated mission');
+
+        const detailedPublicMission = await mission.toDetailedPublicObject();
+
+        return {
+            mission: detailedPublicMission
+        };
     })());
 }
 
