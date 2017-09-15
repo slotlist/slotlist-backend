@@ -56,6 +56,9 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                 {
                     $or: [
                         {
+                            creatorUid: userUid
+                        },
+                        {
                             visibility: 'public'
                         },
                         {
@@ -230,6 +233,9 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 {
                     $or: [
                         {
+                            creatorUid: userUid
+                        },
+                        {
                             visibility: 'public'
                         },
                         {
@@ -380,6 +386,9 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
             queryOptionsMission.where = _.defaults(
                 {
                     $or: [
+                        {
+                            creatorUid: userUid
+                        },
                         {
                             visibility: 'public'
                         },
@@ -708,6 +717,9 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 slug,
                 $or: [
                     {
+                        creatorUid: userUid
+                    },
+                    {
                         visibility: 'public'
                     },
                     {
@@ -905,6 +917,9 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             where: {
                 slug,
                 $or: [
+                    {
+                        creatorUid: userUid
+                    },
                     {
                         visibility: 'public'
                     },
