@@ -311,7 +311,7 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         }
 
         await mission.update(payload, {
-            allowed: ['title', 'description', 'shortdescription', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']
+            allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']
         });
 
         log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission');
@@ -601,6 +601,40 @@ export function createMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
     })());
 }
 
+export function updateMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotGroupUid = request.params.slotGroupUid;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slotGroups = await mission.getSlotGroups({ where: { uid: slotGroupUid } });
+        if (_.isNil(slotGroups) || _.isEmpty(slotGroups)) {
+            log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Mission slot group with given UID not found');
+            throw Boom.notFound('Mission slot group not found');
+        }
+        const slotGroup = slotGroups[0];
+
+        log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot group');
+
+        await slotGroup.update(payload, { allowed: ['title', 'orderNumber', 'description'] });
+
+        log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission slot group');
+
+        const publicSlotGroup = await slotGroup.toPublicObject();
+
+        return {
+            slotGroup: publicSlotGroup
+        };
+    })());
+}
+
 export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
@@ -693,7 +727,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
         log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
 
-        await slot.update(payload, { allowed: ['title', 'orderNumber', 'difficulty', 'shortDescription', 'description', 'restricted', 'reserve'] });
+        await slot.update(payload, { allowed: ['title', 'orderNumber', 'difficulty', 'description', 'detailedDescription', 'restricted', 'reserve'] });
 
         log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission slot');
 

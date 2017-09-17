@@ -572,7 +572,7 @@ export const mission = [
                 payload: Joi.object().keys({
                     title: Joi.string().min(1).max(255).required().description('Title of the slot group').example('Platoon Luchs'),
                     orderNumber: Joi.number().integer().positive().allow(0).min(0).required().description('Order number for sorting slotlist').example(0),
-                    description: Joi.string().allow(null).min(1).default(null).optional().description('Optional description of the mission slot group, explaining ' +
+                    description: Joi.string().allow(null).min(1).default(null).required().description('Optional description of the mission slot group, explaining ' +
                         'the slot group\'s role or callsign').example('Leads the mission, callsign "Luchs"')
                 }).required()
             },
@@ -609,6 +609,69 @@ export const mission = [
         }
     },
     {
+        method: 'PATCH',
+        path: '/v1/missions/{missionSlug}/slotGroups/{slotGroupUid}',
+        handler: controller.updateMissionSlotGroup,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Updated an existing mission slot group',
+            notes: 'Updates an existing mission slot group. This endpoint can only be used by mission creators and users with the ' +
+            '`mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'patch', 'v1', 'missions', 'slot', 'group', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to update slot group for').example('all-of-altis'),
+                    slotGroupUid: Joi.string().guid().length(36).required().description('UID of the mission slot group to update').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                payload: Joi.object().keys({
+                    title: Joi.string().min(1).max(255).optional().description('New title of the slot group').example('Platoon Luchs'),
+                    orderNumber: Joi.number().integer().positive().allow(0).min(0).optional().description('New order number for sorting slotlist').example(0),
+                    description: Joi.string().allow(null).min(1).optional().description('New optional description of the mission slot group, explaining ' +
+                        'the slot group\'s role or callsign').example('Leads the mission, callsign "Luchs"')
+                }).required()
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slotGroup: missionSlotGroupSchema
+                }).label('UpdatedMissionSlotGroupResponse').description('Response containing details of updated mission slot group')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no mission slot group with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot group not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'DELETE',
         path: '/v1/missions/{missionSlug}/slotGroups/{slotGroupUid}',
         handler: controller.deleteMissionSlotGroup,
@@ -629,7 +692,7 @@ export const mission = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
-                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create slots for').example('all-of-altis'),
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete slot group for').example('all-of-altis'),
                     slotGroupUid: Joi.string().guid().length(36).required().description('UID of the mission slot group to delete').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 })
             },
@@ -649,11 +712,11 @@ export const mission = [
                             schema: forbiddenSchema
                         },
                         404: {
-                            description: 'No mission with given slug was found',
+                            description: 'No mission with given slug or no mission slot group with the given UID was found',
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                                message: Joi.string().equal('Mission not found', 'Mission slot group not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
