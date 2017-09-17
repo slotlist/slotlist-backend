@@ -1,3 +1,4 @@
+import * as Boom from 'boom';
 import * as _ from 'lodash';
 import { Writable } from 'stream';
 import * as urlJoin from 'url-join';
@@ -9,6 +10,8 @@ import { Storage as StorageConfig } from '../config/Config';
 import { log as logger } from '../util/log';
 
 const log = logger.child({ service: 'ImageService' });
+
+export const MISSION_IMAGE_PATH: string = '/images/uploads/missions';
 
 /**
  * Service for parsing, processing and storing images
@@ -25,22 +28,48 @@ export class ImageService {
         this.bucket = this.storage.bucket(StorageConfig.bucketName);
     }
 
+    public async deleteImage(imagePath: string): Promise<void> {
+        log.debug({ function: 'deleteImage', imagePath }, 'Deleting image');
+
+        const file = this.bucket.file(imagePath);
+
+        try {
+            await file.delete();
+        } catch (err) {
+            log.warn({ function: 'deleteImage', imagePath, err }, 'Failed to delete image');
+            throw Boom.badImplementation('Failed to delete image');
+        }
+
+        log.debug({ function: 'deleteImage', imagePath }, 'Successfully deleted image');
+    }
+
+    public getImageUidFromUrl(imageUrl: string): RegExpMatchArray | null {
+        const imageUidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
+
+        return imageUrl.match(imageUidRegex);
+    }
+
+    public parseDataUrl(dataUrl: string): RegExpExecArray | null {
+        // Taken from https://gist.github.com/bgrins/6194623#gistcomment-1671744 at 2017-09-07
+        const dataUrlRegex = /\s*data:([a-z]+\/[a-z0-9\-\+]+(;[a-z\-]+\=[a-z0-9\-]+)?)?(;base64)?,([a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*)\s*/ig;
+
+        return dataUrlRegex.exec(dataUrl);
+    }
+
     public async parseMissionDescription(missionSlug: string, description: string): Promise<string> {
         log.debug({ function: 'parseMissionDescription', missionSlug }, 'Parsing mission description');
 
         let imageCount = 0;
         // tslint:disable-next-line:no-constant-condition
         while (true) {
-            // Taken from https://gist.github.com/bgrins/6194623#gistcomment-1671744 at 2017-09-07
-            const dataUrlRegex = /\s*data:([a-z]+\/[a-z0-9\-\+]+(;[a-z\-]+\=[a-z0-9\-]+)?)?(;base64)?,([a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*)\s*/ig;
-            const matches = dataUrlRegex.exec(description);
+            const matches = this.parseDataUrl(description);
             if (_.isNull(matches)) {
                 break;
             }
 
             const dataUrl = matches[4];
             const imageType = matches[1];
-            const imageFolder = urlJoin('/images/uploads/missions', missionSlug);
+            const imageFolder = urlJoin(MISSION_IMAGE_PATH, missionSlug);
             const imageName = uuid.v4();
 
             log.debug({ function: 'parseMissionDescription', missionSlug, imageType, imageFolder, imageName }, 'Found image in mission description, processing');
@@ -103,6 +132,6 @@ export class ImageService {
     }
 }
 
-const instance = new ImageService();
+export const instance = new ImageService();
 
 export default instance;
