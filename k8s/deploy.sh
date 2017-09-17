@@ -5,4 +5,4 @@ if [ -z $1 ]; then
     exit 1
 fi
 
-kubectl --namespace slotlist set image deploy/slotlist-frontend slotlist-frontend=eu.gcr.io/slotlist-info/slotlist/frontend:$1
+kubectl --namespace slotlist set image deploy/slotlist-backend slotlist-backend=eu.gcr.io/slotlist-info/slotlist/backend:$1

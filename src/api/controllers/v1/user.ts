@@ -2,6 +2,7 @@ import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
+import { col, fn, literal } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
@@ -44,11 +45,21 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
 
 export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const userUid = request.params.uid;
+        const targetUserUid = request.params.uid;
+        let userUid: string | null = null;
+        let userCommunityUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
+        }
+
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
-            order: [['startTime', 'ASC'], ['title', 'ASC']]
+            order: [['startTime', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
 
         if (request.query.includeEnded === false) {
@@ -59,19 +70,51 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
             };
         }
 
-        const user = await User.findById(userUid);
+        if (_.isNil(userUid)) {
+            queryOptions.where.visibility = 'public';
+        } else {
+            queryOptions.where = _.defaults(
+                {
+                    $or: [
+                        {
+                            creatorUid: userUid
+                        },
+                        {
+                            visibility: 'public'
+                        },
+                        {
+                            visibility: 'hidden',
+                            $or: [
+                                {
+                                    creatorUid: userUid
+                                },
+                                // tslint:disable-next-line:max-line-length
+                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                            ]
+                        },
+                        {
+                            visibility: 'private',
+                            creatorUid: userUid
+                        }
+                    ]
+                },
+                queryOptions.where);
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptions.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
+        }
+
+        const user = await User.findById(targetUserUid);
         if (_.isNil(user)) {
-            log.debug({ function: 'getUserMissionList', userUid, queryOptions }, 'User with given UID not found');
+            log.debug({ function: 'getUserMissionList', targetUserUid, queryOptions }, 'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 
-        if (_.isNil(queryOptions.where)) {
-            queryOptions.where = {
-                creatorUid: user.uid
-            };
-        } else {
-            queryOptions.where.creatorUid = user.uid;
-        }
+        queryOptions.where.creatorUid = user.uid;
 
         const result = await Mission.findAndCountAll(queryOptions);
 

@@ -2,7 +2,7 @@ import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
-import { col, fn, Transaction } from 'sequelize';
+import { col, fn, literal, Transaction } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import {
@@ -605,6 +605,16 @@ export function getCommunityMemberList(request: Hapi.Request, reply: Hapi.ReplyW
 export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
+        let userUid: string | null = null;
+        let userCommunityUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
+        }
+
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
@@ -619,19 +629,51 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
             };
         }
 
+        if (_.isNil(userUid)) {
+            queryOptions.where.visibility = 'public';
+        } else {
+            queryOptions.where = _.defaults(
+                {
+                    $or: [
+                        {
+                            creatorUid: userUid
+                        },
+                        {
+                            visibility: 'public'
+                        },
+                        {
+                            visibility: 'hidden',
+                            $or: [
+                                {
+                                    creatorUid: userUid
+                                },
+                                // tslint:disable-next-line:max-line-length
+                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                            ]
+                        },
+                        {
+                            visibility: 'private',
+                            creatorUid: userUid
+                        }
+                    ]
+                },
+                queryOptions.where);
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptions.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
+        }
+
         const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(community)) {
             log.debug({ function: 'getCommunityMissionList', slug, queryOptions }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
         }
 
-        if (_.isNil(queryOptions.where)) {
-            queryOptions.where = {
-                communityUid: community.uid
-            };
-        } else {
-            queryOptions.where.communityUid = community.uid;
-        }
+        queryOptions.where.communityUid = community.uid;
 
         const result = await Mission.findAndCountAll(queryOptions);
 

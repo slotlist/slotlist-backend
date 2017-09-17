@@ -134,7 +134,7 @@ export const mission = [
             notes: 'Creates a new mission and assigns the current user as its creator. The user can optionally also associate the mission with their community. ' +
             'Regular user authentication is required to access this endpoint',
             payload: {
-                maxBytes: 15728640 // Payload size limit increated to 15 Mebibyte
+                maxBytes: 15728640 // Payload size limit increased to 15 Mebibyte
             },
             tags: ['api', 'post', 'v1', 'missions', 'create', 'authenticated'],
             validate: {
@@ -277,7 +277,7 @@ export const mission = [
             'Regular user authentication with appropriate permissions is required to access this endpoint',
             tags: ['api', 'patch', 'v1', 'missions', 'update', 'authenticated', 'restricted'],
             payload: {
-                maxBytes: 15728640 // Payload size limit increated to 15 Mebibyte
+                maxBytes: 15728640 // Payload size limit increased to 15 Mebibyte
             },
             validate: {
                 options: {
@@ -406,6 +406,135 @@ export const mission = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'PUT',
+        path: '/v1/missions/{missionSlug}/bannerImage',
+        handler: controller.setMissionBannerImage,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Sets the mission\'s banner image to the uploaded file',
+            notes: 'Sets the mission\'s banner image to the uploaded file - stored in GCP, max. image size is 2 Mebibyte. This endpoint can only be used by mission creators ' +
+            'and users with the `mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'put', 'v1', 'missions', 'bannerImage', 'authenticated', 'restricted'],
+            payload: {
+                maxBytes: 2097152 // Payload size limit increased to 2 Mebibyte
+            },
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to set banner image for').example('all-of-altis')
+                }),
+                payload: Joi.object().required().keys({
+                    imageType: Joi.string().equal('image/jpeg', 'image/png', 'image/gif').required().description('Type of image uploaded. Only jpeg, png and gif files allowed')
+                        .example('image/png'),
+                    image: Joi.string().uri().min(1).required().description('Image data encoded as a data URL. Maximum allowed upload size is 2 Mebibyte')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    mission: schemas.missionDetailsSchema
+                }).label('SetMissionBannerImageResponse').description('Response containing details of the updated mission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        400: {
+                            description: 'Required mission banner image data is missing',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Bad Request').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Missing mission banner image data').required().description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}/bannerImage',
+        handler: controller.deleteMissionBannerImage,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing mission banner image',
+            notes: 'Deletes an existing mission banner image, also removing it from GCP storage. This endpoint can only be used by mission creators and users with the ' +
+            '`mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'bannerImage', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete the mission image for')
+                        .example('all-of-altis')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionBannerImageResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found or the mission did not have a mission banner image set',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'No mission banner image set').required().description('Message further describing the error')
                             })
                         },
                         500: {

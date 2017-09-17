@@ -23,6 +23,8 @@ import { communitySchema } from './community';
 export const missionDetailsSchema = missionSchema.keys({
     detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+    bannerImageUrl: Joi.string().allow(null).uri().min(1).default(null).description('Optional URL of banner image to be displayed on mission details')
+        .example('https://example.org/banner.png'),
     briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players with leadership roles')
         .example('2017-09-02T16:00:00.000Z'),
     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server and choose their reserved slot ' +

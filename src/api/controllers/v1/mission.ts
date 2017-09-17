@@ -3,6 +3,8 @@ import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
 import { col, fn, literal, Transaction } from 'sequelize';
+import * as urlJoin from 'url-join';
+import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
@@ -11,7 +13,7 @@ import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/model
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
-import ImageService from '../../../shared/services/ImageService';
+import { instance as ImageService, MISSION_IMAGE_PATH } from '../../../shared/services/ImageService';
 import { findPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
@@ -55,6 +57,9 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
             queryOptions.where = _.defaults(
                 {
                     $or: [
+                        {
+                            creatorUid: userUid
+                        },
                         {
                             visibility: 'public'
                         },
@@ -230,6 +235,9 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 {
                     $or: [
                         {
+                            creatorUid: userUid
+                        },
+                        {
                             visibility: 'public'
                         },
                         {
@@ -354,6 +362,108 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
     })());
 }
 
+export function setMissionBannerImage(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const imageType = request.payload.imageType;
+        const image = request.payload.image;
+
+        if (_.isNil(imageType) || _.isNil(image)) {
+            log.debug({ function: 'setMissionBannerImage', slug, userUid }, 'Missing mission banner image data, aborting');
+            throw Boom.badRequest('Missing mission banner image data');
+        }
+
+        const mission = await Mission.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: Community,
+                    as: 'community'
+                },
+                {
+                    model: User,
+                    as: 'creator'
+                }
+            ]
+        });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'setMissionBannerImage', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const imageFolder = urlJoin(MISSION_IMAGE_PATH, slug);
+        const imageName = uuid.v4();
+
+        const matches = ImageService.parseDataUrl(image);
+        if (_.isNil(matches)) {
+            log.debug({ function: 'setMissionBannerImage', slug, userUid }, 'Mission banner image data did not match data URL regex, aborting');
+            throw Boom.badRequest('Missing mission banner image data');
+        }
+
+        const imageData = Buffer.from(matches[4], 'base64');
+
+        log.debug({ function: 'setMissionBannerImage', slug, userUid, missionUid: mission.uid, imageFolder, imageName }, 'Uploading mission banner image');
+
+        const imageUrl = await ImageService.uploadImage(imageData, imageName, imageFolder, imageType);
+
+        log.debug({ function: 'setMissionBannerImage', slug, userUid, missionUid: mission.uid, imageUrl }, 'Finished uploading mission banner image, updating mission');
+
+        await mission.update({ bannerImageUrl: imageUrl });
+
+        log.debug({ function: 'setMissionBannerImage', slug, userUid, missionUid: mission.uid, imageUrl }, 'Successfully updated mission');
+
+        const detailedPublicMission = await mission.toDetailedPublicObject();
+
+        return {
+            mission: detailedPublicMission
+        };
+    })());
+}
+
+export function deleteMissionBannerImage(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug } });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionBannerImage', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const bannerImageUrl = mission.bannerImageUrl;
+        if (_.isNil(bannerImageUrl)) {
+            log.debug({ function: 'deleteMissionBannerImage', slug, userUid }, 'Mission does not have banner image URL set, aborting');
+            throw Boom.notFound('No mission banner image set');
+        }
+
+        const matches = ImageService.getImageUidFromUrl(bannerImageUrl);
+        if (_.isNil(matches) || _.isEmpty(matches)) {
+            log.debug({ function: 'deleteMissionBannerImage', slug, userUid }, 'Failed to parse image UID from banner image URL, aborting');
+            throw Boom.notFound('No mission banner image set');
+        }
+        const bannerImageUid = matches[0];
+
+        const imagePath = urlJoin(MISSION_IMAGE_PATH, slug, bannerImageUid);
+
+        log.debug({ function: 'deleteMissionBannerImage', slug, userUid, missionUid: mission.uid, imagePath }, 'Deleting mission banner image');
+
+        await ImageService.deleteImage(imagePath);
+
+        log.debug({ function: 'deleteMissionBannerImage', slug, userUid, missionUid: mission.uid, imagePath }, 'Removing mission banner image URL from mission');
+
+        await mission.update({ bannerImageUrl: null });
+
+        log.debug({ function: 'deleteMissionBannerImage', slug, userUid, missionUid: mission.uid, imagePath }, 'Successfully updated mission');
+
+        return {
+            success: true
+        };
+    })());
+}
+
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
@@ -380,6 +490,9 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
             queryOptionsMission.where = _.defaults(
                 {
                     $or: [
+                        {
+                            creatorUid: userUid
+                        },
                         {
                             visibility: 'public'
                         },
@@ -708,6 +821,9 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 slug,
                 $or: [
                     {
+                        creatorUid: userUid
+                    },
+                    {
                         visibility: 'public'
                     },
                     {
@@ -905,6 +1021,9 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             where: {
                 slug,
                 $or: [
+                    {
+                        creatorUid: userUid
+                    },
                     {
                         visibility: 'public'
                     },
