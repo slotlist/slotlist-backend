@@ -43,6 +43,27 @@ export class ImageService {
         log.debug({ function: 'deleteImage', imagePath }, 'Successfully deleted image');
     }
 
+    public async deleteAllMissionImages(path: string): Promise<void> {
+        if (_.startsWith(path, '/')) {
+            path = path.slice(1);
+        }
+        if (!_.endsWith(path, '/')) {
+            path = `${path}/`;
+        }
+
+        log.debug({ function: 'deleteAllMissionImages', path }, 'Deleting all mission images');
+
+        try {
+            const resp = await this.bucket.deleteFiles({ prefix: path, force: true });
+            log.debug({ resp }, 'resp');
+        } catch (err) {
+            log.warn({ function: 'deleteAllMissionImages', path, err }, 'Failed to delete all mission images');
+            throw Boom.badImplementation('Failed to delete all mission images');
+        }
+
+        log.debug({ function: 'deleteAllMissionImages', path }, 'Successfully deleted all mission images');
+    }
+
     public getImageUidFromUrl(imageUrl: string): RegExpMatchArray | null {
         const imageUidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
 
