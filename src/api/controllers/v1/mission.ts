@@ -52,7 +52,13 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
         }
 
         if (_.isNil(userUid)) {
-            queryOptions.where.visibility = 'public';
+            if (_.isNil(queryOptions.where)) {
+                queryOptions.where = {
+                    visibility: 'public'
+                };
+            } else {
+                queryOptions.where.visibility = 'public';
+            }
         } else {
             queryOptions.where = _.defaults(
                 {
