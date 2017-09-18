@@ -52,7 +52,13 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
         }
 
         if (_.isNil(userUid)) {
-            queryOptions.where.visibility = 'public';
+            if (_.isNil(queryOptions.where)) {
+                queryOptions.where = {
+                    visibility: 'public'
+                };
+            } else {
+                queryOptions.where.visibility = 'public';
+            }
         } else {
             queryOptions.where = _.defaults(
                 {
@@ -154,7 +160,7 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             delete payload.addToCommunity;
         }
 
-        payload.description = await ImageService.parseMissionDescription(payload.slug, payload.description);
+        payload.detailedDescription = await ImageService.parseMissionDescription(payload.slug, payload.detailedDescription);
 
         log.debug({ function: 'createMission', payload, userUid }, 'Creating new mission');
 
@@ -306,8 +312,8 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
         log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Updating mission');
 
-        if (_.isString(payload.description) && !_.isEmpty(payload.description)) {
-            payload.description = await ImageService.parseMissionDescription(slug, payload.description);
+        if (_.isString(payload.detailedDescription) && !_.isEmpty(payload.detailedDescription)) {
+            payload.detailedDescription = await ImageService.parseMissionDescription(slug, payload.detailedDescription);
         }
 
         await mission.update(payload, {
@@ -346,7 +352,8 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
             await Promise.all([
                 mission.destroy(),
-                Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } })
+                Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } }),
+                ImageService.deleteAllMissionImages(urlJoin(MISSION_IMAGE_PATH, slug))
             ]);
 
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Successfully deleted mission');
