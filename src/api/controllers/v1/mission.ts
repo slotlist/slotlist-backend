@@ -995,6 +995,13 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     'Mission slot already has assignee, rejecting confirmation');
                 throw Boom.conflict('Mission slot already assigned');
             } else if (confirmed && !registration.confirmed && _.isNil(slot.assigneeUid)) {
+                if (await mission.isUserAssignedToSlot(userUid)) {
+                    log.debug(
+                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                        'User is already assigned to another slot, rejecting confirmation');
+                    throw Boom.conflict('User already assigned to another slot');
+                }
+
                 log.debug(
                     { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                     'Confirming mission slot registration');
