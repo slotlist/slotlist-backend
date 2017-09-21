@@ -180,7 +180,11 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             'Successfully updated account details for user');
 
         const publicUser = await user.toDetailedPublicObject();
+        const token = await user.generateJWT();
 
-        return { user: _.defaults(publicUser, { permissions }) };
+        return {
+            user: _.defaults(publicUser, { permissions }),
+            token
+        };
     })());
 }
