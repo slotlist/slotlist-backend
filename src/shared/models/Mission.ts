@@ -543,6 +543,41 @@ export class Mission extends Model {
     }
 
     /**
+     * Checks whether a user is already assigned to any slot of this mission
+     *
+     * @param {string} userUid UID of user to check assignments for
+     * @returns {Promise<boolean>} Promise fulfilled with result of assignment check
+     * @memberof Mission
+     */
+    public async isUserAssignedToSlot(userUid: string): Promise<boolean> {
+        const assignedSlotCount = await MissionSlot.count({
+            where: {
+                assigneeUid: userUid
+            },
+            include: [
+                {
+                    model: MissionSlotGroup,
+                    as: 'slotGroup',
+                    attributes: ['uid'],
+                    include: [
+                        {
+                            model: Mission,
+                            as: 'mission',
+                            attributes: ['uid'],
+                            where: {
+                                uid: this.uid
+                            }
+                        }
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                }
+            ]
+        });
+
+        return assignedSlotCount > 0;
+    }
+
+    /**
      * Returns a public representation of the mission instance, as transmitted via API
      *
      * @returns {Promise<IPublicMission>} Object containing public mission information

@@ -181,7 +181,8 @@ export const auth = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    user: userAccountDetailsSchema.required().description('Detailed user information including private data for the currently logged in account')
+                    user: userAccountDetailsSchema.required().description('Detailed user information including private data for the currently logged in account'),
+                    token: Joi.string().min(1).required().description('Refreshed JWT including updated account details')
                 }).label('PatchAccountDetailsResponse').description('Response containing the updated account details including private information')
             },
             plugins: {

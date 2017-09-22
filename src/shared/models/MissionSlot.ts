@@ -33,8 +33,8 @@ import { IPublicUser, User } from './User';
     paranoid: false,
     indexes: [
         {
-            name: 'missionSlots_unique_missionUid_assigneeUid',
-            fields: ['missionUid', 'assigneeUid'],
+            name: 'missionSlots_unique_slotGroupUid_assigneeUid',
+            fields: ['slotGroupUid', 'assigneeUid'],
             unique: true
         }
     ]

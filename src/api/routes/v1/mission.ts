@@ -1175,11 +1175,12 @@ export const mission = [
                             })
                         },
                         409: {
-                            description: 'The mission slot is already assigned to a user',
+                            description: 'The mission slot is already assigned to a user or the user is already assigned to a different slot',
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Mission slot already assigned').required().description('Message further describing the error')
+                                message: Joi.string().equal('Mission slot already assigned', 'User already assigned to another slot').required()
+                                    .description('Message further describing the error')
                             })
                         },
                         500: {
