@@ -817,6 +817,8 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
                 log.debug(
                     { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
                     'User has mission creator or editor permission, returning slot registration details');
+
+                includeDetails = true;
             }
         }
 
