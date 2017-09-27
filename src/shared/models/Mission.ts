@@ -20,6 +20,7 @@ const log = logger.child({ model: 'Community' });
 import { Community, IPublicCommunity } from './Community';
 import { IMissionSlotCreatePayload, MissionSlot } from './MissionSlot';
 import { MissionSlotGroup } from './MissionSlotGroup';
+import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { IPublicUser, User } from './User';
 
 /**
@@ -549,7 +550,7 @@ export class Mission extends Model {
      * @returns {Promise<boolean>} Promise fulfilled with result of assignment check
      * @memberof Mission
      */
-    public async isUserAssignedToSlot(userUid: string): Promise<boolean> {
+    public async isUserAssignedToAnySlot(userUid: string): Promise<boolean> {
         const assignedSlotCount = await MissionSlot.count({
             where: {
                 assigneeUid: userUid
@@ -575,6 +576,49 @@ export class Mission extends Model {
         });
 
         return assignedSlotCount > 0;
+    }
+
+    /**
+     * Checks whether a user has registered for any slot of this mission
+     *
+     * @param {string} userUid UID of user to check registrations for
+     * @returns {Promise<boolean>} Promise fulfilled with result of registration check
+     * @memberof Mission
+     */
+    public async isUserRegisteredForAnySlot(userUid: string): Promise<boolean> {
+        const registeredSlotCount = await MissionSlotRegistration.count({
+            where: {
+                userUid
+            },
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slot',
+                    attributes: ['uid'],
+                    include: [
+                        {
+                            model: MissionSlotGroup,
+                            as: 'slotGroup',
+                            attributes: ['uid'],
+                            include: [
+                                {
+                                    model: Mission,
+                                    as: 'mission',
+                                    attributes: ['uid'],
+                                    where: {
+                                        uid: this.uid
+                                    }
+                                }
+                            ],
+                            required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                        }
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                }
+            ]
+        });
+
+        return registeredSlotCount > 0;
     }
 
     /**
@@ -654,6 +698,8 @@ export interface IPublicMission {
     description: string;
     startTime: Date;
     creator: IPublicUser;
+    isAssignedToAnySlot?: boolean; // only returned for logged in users
+    isRegisteredForAnySlot?: boolean; // only returned for logged in users
 }
 
 /**

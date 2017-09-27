@@ -99,8 +99,20 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
 
         const missionCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + missionCount) < result.count;
-        const missionList = await Promise.map(result.rows, (mission: Mission) => {
-            return mission.toPublicObject();
+        const missionList = await Promise.map(result.rows, async (mission: Mission) => {
+            const publicMission = await mission.toPublicObject();
+
+            if (!_.isNil(userUid)) {
+                const [isAssignedToAnySlot, isRegisteredForAnySlot] = await Promise.all([
+                    mission.isUserAssignedToAnySlot(userUid),
+                    mission.isUserRegisteredForAnySlot(userUid)
+                ]);
+
+                publicMission.isAssignedToAnySlot = isAssignedToAnySlot;
+                publicMission.isRegisteredForAnySlot = isRegisteredForAnySlot;
+            }
+
+            return publicMission;
         });
 
         return {
@@ -569,7 +581,7 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
             _.each(slotGroup.slots, (slot: IPublicMissionSlot) => {
                 const registration = _.find(registrations, { slotUid: slot.uid });
                 if (!_.isNil(registration)) {
-                    (<any>slot).registrationUid = registration.uid;
+                    slot.registrationUid = registration.uid;
                 }
             });
         });
@@ -997,7 +1009,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     'Mission slot already has assignee, rejecting confirmation');
                 throw Boom.conflict('Mission slot already assigned');
             } else if (confirmed && !registration.confirmed && _.isNil(slot.assigneeUid)) {
-                if (await mission.isUserAssignedToSlot(userUid)) {
+                if (await mission.isUserAssignedToAnySlot(registration.userUid)) {
                     log.debug(
                         { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                         'User is already assigned to another slot, rejecting confirmation');
