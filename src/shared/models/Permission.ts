@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
     BelongsTo,
     BelongsToGetAssociationMixin,
@@ -8,7 +9,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
 
-import { User } from './User';
+import { IPublicUser, User } from './User';
 
 /**
  * Represents a permission in database.
@@ -159,9 +160,15 @@ export class Permission extends Model {
      * @memberof Permission
      */
     public async toPublicObject(): Promise<IPublicPermission> {
+        if (_.isNil(this.user)) {
+            this.user = await this.getUser();
+        }
+        const publicUser = await this.user.toPublicObject();
+
         return {
             uid: this.uid,
-            permission: this.permission
+            permission: this.permission,
+            user: publicUser
         };
     }
 
@@ -179,4 +186,5 @@ export class Permission extends Model {
 export interface IPublicPermission {
     uid: string;
     permission: string;
+    user: IPublicUser;
 }
