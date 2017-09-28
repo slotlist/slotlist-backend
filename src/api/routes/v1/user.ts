@@ -10,6 +10,10 @@ import * as controller from '../../controllers/v1/user';
  */
 
 export const LIMITS = {
+    userList: {
+        default: 25,
+        max: 100
+    },
     userMissionList: {
         default: 25,
         max: 100
@@ -17,6 +21,60 @@ export const LIMITS = {
 };
 
 export const user = [
+    {
+        method: 'GET',
+        path: '/v1/users',
+        handler: controller.getUserList,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'optional'
+            },
+            description: 'Returns a list of all currently existing users',
+            notes: 'Returns a paginated list of all currently existing users. Up to 100 users can be requested at once, pagination has to be used to retrieve the ' +
+            'rest. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'users', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
+                }).unknown(true),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.userList.max).default(LIMITS.userList.default).optional()
+                        .description('Limit for number of users to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of users to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
+                    search: Joi.string().min(1).allow(null).default(null).optional().description('Value used for searching users, retrieving only those that ' +
+                        'have a nickname containing the provided value').example('morpheus')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.userList.max).required()
+                        .description('Limit for number of users to retrieve, as provided via query'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Number of users to skip before retrieving new ones from database, as provided via query'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.userList.max).required()
+                        .description('Actual number of users returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of users stored'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more users are available and can be retrieved using pagination'),
+                    users: Joi.array().items(schemas.userSchema.optional()).required().description('List of users retrieved')
+                }).label('GetUserListResponse').description('Response containing list of currently existing users')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
     {
         method: 'GET',
         path: '/v1/users/{uid}',
