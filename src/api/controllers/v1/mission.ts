@@ -537,6 +537,43 @@ export function getMissionPermissionList(request: Hapi.Request, reply: Hapi.Repl
     })());
 }
 
+export function createMissionPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'createMissionPermission', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission permission');
+
+        let permission: Permission;
+        try {
+            permission = await Permission.create({ userUid: payload.userUid, permission: payload.permission });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                throw Boom.conflict('Mission permission already exists');
+            }
+
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid },
+            'Successfully created new mission permission');
+
+        const publicPermission = await permission.toPublicObject();
+
+        return {
+            permission: publicPermission
+        };
+    })());
+}
+
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
