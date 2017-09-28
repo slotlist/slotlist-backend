@@ -449,6 +449,7 @@ export interface IPublicMissionSlot {
     reserve: boolean;
     assignee: IPublicUser | null;
     registrationCount: number;
+    registrationUid?: string; // only returned if user has registered for the slot
 }
 
 /**

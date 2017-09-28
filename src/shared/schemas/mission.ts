@@ -13,7 +13,11 @@ export const missionSchema = Joi.object().keys({
     description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
     startTime: Joi.date().required().description('Date and time the missions starts (slotting/briefing times are stored separately and available via mission details')
         .example('2017-09-02T17:00:00.000Z'),
-    creator: userSchema.required().description('Creator of the mission')
+    creator: userSchema.required().description('Creator of the mission'),
+    isAssignedToAnySlot: Joi.bool().optional().description('Indicates whether the user is assigned to any slot in the mission. Only present for requests by authenticated users')
+        .example(true),
+    isRegisteredForAnySlot: Joi.bool().optional().description('Indicates whether the user is registered for any slot in the mission. Only present for requests by ' +
+        'authenticated users').example(true)
 }).required().label('Mission').description('Public mission information, as displayed in overview lists');
 
 // Imported below public missionSchema so circular dependencies work
