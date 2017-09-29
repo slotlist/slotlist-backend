@@ -512,7 +512,7 @@ export function getMissionPermissionList(request: Hapi.Request, reply: Hapi.Repl
             throw Boom.unauthorized('Token user not found');
         }
 
-        const mission = await Mission.findOne({ where: { slug } });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'getMissionPermissionList', slug, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -552,6 +552,12 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
         if (!Permission.isValidMissionPermission(slug, payload.permission)) {
             log.warn({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Tried to create invalid mission permission, rejecting');
             throw Boom.badRequest('Invalid mission permission');
+        }
+
+        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid'] });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Mission permission target user with given UID not found');
+            throw Boom.notFound('User not found');
         }
 
         log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission permission');

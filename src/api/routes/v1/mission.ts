@@ -563,7 +563,7 @@ export const mission = [
             description: 'Returns a list of all permissions granted for the given mission',
             notes: 'Returns a list of permissions granted for the given mission. This endpoint can only be used by mission creators. Regular user authentication with ' +
             'appropriate  permissions is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'missions', 'permission', 'list'],
+            tags: ['api', 'get', 'v1', 'missions', 'permission', 'list', 'authenticated', 'restricted'],
             validate: {
                 options: {
                     abortEarly: false
@@ -615,11 +615,11 @@ export const mission = [
                             schema: forbiddenSchema
                         },
                         404: {
-                            description: 'No mission with given slug was found',
+                            description: 'No mission with given slug or no target user with the given UID was found',
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                                message: Joi.string().equal('Mission not found', 'User not found').required().description('Message further describing the error')
                             })
                         },
                         500: {

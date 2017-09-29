@@ -881,7 +881,7 @@ export const community = [
             description: 'Returns a list of all permissions granted for the given community',
             notes: 'Returns a list of permissions granted for the given community. This endpoint can only be used by community founders. Regular user authentication with ' +
             'appropriate  permissions is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'communities', 'permission', 'list'],
+            tags: ['api', 'get', 'v1', 'communities', 'permission', 'list', 'authenticated', 'restricted'],
             validate: {
                 options: {
                     abortEarly: false
@@ -938,6 +938,83 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/communities/{communitySlug}/permissions',
+        handler: controller.createCommunityPermission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Creates a new community permission for the given community',
+            notes: 'Creates a new community permission for the given community. This endpoint can only be used by community founders. Regular user authentication with ' +
+            'appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'communities', 'permission', 'create', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to create permission for')
+                        .example('spezialeinheit-luchs')
+                }),
+                payload: Joi.object().keys({
+                    userUid: Joi.string().guid().length(36).required().description('UID of the user to grant permission to').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+                    permission: Joi.string().min(1).max(255).required().description('Permission to grant').example('community.spezialeinheit-luchs.leader')
+                }).required()
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    permission: permissionSchema
+                }).label('CreateCommunityPermissionResponse').description('Response containing details of newly created community permission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{missionSlug}}.founder']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        400: {
+                            description: 'An invalid community permission - not matching community slug or allowed permissions - was provided',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Bad Request').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Invalid community permission').required().description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug or no target user with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The given community permission has already been granted to the selected user',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community permission already exists').required().description('Message further describing the error')
                             })
                         },
                         500: {

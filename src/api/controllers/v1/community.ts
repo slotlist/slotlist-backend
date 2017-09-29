@@ -723,7 +723,7 @@ export function getCommunityPermissionList(request: Hapi.Request, reply: Hapi.Re
             throw Boom.unauthorized('Token user not found');
         }
 
-        const community = await Community.findOne({ where: { slug } });
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(community)) {
             log.debug({ function: 'getCommunityPermissionList', slug, userUid }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -744,6 +744,54 @@ export function getCommunityPermissionList(request: Hapi.Request, reply: Hapi.Re
             total: result.count,
             moreAvailable: moreAvailable,
             permissions: permissionList
+        };
+    })());
+}
+
+export function createCommunityPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'createCommunityPermission', slug, payload, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (!Permission.isValidCommunityPermission(slug, payload.permission)) {
+            log.warn({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Tried to create invalid community permission, rejecting');
+            throw Boom.badRequest('Invalid community permission');
+        }
+
+        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid'] });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Community permission target user with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        log.debug({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Creating new community permission');
+
+        let permission: Permission;
+        try {
+            permission = await Permission.create({ userUid: payload.userUid, permission: payload.permission });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                throw Boom.conflict('Community permission already exists');
+            }
+
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createCommunityPermission', payload, userUid, communityUid: community.uid, permissionUid: permission.uid },
+            'Successfully created new community permission');
+
+        const publicPermission = await permission.toPublicObject();
+
+        return {
+            permission: publicPermission
         };
     })());
 }

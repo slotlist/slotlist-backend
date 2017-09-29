@@ -150,6 +150,22 @@ export class Permission extends Model {
     /////////////////////////
 
     /**
+     * Checks whether the provided permission is valid for the given community.
+     * Prevents granting of invalid permissions via direct API requests
+     *
+     * @param {string} communitySlug Slug of community to check permission for
+     * @param {string} permission Permission to check
+     * @returns {boolean} Indicates whether the permission is valid
+     * @memberof Permission
+     */
+    // tslint:disable-next-line:function-name
+    public static isValidCommunityPermission(communitySlug: string, permission: string): boolean {
+        const perm = permission.toLowerCase();
+
+        return perm === `community.${communitySlug}.leader` || perm === `community.${communitySlug}.recruitment`;
+    }
+
+    /**
      * Checks whether the provided permission is valid for the given mission.
      * Prevents granting of invalid permissions via direct API requests
      *
