@@ -693,3 +693,57 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
         };
     })());
 }
+
+export function getCommunityPermissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            where: { permission: { $like: `community.${slug}.%` } },
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    include: [
+                        {
+                            model: Community,
+                            as: 'community'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'getCommunityPermissionList', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        const community = await Community.findOne({ where: { slug } });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityPermissionList', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const result = await Permission.findAndCountAll(queryOptions);
+
+        const permissionCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + permissionCount) < result.count;
+        const permissionList = await Promise.map(result.rows, async (permission: Permission) => {
+            return permission.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: permissionCount,
+            total: result.count,
+            moreAvailable: moreAvailable,
+            permissions: permissionList
+        };
+    })());
+}

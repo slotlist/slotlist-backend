@@ -10,6 +10,7 @@ import * as schemas from '../../../shared/schemas/community';
 import { communityApplicationSchema } from '../../../shared/schemas/communityApplication';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
+import { permissionSchema } from '../../../shared/schemas/permission';
 import { userSchema } from '../../../shared/schemas/user';
 import * as controller from '../../controllers/v1/community';
 
@@ -27,6 +28,10 @@ export const LIMITS = {
         max: 100
     },
     communityMissionList: {
+        default: 25,
+        max: 100
+    },
+    communityPermissionList: {
         default: 25,
         max: 100
     }
@@ -847,6 +852,86 @@ export const community = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/communities/{communitySlug}/permissions',
+        handler: controller.getCommunityPermissionList,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns a list of all permissions granted for the given community',
+            notes: 'Returns a list of permissions granted for the given community. This endpoint can only be used by community founders. Regular user authentication with ' +
+            'appropriate  permissions is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'permission', 'list'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve permissions for')
+                        .example('spezialeinheit-luchs')
+                }),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityPermissionList.max).default(LIMITS.communityPermissionList.default).optional()
+                        .description('Limit for number of permissions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of permissions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.communityPermissionList.max).required()
+                        .description('Limit for number of permissions to retrieve, as provided via query'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Number of permissions to skip before retrieving new ones from database, as provided via query'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityPermissionList.max).required()
+                        .description('Actual number of permissions returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of permissions stored'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more permissions are available and can be retrieved using pagination'),
+                    permissions: Joi.array().items(permissionSchema.optional()).required().description('List of permissions retrieved')
+                }).label('GetCommunityPermissionListResponse').description('Response containing list of permissions granted for the given community')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{communitySlug}}.founder']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        401: {
+                            description: 'The user from the provided JWT was not found in the database',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Token user not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
                         404: {
                             description: 'No community with given slug was found',
                             schema: Joi.object().required().keys({

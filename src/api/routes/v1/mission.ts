@@ -576,7 +576,7 @@ export const mission = [
                         .example('all-of-altis')
                 }),
                 query: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).default(LIMITS.missionList.default).optional()
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionPermissionList.max).default(LIMITS.missionPermissionList.default).optional()
                         .description('Limit for number of permissions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of permissions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
@@ -584,11 +584,11 @@ export const mission = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).required()
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionPermissionList.max).required()
                         .description('Limit for number of permissions to retrieve, as provided via query'),
                     offset: Joi.number().integer().positive().allow(0).min(0).required()
                         .description('Number of permissions to skip before retrieving new ones from database, as provided via query'),
-                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionList.max).required()
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionPermissionList.max).required()
                         .description('Actual number of permissions returned'),
                     total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of permissions stored'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more permissions are available and can be retrieved using pagination'),
