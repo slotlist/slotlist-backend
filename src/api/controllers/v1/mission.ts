@@ -483,6 +483,143 @@ export function deleteMissionBannerImage(request: Hapi.Request, reply: Hapi.Repl
     })());
 }
 
+export function getMissionPermissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            where: { permission: { $like: `mission.${slug}.%` } },
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    include: [
+                        {
+                            model: Community,
+                            as: 'community'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'getMissionPermissionList', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'getMissionPermissionList', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const result = await Permission.findAndCountAll(queryOptions);
+
+        const permissionCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + permissionCount) < result.count;
+        const permissionList = await Promise.map(result.rows, async (permission: Permission) => {
+            return permission.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: permissionCount,
+            total: result.count,
+            moreAvailable: moreAvailable,
+            permissions: permissionList
+        };
+    })());
+}
+
+export function createMissionPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'createMissionPermission', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        if (!Permission.isValidMissionPermission(slug, payload.permission)) {
+            log.warn({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Tried to create invalid mission permission, rejecting');
+            throw Boom.badRequest('Invalid mission permission');
+        }
+
+        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid'] });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Mission permission target user with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission permission');
+
+        let permission: Permission;
+        try {
+            permission = await Permission.create({ userUid: payload.userUid, permission: payload.permission });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                throw Boom.conflict('Mission permission already exists');
+            }
+
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid },
+            'Successfully created new mission permission');
+
+        const publicPermission = await permission.toPublicObject();
+
+        return {
+            permission: publicPermission
+        };
+    })());
+}
+
+export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const permissionUid = request.params.permissionUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const permission = await Permission.findOne({
+            where: {
+                uid: permissionUid,
+                permission: `mission.${slug}.editor`
+            }
+        });
+        if (_.isNil(permission)) {
+            log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Mission permission with given UID not found');
+            throw Boom.notFound('Mission permission not found');
+        }
+
+        log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Deleting mission permission');
+
+        await permission.destroy();
+
+        log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission permission');
+
+        return {
+            success: true
+        };
+    })());
+}
+
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     // tslint:disable-next-line:max-func-body-length
     return reply((async () => {

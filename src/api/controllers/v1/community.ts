@@ -693,3 +693,142 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
         };
     })());
 }
+
+export function getCommunityPermissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            where: { permission: { $like: `community.${slug}.%` } },
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    include: [
+                        {
+                            model: Community,
+                            as: 'community'
+                        }
+                    ]
+                }
+            ]
+        };
+
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'getCommunityPermissionList', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityPermissionList', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const result = await Permission.findAndCountAll(queryOptions);
+
+        const permissionCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + permissionCount) < result.count;
+        const permissionList = await Promise.map(result.rows, async (permission: Permission) => {
+            return permission.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: permissionCount,
+            total: result.count,
+            moreAvailable: moreAvailable,
+            permissions: permissionList
+        };
+    })());
+}
+
+export function createCommunityPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'createCommunityPermission', slug, payload, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (!Permission.isValidCommunityPermission(slug, payload.permission)) {
+            log.warn({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Tried to create invalid community permission, rejecting');
+            throw Boom.badRequest('Invalid community permission');
+        }
+
+        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid'] });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Community permission target user with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        log.debug({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Creating new community permission');
+
+        let permission: Permission;
+        try {
+            permission = await Permission.create({ userUid: payload.userUid, permission: payload.permission });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                throw Boom.conflict('Community permission already exists');
+            }
+
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createCommunityPermission', payload, userUid, communityUid: community.uid, permissionUid: permission.uid },
+            'Successfully created new community permission');
+
+        const publicPermission = await permission.toPublicObject();
+
+        return {
+            permission: publicPermission
+        };
+    })());
+}
+
+export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const permissionUid = request.params.permissionUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const permission = await Permission.findOne({
+            where: {
+                uid: permissionUid,
+                permission: {
+                    $or: [`community.${slug}.leader`, `community.${slug}.recruitment`]
+                }
+            }
+        });
+        if (_.isNil(permission)) {
+            log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Community permission with given UID not found');
+            throw Boom.notFound('Community permission not found');
+        }
+
+        log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Deleting community permission');
+
+        await permission.destroy();
+
+        log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Successfully deleted community permission');
+
+        return {
+            success: true
+        };
+    })());
+}

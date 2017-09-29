@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import {
     BelongsTo,
     BelongsToGetAssociationMixin,
@@ -8,7 +9,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
 
-import { User } from './User';
+import { IPublicUser, User } from './User';
 
 /**
  * Represents a permission in database.
@@ -148,6 +149,38 @@ export class Permission extends Model {
     // Model class methods //
     /////////////////////////
 
+    /**
+     * Checks whether the provided permission is valid for the given community.
+     * Prevents granting of invalid permissions via direct API requests
+     *
+     * @param {string} communitySlug Slug of community to check permission for
+     * @param {string} permission Permission to check
+     * @returns {boolean} Indicates whether the permission is valid
+     * @memberof Permission
+     */
+    // tslint:disable-next-line:function-name
+    public static isValidCommunityPermission(communitySlug: string, permission: string): boolean {
+        const perm = permission.toLowerCase();
+
+        return perm === `community.${communitySlug}.leader` || perm === `community.${communitySlug}.recruitment`;
+    }
+
+    /**
+     * Checks whether the provided permission is valid for the given mission.
+     * Prevents granting of invalid permissions via direct API requests
+     *
+     * @param {string} missionSlug Slug of mission to check permission for
+     * @param {string} permission Permission to check
+     * @returns {boolean} Indicates whether the permission is valid
+     * @memberof Permission
+     */
+    // tslint:disable-next-line:function-name
+    public static isValidMissionPermission(missionSlug: string, permission: string): boolean {
+        const perm = permission.toLowerCase();
+
+        return perm === `mission.${missionSlug}.editor`;
+    }
+
     ////////////////////////////
     // Model instance methods //
     ////////////////////////////
@@ -159,9 +192,15 @@ export class Permission extends Model {
      * @memberof Permission
      */
     public async toPublicObject(): Promise<IPublicPermission> {
+        if (_.isNil(this.user)) {
+            this.user = await this.getUser();
+        }
+        const publicUser = await this.user.toPublicObject();
+
         return {
             uid: this.uid,
-            permission: this.permission
+            permission: this.permission,
+            user: publicUser
         };
     }
 
@@ -179,4 +218,5 @@ export class Permission extends Model {
 export interface IPublicPermission {
     uid: string;
     permission: string;
+    user: IPublicUser;
 }

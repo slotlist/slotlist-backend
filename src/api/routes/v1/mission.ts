@@ -6,6 +6,7 @@ import * as schemas from '../../../shared/schemas/mission';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
 import { missionSlotGroupSchema } from '../../../shared/schemas/missionSlotGroup';
 import { missionSlotRegistrationSchema } from '../../../shared/schemas/missionSlotRegistration';
+import { permissionSchema } from '../../../shared/schemas/permission';
 import * as controller from '../../controllers/v1/mission';
 
 /**
@@ -14,6 +15,10 @@ import * as controller from '../../controllers/v1/mission';
 
 export const LIMITS = {
     missionList: {
+        default: 25,
+        max: 100
+    },
+    missionPermissionList: {
         default: 25,
         max: 100
     },
@@ -535,6 +540,219 @@ export const mission = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found', 'No mission banner image set').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/missions/{missionSlug}/permissions',
+        handler: controller.getMissionPermissionList,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns a list of all permissions granted for the given mission',
+            notes: 'Returns a list of permissions granted for the given mission. This endpoint can only be used by mission creators. Regular user authentication with ' +
+            'appropriate  permissions is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'permission', 'list', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve permissions for')
+                        .example('all-of-altis')
+                }),
+                query: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionPermissionList.max).default(LIMITS.missionPermissionList.default).optional()
+                        .description('Limit for number of permissions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
+                    offset: Joi.number().integer().min(0).default(0).optional()
+                        .description('Number of permissions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionPermissionList.max).required()
+                        .description('Limit for number of permissions to retrieve, as provided via query'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
+                        .description('Number of permissions to skip before retrieving new ones from database, as provided via query'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionPermissionList.max).required()
+                        .description('Actual number of permissions returned'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of permissions stored'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more permissions are available and can be retrieved using pagination'),
+                    permissions: Joi.array().items(permissionSchema.optional()).required().description('List of permissions retrieved')
+                }).label('GetMissionPermissionListResponse').description('Response containing list of permissions granted for the given mission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        401: {
+                            description: 'The user from the provided JWT was not found in the database',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Token user not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no target user with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions/{missionSlug}/permissions',
+        handler: controller.createMissionPermission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Creates a new mission permission for the given mission',
+            notes: 'Creates a new mission permission for the given mission. This endpoint can only be used by mission creators. Regular user authentication with ' +
+            'appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'permission', 'create', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create permission for').example('all-of-altis')
+                }),
+                payload: Joi.object().keys({
+                    userUid: Joi.string().guid().length(36).required().description('UID of the user to grant permission to').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+                    permission: Joi.string().min(1).max(255).required().description('Permission to grant').example('mission.all-of-altis.editor')
+                }).required()
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    permission: permissionSchema
+                }).label('CreateMissionPermissionResponse').description('Response containing details of newly created mission permission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        400: {
+                            description: 'An invalid mission permission - not matching mission slug or allowed permissions - was provided',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Bad Request').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Invalid mission permission').required().description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The given mission permission has already been granted to the selected user',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission permission already exists').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}/permissions/{permissionUid}',
+        handler: controller.deleteMissionPermission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing mission permission',
+            notes: 'Deletes an existing mission permission. This endpoint can only be used by mission creators. Regular user authentication with appropriate permissions is ' +
+            'required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'permission', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete permission for').example('all-of-altis'),
+                    permissionUid: Joi.string().guid().length(36).required().description('UID of the mission permission to delete').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionPermissionResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no mission permission with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission permission not found').required().description('Message further describing the error')
                             })
                         },
                         500: {

@@ -14,6 +14,43 @@ const log = logger.child({ route: 'community', routeVersion: 'v1' });
  * Handlers for V1 of user endpoints
  */
 
+export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            order: [[fn('UPPER', col('nickname')), 'ASC']]
+        };
+
+        if (!_.isNil(request.query.search)) {
+            queryOptions.where = {
+                nickname: {
+                    $iLike: `%${request.query.search}%`
+                }
+            };
+
+            log.debug({ function: 'getUserList', queryOptions }, 'Including search parameter in query options');
+        }
+
+        const result = await User.findAndCountAll(queryOptions);
+
+        const userCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + userCount) < result.count;
+        const userList = await Promise.map(result.rows, (user: User) => {
+            return user.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: userCount,
+            total: result.count,
+            moreAvailable: moreAvailable,
+            users: userList
+        };
+    })());
+}
+
 export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const userUid = request.params.uid;
