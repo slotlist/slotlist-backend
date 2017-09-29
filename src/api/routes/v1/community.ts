@@ -1025,5 +1025,64 @@ export const community = [
                 }
             }
         }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/communities/{communitySlug}/permissions/{permissionUid}',
+        handler: controller.deleteCommunityPermission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing community permission',
+            notes: 'Deletes an existing community permission. This endpoint can only be used by community founders. Regular user authentication with appropriate permissions is ' +
+            'required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'communities', 'permission', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to delete permission for')
+                        .example('spezialeinheit-luchs'),
+                    permissionUid: Joi.string().guid().length(36).required().description('UID of the community permission to delete')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteCommunityPermissionResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{communitySlug}}.founder']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug or no community permission with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'Community permission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
     }
 ];

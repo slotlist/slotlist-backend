@@ -795,3 +795,40 @@ export function createCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
         };
     })());
 }
+
+export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const permissionUid = request.params.permissionUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(community)) {
+            log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const permission = await Permission.findOne({
+            where: {
+                uid: permissionUid,
+                permission: {
+                    $or: [`community.${slug}.leader`, `community.${slug}.recruitment`]
+                }
+            }
+        });
+        if (_.isNil(permission)) {
+            log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Community permission with given UID not found');
+            throw Boom.notFound('Community permission not found');
+        }
+
+        log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Deleting community permission');
+
+        await permission.destroy();
+
+        log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Successfully deleted community permission');
+
+        return {
+            success: true
+        };
+    })());
+}
