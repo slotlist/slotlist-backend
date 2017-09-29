@@ -549,6 +549,11 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
             throw Boom.notFound('Mission not found');
         }
 
+        if (!Permission.isValidMissionPermission(slug, payload.permission)) {
+            log.warn({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Tried to create invalid mission permission, rejecting');
+            throw Boom.badRequest('Invalid mission permission');
+        }
+
         log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission permission');
 
         let permission: Permission;
@@ -570,6 +575,41 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
 
         return {
             permission: publicPermission
+        };
+    })());
+}
+
+export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const permissionUid = request.params.permissionUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const permission = await Permission.findOne({
+            where: {
+                uid: permissionUid,
+                permission: `mission.${slug}.editor`
+            }
+        });
+        if (_.isNil(permission)) {
+            log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Mission permission with given UID not found');
+            throw Boom.notFound('Mission permission not found');
+        }
+
+        log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Deleting mission permission');
+
+        await permission.destroy();
+
+        log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission permission');
+
+        return {
+            success: true
         };
     })());
 }

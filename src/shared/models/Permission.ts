@@ -149,6 +149,22 @@ export class Permission extends Model {
     // Model class methods //
     /////////////////////////
 
+    /**
+     * Checks whether the provided permission is valid for the given mission.
+     * Prevents granting of invalid permissions via direct API requests
+     *
+     * @param {string} missionSlug Slug of mission to check permission for
+     * @param {string} permission Permission to check
+     * @returns {boolean} Indicates whether the permission is valid
+     * @memberof Permission
+     */
+    // tslint:disable-next-line:function-name
+    public static isValidMissionPermission(missionSlug: string, permission: string): boolean {
+        const perm = permission.toLowerCase();
+
+        return perm === `mission.${missionSlug}.editor`;
+    }
+
     ////////////////////////////
     // Model instance methods //
     ////////////////////////////

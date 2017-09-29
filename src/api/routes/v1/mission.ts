@@ -643,7 +643,7 @@ export const mission = [
             description: 'Creates a new mission permission for the given mission',
             notes: 'Creates a new mission permission for the given mission. This endpoint can only be used by mission creators. Regular user authentication with ' +
             'appropriate permissions is required to access this endpoint',
-            tags: ['api', 'post', 'v1', 'missions', 'slot', 'group', 'create', 'authenticated', 'restricted'],
+            tags: ['api', 'post', 'v1', 'missions', 'permission', 'create', 'authenticated', 'restricted'],
             validate: {
                 options: {
                     abortEarly: false
@@ -670,6 +670,14 @@ export const mission = [
                 },
                 'hapi-swagger': {
                     responses: {
+                        400: {
+                            description: 'An invalid mission permission - not matching mission slug or allowed permissions - was provided',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Bad Request').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Invalid mission permission').required().description('Message further describing the error')
+                            })
+                        },
                         403: {
                             description: 'A user without appropriate permissions is accessing the endpoint',
                             schema: forbiddenSchema
@@ -688,6 +696,63 @@ export const mission = [
                                 statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission permission already exists').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}/permissions/{permissionUid}',
+        handler: controller.deleteMissionPermission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing mission permission',
+            notes: 'Deletes an existing mission permission. This endpoint can only be used by mission creators. Regular user authentication with appropriate permissions is ' +
+            'required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'permission', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete permission for').example('all-of-altis'),
+                    permissionUid: Joi.string().guid().length(36).required().description('UID of the mission permission to delete').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionPermissionResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no mission permission with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission permission not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
