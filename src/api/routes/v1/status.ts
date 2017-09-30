@@ -19,13 +19,11 @@ export const status = [
         path: '/v1/status',
         handler: controller.getStatus,
         config: {
-            auth: {
-                strategy: 'jwt',
-                mode: 'optional'
-            },
+            // Explicitly disable auth parsing here since invalid/expired JWTs being sent by the frontend would prevent the user from being able to see the backend status
+            auth: false,
             description: 'Returns the API server\'s current status',
             notes: 'Can be used for monitoring and uptime checks. Returns the API server\'s current status. No authentication is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'status'],
+            tags: ['api', 'get', 'v1', 'status', 'trace'], // Add tag `trace` to set bunyan logging level for request to this endpoint to TRACE and effecticely hide them
             validate: {
                 options: {
                     abortEarly: false
