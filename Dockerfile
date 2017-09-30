@@ -30,4 +30,4 @@ RUN set -ex \
     && apk del .build-deps-node
 
 ENTRYPOINT [ "/app/docker-entrypoint.sh" ]
-CMD [ "yarn", "start" ]
+CMD [ "yarn", "start:docker" ]

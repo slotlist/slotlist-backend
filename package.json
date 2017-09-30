@@ -14,6 +14,7 @@
     "dev": "./node_modules/.bin/nodemon -e js,json -w dist/src --delay 2.5 | ./node_modules/.bin/bunyan",
     "dev:docker": "./node_modules/.bin/gulp db:migrate | ./node_modules/.bin/bunyan && ./node_modules/.bin/nodemon -L -e js,json -w dist/src --delay 2.5 | ./node_modules/.bin/bunyan",
     "start": "node ./dist/src/index.js | ./node_modules/.bin/bunyan",
+    "start:docker": "node ./dist/src/index.js",
     "test": "./node_modules/.bin/mocha -c -A ./dist/src/test/index.js",
     "migrate": "yarn && ./node_modules/.bin/gulp db:migrate"
   },
