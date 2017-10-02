@@ -925,6 +925,128 @@ export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
     })());
 }
 
+export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const userUid = request.auth.credentials.user.uid;
+        const userNickname = request.auth.credentials.user.nickname;
+        const targetUserUid = request.payload.userUid;
+        const forceAssignment = request.payload.force;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
+            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+
+        const targetUser = await User.findById(targetUserUid);
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'User with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        const targetUserAssignedSlot = await MissionSlot.findOne({
+            where: {
+                assigneeUid: targetUserUid
+            },
+            include: [
+                {
+                    model: MissionSlotGroup,
+                    as: 'slotGroup',
+                    attributes: ['uid'],
+                    include: [
+                        {
+                            model: Mission,
+                            as: 'mission',
+                            attributes: ['uid'],
+                            where: {
+                                slug
+                            }
+                        }
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                }
+            ]
+        });
+
+        return sequelize.transaction(async (t: Transaction) => {
+            if (!forceAssignment) {
+                if (!_.isNil(slot.assigneeUid)) {
+                    log.debug(
+                        {
+                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid, previousAssigneeUid: slot.assigneeUid
+                        },
+                        'Slot has previous assignee and force assignment is disabled, rejecting');
+                    throw Boom.conflict('Mission slot already assigned');
+                } else if (!_.isNil(targetUserAssignedSlot)) {
+                    log.debug(
+                        {
+                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid,
+                            assignedSlotUid: targetUserAssignedSlot.uid
+                        },
+                        'Target user is already assigned and force assignment is disabled, rejecting');
+                    throw Boom.conflict('User already assigned to another slot');
+                }
+            } else {
+                if (!_.isNil(slot.assigneeUid)) {
+                    log.debug(
+                        {
+                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid, previousAssigneeUid: slot.assigneeUid
+                        },
+                        'Slot has previous assignee, removing association and updating registration');
+
+                    await Promise.all([
+                        slot.update({ assigneeUid: null }),
+                        MissionSlotRegistration.update({ confirmed: false }, { where: { slotUid } })
+                    ]);
+                }
+
+                if (!_.isNil(targetUserAssignedSlot)) {
+                    log.debug(
+                        {
+                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid,
+                            assignedSlotUid: targetUserAssignedSlot.uid
+                        },
+                        'Target user is already assigned, removing association and updating registration');
+
+                    await Promise.all([
+                        targetUserAssignedSlot.update({ assigneeUid: null }),
+                        MissionSlotRegistration.update({ confirmed: false }, { where: { slotUid: targetUserAssignedSlot.uid } })
+                    ]);
+                }
+            }
+
+            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Assigning mission slot');
+
+            await Promise.all([
+                MissionSlotRegistration.upsert({
+                    slotUid,
+                    userUid: targetUserUid,
+                    confirmed: true,
+                    comment: `Assigned by mission editor '${userNickname}'`
+                }), // run an upsert here since the user might already have a registration for the selected slot
+                slot.update({ assigneeUid: targetUserUid })
+            ]);
+
+            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Successfully assigned mission slot');
+
+            const publicMissionSlot = await slot.toPublicObject();
+
+            return {
+                slot: publicMissionSlot
+            };
+        });
+    })());
+}
+
 export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
