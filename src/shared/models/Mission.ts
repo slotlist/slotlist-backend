@@ -710,23 +710,35 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public async recalculateSlotOrderNumbers(): Promise<void> {
-        const slotGroups = _.sortBy(await this.getSlotGroups(), 'orderNumber');
+        let slotGroups = await MissionSlotGroup.findAll({
+            where: {
+                missionUid: this.uid
+            },
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slots'
+                }
+            ]
+        });
+        slotGroups = _.sortBy(slotGroups, 'orderNumber');
 
         let slotOrderNumber = 0; // Start at 0 because value gets increased at start of every iteration
-        await Promise.each(slotGroups, async (slotGroup: MissionSlotGroup) => {
-            const slots = _.sortBy(await slotGroup.getSlots(), 'orderNumber');
+        const slotsToUpdate: MissionSlot[] = [];
+        _.each(slotGroups, async (slotGroup: MissionSlotGroup) => {
+            const slots = _.sortBy(slotGroup.slots, 'orderNumber');
 
-            return Promise.each(slots, (slot: MissionSlot) => {
+            _.each(slots, (slot: MissionSlot) => {
                 slotOrderNumber += 1;
 
-                if (slot.orderNumber === slotOrderNumber) {
-                    return slot;
+                if (slot.orderNumber !== slotOrderNumber) {
+                    slotsToUpdate.push(slot.set({ orderNumber: slotOrderNumber }));
                 }
-
-                return slot.update({
-                    orderNumber: slotOrderNumber
-                });
             });
+        });
+
+        await Promise.map(slotsToUpdate, (slot: MissionSlot) => {
+            return slot.save();
         });
     }
 

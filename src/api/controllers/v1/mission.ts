@@ -798,53 +798,53 @@ export function updateMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
         }
         const slotGroup = slotGroups[0];
 
-        if (_.isNil(payload.moveAfter)) {
-            log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot group');
-            await slotGroup.update(payload, { allowed: ['title', 'description'] });
-        } else {
-            log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot group');
+        return sequelize.transaction(async (t: Transaction) => {
+            if (_.isNil(payload.moveAfter)) {
+                log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot group');
+                await slotGroup.update(payload, { allowed: ['title', 'description'] });
+            } else {
+                log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot group');
 
-            let currentSlotGroups = _.sortBy(await mission.getSlotGroups(), 'orderNumber');
-            const oldOrderNumber = slotGroup.orderNumber;
-            const orderNumber = payload.moveAfter;
-            const increment = orderNumber < oldOrderNumber;
+                let currentSlotGroups = _.sortBy(await mission.getSlotGroups(), 'orderNumber');
+                const oldOrderNumber = slotGroup.orderNumber;
+                const increment = payload.moveAfter < oldOrderNumber;
+                const orderNumber = increment ? payload.moveAfter + 1 : payload.moveAfter; // Moving a slot from a higher order number to a lower one requires a +1 addition
 
-            console.log(slotGroup.title, orderNumber, oldOrderNumber);
+                currentSlotGroups = await Promise.each(currentSlotGroups, (group: MissionSlotGroup) => {
+                    if (group.orderNumber === oldOrderNumber) {
+                        // Skip update of actually affected group, will be done in separate call later
+                        return group;
+                    }
 
-            currentSlotGroups = await Promise.each(currentSlotGroups, (group: MissionSlotGroup) => {
-                if (group.orderNumber === oldOrderNumber) {
-                    // Skip update of actually affected group, will be done in separate call later
-                    return group;
-                }
+                    if (increment && group.orderNumber >= orderNumber && group.orderNumber < oldOrderNumber) {
+                        return group.increment('orderNumber');
+                    } else if (!increment && group.orderNumber <= orderNumber && group.orderNumber > oldOrderNumber) {
+                        return group.decrement('orderNumber');
+                    } else {
+                        // Slot groups unaffected by change remain unmodified
+                        return group;
+                    }
+                });
 
-                if (increment && group.orderNumber >= orderNumber && group.orderNumber < oldOrderNumber) {
-                    return group.increment('orderNumber');
-                } else if (!increment && group.orderNumber <= orderNumber && group.orderNumber > oldOrderNumber) {
-                    return group.decrement('orderNumber');
-                } else {
-                    // Slot groups unaffected by change remain unmodified
-                    return group;
-                }
-            });
+                payload.orderNumber = orderNumber;
 
-            payload.orderNumber = orderNumber;
+                await slotGroup.update(payload, { allowed: ['title', 'description', 'orderNumber'] });
 
-            await slotGroup.update(payload, { allowed: ['title', 'description', 'orderNumber'] });
+                log.debug(
+                    { function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
+                    'Successfully reordered mission slot group, recalculating mission slot order numbers');
 
-            log.debug(
-                { function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
-                'Successfully reordered mission slot group, recalculating mission slot order numbers');
+                await mission.recalculateSlotOrderNumbers();
+            }
 
-            await mission.recalculateSlotOrderNumbers();
-        }
+            log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission slot group');
 
-        log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission slot group');
+            const publicSlotGroup = await slotGroup.toPublicObject();
 
-        const publicSlotGroup = await slotGroup.toPublicObject();
-
-        return {
-            slotGroup: publicSlotGroup
-        };
+            return {
+                slotGroup: publicSlotGroup
+            };
+        });
     })());
 }
 
