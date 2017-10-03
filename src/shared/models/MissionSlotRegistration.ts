@@ -82,7 +82,7 @@ export class MissionSlotRegistration extends Model {
     /**
      * Optional comment provided by the user during registration, can e.g. be used to state preferences
      *
-     * @type {string}
+     * @type {(string | null)}
      * @memberof MissionSlotRegistration
      */
     @Attribute({
@@ -93,7 +93,7 @@ export class MissionSlotRegistration extends Model {
             notEmpty: true
         }
     })
-    public comment?: string;
+    public comment: string | null;
 
     /**
      * UID of the mission slot the registration is associated with.
@@ -117,7 +117,7 @@ export class MissionSlotRegistration extends Model {
      * Eager-loaded mission slot instance.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {MissionSlot|undefined}
+     * @type {(MissionSlot | undefined)}
      * @memberof MissionSlotRegistration
      */
     public slot?: MissionSlot;
@@ -144,7 +144,7 @@ export class MissionSlotRegistration extends Model {
      * Eager-loaded assigned user instance.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {User|undefined}
+     * @type {(User | undefined)}
      * @memberof MissionSlotRegistration
      */
     public user?: User;

@@ -111,7 +111,7 @@ export class CommunityApplication extends Model {
      * Eager-loaded instance of the community the user applied to.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {Community|undefined}
+     * @type {(Community | undefined)}
      * @memberof CommunityApplication
      */
     public community?: Community;
@@ -138,7 +138,7 @@ export class CommunityApplication extends Model {
      * Eager-loaded instance of the user applying to the community.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {User|undefined}
+     * @type {(User | undefined)}
      * @memberof CommunityApplication
      */
     public user?: User;

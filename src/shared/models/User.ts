@@ -119,7 +119,7 @@ export class User extends Model {
      * UID of the community the user is associated with.
      * Can be `undefined|null` if the user has not been assigned to a community
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof User
      */
     @Attribute({
@@ -133,13 +133,13 @@ export class User extends Model {
         onDelete: 'SET NULL',
         onUpdate: 'CASCADE'
     })
-    public communityUid?: string;
+    public communityUid: string | null;
 
     /**
      * Eager-loaded list of community application instances.
      * Only included if the user has applications associated and it has been eager-loaded via sequelize
      *
-     * @type {CommunityApplication[]|undefined}
+     * @type {(CommunityApplication[] | undefined)}
      * @memberof User
      */
     public applications?: CommunityApplication[];
@@ -148,16 +148,16 @@ export class User extends Model {
      * Eager-loaded community instance.
      * Only included if the user is associated with a community and it has been eager-loaded via sequelize
      *
-     * @type {Community|undefined}
+     * @type {(Community | null | undefined)}
      * @memberof User
      */
-    public community?: Community;
+    public community?: Community | null;
 
     /**
      * Eager-loaded list of missions created by the user.
      * Only included if the user has missions associated and it has been eager-loaded via sequelize
      *
-     * @type {Mission[]|undefined}
+     * @type {(Mission[] | undefined)}
      * @memberof User
      */
     public missions?: Mission[];
@@ -166,7 +166,7 @@ export class User extends Model {
      * Eager-loaded list of missions slots assigned to the user.
      * Only included if the user has mission slots associated and it has been eager-loaded via sequelize
      *
-     * @type {MissionSlot[]|undefined}
+     * @type {(MissionSlot[] | undefined)}
      * @memberof User
      */
     public missionSlots?: MissionSlot[];
@@ -175,7 +175,7 @@ export class User extends Model {
      * Eager-loaded list of mission slot registrations assigned to the user.
      * Only included if the user has mission slot registrations associated and it has been eager-loaded via sequelize
      *
-     * @type {MissionSlotRegistration[]|undefined}
+     * @type {(MissionSlotRegistration[] | undefined)}
      * @memberof User
      */
     public missionSlotRegistrations?: MissionSlotRegistration[];
@@ -184,7 +184,7 @@ export class User extends Model {
      * Eager-loaded list of permissions associated with the user.
      * Only included if the user has permissions associated and it has been eager-loaded via sequelize
      *
-     * @type {Permission[]|undefined}
+     * @type {(Permission[] | undefined)}
      * @memberof User
      */
     public permissions?: Permission[];

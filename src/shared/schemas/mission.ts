@@ -10,10 +10,11 @@ export const missionSchema = Joi.object().keys({
     title: Joi.string().min(1).max(255).required().description('Title of the mission').example('All of Altis'),
     slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
         .description('Slug used for uniquely identifying a mission in the frontend, easier to read than a UUID').example('all-of-altis'),
-    description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
     startTime: Joi.date().required().description('Date and time the missions starts (slotting/briefing times are stored separately and available via mission details')
         .example('2017-09-02T17:00:00.000Z'),
     creator: userSchema.required().description('Creator of the mission'),
+    totalSlotCount: Joi.number().integer().positive().allow(0).min(0).description('Total number of slots created for the mission').example(9),
+    unassignedSlotCount: Joi.number().integer().positive().allow(0).min(0).description('Number of unassigned slots, excluding slots with registrations').example(9),
     isAssignedToAnySlot: Joi.bool().optional().description('Indicates whether the user is assigned to any slot in the mission. Only present for requests by authenticated users')
         .example(true),
     isRegisteredForAnySlot: Joi.bool().optional().description('Indicates whether the user is registered for any slot in the mission. Only present for requests by ' +
@@ -25,6 +26,7 @@ export const missionSchema = Joi.object().keys({
 import { communitySchema } from './community';
 
 export const missionDetailsSchema = missionSchema.keys({
+    description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
     detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
     bannerImageUrl: Joi.string().allow(null).uri().min(1).default(null).description('Optional URL of banner image to be displayed on mission details')
