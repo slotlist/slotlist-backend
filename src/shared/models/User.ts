@@ -433,20 +433,22 @@ export class User extends Model {
      * @memberof User
      */
     public async toDetailedPublicObject(): Promise<IDetailedPublicUser> {
-        let publicCommunity: IPublicCommunity | null = null;
         if (!_.isNil(this.communityUid)) {
             if (_.isNil(this.community)) {
                 this.community = await this.getCommunity();
             }
-            publicCommunity = await this.community.toPublicObject();
         }
 
         if (_.isNil(this.missions)) {
             this.missions = await this.getMissions();
         }
-        const publicMissions = await Promise.map(this.missions, (mission: Mission) => {
-            return mission.toPublicObject();
-        });
+
+        const [publicCommunity, publicMissions] = await Promise.all([
+            !_.isNil(this.communityUid) && !_.isNil(this.community) ? this.community.toPublicObject() : Promise.resolve(null),
+            Promise.map(this.missions, (mission: Mission) => {
+                return mission.toPublicObject();
+            })
+        ]);
 
         return {
             uid: this.uid,

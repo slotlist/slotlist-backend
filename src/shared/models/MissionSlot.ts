@@ -391,25 +391,26 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public async toPublicObject(): Promise<IPublicMissionSlot> {
-        let publicAssignee: IPublicUser | null = null;
         if (!_.isNil(this.assigneeUid)) {
             if (_.isNil(this.assignee)) {
                 this.assignee = await this.getAssignee();
             }
-            publicAssignee = await this.assignee.toPublicObject();
         }
 
         if (_.isNil(this.registrations)) {
             this.registrations = await this.getRegistrations();
         }
 
-        let publicRestrictedCommunity: IPublicCommunity | null = null;
         if (!_.isNil(this.restrictedCommunityUid)) {
             if (_.isNil(this.restrictedCommunity)) {
                 this.restrictedCommunity = await this.getRestrictedCommunity();
             }
-            publicRestrictedCommunity = await this.restrictedCommunity.toPublicObject();
         }
+
+        const [publicAssignee, publicRestrictedCommunity] = await Promise.all([
+            !_.isNil(this.assigneeUid) && !_.isNil(this.assignee) ? this.assignee.toPublicObject() : Promise.resolve(null),
+            !_.isNil(this.restrictedCommunityUid) && !_.isNil(this.restrictedCommunity) ? this.restrictedCommunity.toPublicObject() : Promise.resolve(null)
+        ]);
 
         return {
             uid: this.uid,

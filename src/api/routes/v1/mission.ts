@@ -789,9 +789,10 @@ export const mission = [
                 }),
                 payload: Joi.object().keys({
                     title: Joi.string().min(1).max(255).required().description('Title of the slot group').example('Platoon Luchs'),
-                    orderNumber: Joi.number().integer().positive().allow(0).min(0).required().description('Order number for sorting slotlist').example(0),
                     description: Joi.string().allow(null).min(1).default(null).required().description('Optional description of the mission slot group, explaining ' +
-                        'the slot group\'s role or callsign').example('Leads the mission, callsign "Luchs"')
+                        'the slot group\'s role or callsign').example('Leads the mission, callsign "Luchs"'),
+                    insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot group the new group should be inserted ' +
+                        'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
                 }).required()
             },
             response: {
@@ -852,9 +853,10 @@ export const mission = [
                 }),
                 payload: Joi.object().keys({
                     title: Joi.string().min(1).max(255).optional().description('New title of the slot group').example('Platoon Luchs'),
-                    orderNumber: Joi.number().integer().positive().allow(0).min(0).optional().description('New order number for sorting slotlist').example(0),
                     description: Joi.string().allow(null).min(1).optional().description('New optional description of the mission slot group, explaining ' +
-                        'the slot group\'s role or callsign').example('Leads the mission, callsign "Luchs"')
+                        'the slot group\'s role or callsign').example('Leads the mission, callsign "Luchs"'),
+                    moveAfter: Joi.number().integer().positive().allow(0).optional().description('Order number of the slot group the group should be moved after. Allows for ' +
+                        'reordering of groups - all other order numbers will be adapted accordingly').example(9)
                 }).required()
             },
             response: {

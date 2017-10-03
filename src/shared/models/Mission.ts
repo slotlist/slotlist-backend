@@ -703,6 +703,34 @@ export class Mission extends Model {
     }
 
     /**
+     * Recalculates and adapts the order numbers of all slots in the mission.
+     * Slots are ordered one after another according to the slot group and the old position within the group
+     *
+     * @returns {Promise<void>} Promise fulfilled when recalculation is finished
+     * @memberof Mission
+     */
+    public async recalculateSlotOrderNumbers(): Promise<void> {
+        const slotGroups = _.sortBy(await this.getSlotGroups(), 'orderNumber');
+
+        let slotOrderNumber = 0; // Start at 0 because value gets increased at start of every iteration
+        await Promise.each(slotGroups, async (slotGroup: MissionSlotGroup) => {
+            const slots = _.sortBy(await slotGroup.getSlots(), 'orderNumber');
+
+            return Promise.each(slots, (slot: MissionSlot) => {
+                slotOrderNumber += 1;
+
+                if (slot.orderNumber === slotOrderNumber) {
+                    return slot;
+                }
+
+                return slot.update({
+                    orderNumber: slotOrderNumber
+                });
+            });
+        });
+    }
+
+    /**
      * Returns a public representation of the mission instance, as transmitted via API
      *
      * @returns {Promise<IPublicMission>} Object containing public mission information
@@ -747,7 +775,7 @@ export class Mission extends Model {
         }
 
         const [publicCommunity, publicCreator, totalSlotCount, unassignedSlotCount] = await Promise.all([
-            _.isNil(this.communityUid) || _.isNil(this.community) ? Promise.resolve(null) : this.community.toPublicObject(),
+            !_.isNil(this.communityUid) && !_.isNil(this.community) ? this.community.toPublicObject() : Promise.resolve(null),
             this.creator.toPublicObject(),
             this.getSlotCount(),
             this.getUnassignedSlotCount()

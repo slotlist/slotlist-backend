@@ -476,16 +476,10 @@ export class Community extends Model {
      */
     public async toDetailedPublicObject(): Promise<IDetailedPublicCommunity> {
         const leaders = await this.getLeaders();
-        const publicLeaders = await Promise.map(leaders, (leader: User) => {
-            return leader.toPublicObject();
-        });
 
         if (_.isNil(this.members)) {
             this.members = await this.getMembers();
         }
-        const publicMembers = await Promise.map(this.members, (member: User) => {
-            return member.toPublicObject();
-        });
 
         if (_.isNil(this.missions)) {
             this.missions = await this.getMissions({
@@ -496,9 +490,18 @@ export class Community extends Model {
                 }
             });
         }
-        const publicMissions = await Promise.map(this.missions, (mission: Mission) => {
-            return mission.toPublicObject();
-        });
+
+        const [publicLeaders, publicMembers, publicMissions] = await Promise.all([
+            Promise.map(leaders, (leader: User) => {
+                return leader.toPublicObject();
+            }),
+            Promise.map(this.members, (member: User) => {
+                return member.toPublicObject();
+            }),
+            Promise.map(this.missions, (mission: Mission) => {
+                return mission.toPublicObject();
+            })
+        ]);
 
         return {
             uid: this.uid,
