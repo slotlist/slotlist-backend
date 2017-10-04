@@ -860,22 +860,51 @@ export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
             throw Boom.notFound('Mission not found');
         }
 
-        const slotGroups = await mission.getSlotGroups({ where: { uid: slotGroupUid } });
-        if (_.isNil(slotGroups) || _.isEmpty(slotGroups)) {
+        let slotGroups = await mission.getSlotGroups();
+        slotGroups = _.sortBy(slotGroups, 'orderNumber');
+        const slotGroup = _.find(slotGroups, { uid: slotGroupUid });
+        if (_.isNil(slotGroup)) {
             log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Mission slot group with given UID not found');
             throw Boom.notFound('Mission slot group not found');
         }
-        const slotGroup = slotGroups[0];
 
-        log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Deleting mission slot group');
+        const orderNumber = slotGroup.orderNumber;
 
-        await slotGroup.destroy();
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Deleting mission slot group');
 
-        log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot group');
+            await slotGroup.destroy();
 
-        return {
-            success: true
-        };
+            let slotGroupOrderNumber = 1;
+            const slotGroupsToUpdate: MissionSlotGroup[] = [];
+            _.each(slotGroups, (group: MissionSlotGroup) => {
+                if (group.orderNumber === orderNumber) {
+                    return;
+                }
+
+                if (group.orderNumber !== slotGroupOrderNumber) {
+                    slotGroupsToUpdate.push(group.set({ orderNumber: slotGroupOrderNumber }));
+                }
+
+                slotGroupOrderNumber += 1;
+            });
+
+            await Promise.map(slotGroupsToUpdate, (group: MissionSlotGroup) => {
+                return group.save();
+            });
+
+            log.debug(
+                { function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid, orderNumber },
+                'Successfully adapted mission slot group ordering, recalculating mission slot order numbers');
+
+            await mission.recalculateSlotOrderNumbers();
+
+            log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot group');
+
+            return {
+                success: true
+            };
+        });
     })());
 }
 
