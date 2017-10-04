@@ -468,4 +468,5 @@ export interface IMissionSlotCreatePayload {
     description: string | null;
     restrictedCommunityUid: string | null;
     reserve: boolean;
+    insertAfter: number;
 }

@@ -1024,7 +1024,6 @@ export const mission = [
                     slotGroupUid: Joi.string().guid().length(36).required().description('UID of the slot group the slot should be added to')
                         .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     title: Joi.string().min(1).max(255).required().description('Title of the slot').example('Platoon Lead'),
-                    orderNumber: Joi.number().integer().positive().allow(0).min(0).required().description('Order number for sorting slotlist').example(0),
                     difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).required().description('Difficulity of the slot, ranging from 0 (easiest) ' +
                         'to 4 (hardest)').example(4),
                     description: Joi.string().allow(null).min(1).default(null).optional().description('Optional short description of the slot')
@@ -1034,7 +1033,9 @@ export const mission = [
                     restrictedCommunityUid: Joi.string().allow(null).guid().length(36).default(null).optional().description('UID of the community the slot is restricted to. ' +
                         'Setting this to `null` removes the restriction and opens the slot to everyone').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     reserve: Joi.bool().required().description('Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
-                        'filled) or a regular one (false)').example(false)
+                        'filled) or a regular one (false)').example(false),
+                    insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot the new slot should be inserted ' +
+                        'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
                 }).required()
             },
             response: {

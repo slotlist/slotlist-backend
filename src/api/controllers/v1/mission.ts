@@ -8,7 +8,7 @@ import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
-import { IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
+import { IMissionSlotCreatePayload, IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
 import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
 import { Permission } from '../../../shared/models/Permission';
@@ -741,7 +741,7 @@ export function createMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
             throw Boom.notFound('Mission not found');
         }
 
-        let currentSlotGroups = _.sortBy(await mission.getSlotGroups(), 'orderNumber');
+        const currentSlotGroups = _.sortBy(await mission.getSlotGroups(), 'orderNumber');
         const orderNumber = payload.insertAfter + 1;
 
         return sequelize.transaction(async (t: Transaction) => {
@@ -750,7 +750,7 @@ export function createMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
             if (payload.insertAfter !== currentSlotGroups.length) {
                 log.debug({ function: 'createMissionSlotGroup', slug, payload, userUid, missionUid: mission.uid }, 'Mission slot group will be inserted in between current groups');
 
-                currentSlotGroups = await Promise.map(currentSlotGroups, (slotGroup: MissionSlotGroup) => {
+                await Promise.map(currentSlotGroups, (slotGroup: MissionSlotGroup) => {
                     if (slotGroup.orderNumber < orderNumber) {
                         return slotGroup;
                     }
@@ -923,7 +923,7 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         log.debug({ function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission slots');
 
         return sequelize.transaction(async (t: Transaction) => {
-            const slots = await Promise.map(payload, async (load: any) => {
+            const slots = await Promise.mapSeries(payload, async (load: IMissionSlotCreatePayload) => {
                 log.debug({ function: 'createMissionSlot', slug, payload: load, userUid, missionUid: mission.uid }, 'Creating new mission slot');
 
                 const slot = await mission.createSlot(load);
@@ -934,6 +934,10 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
                 return slot;
             });
+
+            log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Recalculating mission slot order numbers');
+
+            await mission.recalculateSlotOrderNumbers();
 
             log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
 

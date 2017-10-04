@@ -511,6 +511,19 @@ export class Mission extends Model {
         }
         const slotGroup = slotGroups[0];
 
+        const currentSlots = _.sortBy(await slotGroup.getSlots(), 'orderNumber');
+        slotPayload.orderNumber = slotPayload.insertAfter + 1;
+
+        if (slotPayload.insertAfter !== currentSlots.length) {
+            await Promise.map(currentSlots, (slot: MissionSlot) => {
+                if (slot.orderNumber < slotPayload.orderNumber) {
+                    return slot;
+                }
+
+                return slot.increment('orderNumber');
+            });
+        }
+
         return slotGroup.createSlot(slotPayload);
     }
 
