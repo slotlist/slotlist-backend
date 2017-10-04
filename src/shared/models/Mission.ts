@@ -173,6 +173,9 @@ export class Mission extends Model {
     /**
      * Optional URL of banner iamge to display on mission details.
      * Can be `null` if not defined by mission creator/editor
+     *
+     * @type {(string | null)}
+     * @memberof Mission
      */
     @Attribute({
         type: DataTypes.STRING,
@@ -183,7 +186,7 @@ export class Mission extends Model {
             isUrl: true
         }
     })
-    public bannerImageUrl: string;
+    public bannerImageUrl: string | null;
 
     /**
      * Time (and date) the mission briefing starts.
@@ -254,10 +257,10 @@ export class Mission extends Model {
 
     /**
      * URL of the repository used for the mission.
-     * Can be `undefined|null` if no repository is required
+     * Can be `null` if no repository is required
      * Will be added as HTML in frontend, thus allows for regular HTML styling
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof Mission
      */
     @Attribute({
@@ -268,14 +271,14 @@ export class Mission extends Model {
             notEmpty: true
         }
     })
-    public repositoryUrl?: string;
+    public repositoryUrl: string | null;
 
     /**
      * Information about tech support provided before the mission.
-     * Can be `undefined|null` if no tech support is provided.
+     * Can be `null` if no tech support is provided.
      * Will be added as HTML in frontend, thus allows for regular HTML styling
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof Mission
      */
     @Attribute({
@@ -286,14 +289,14 @@ export class Mission extends Model {
             notEmpty: true
         }
     })
-    public techSupport?: string;
+    public techSupport: string | null;
 
     /**
      * Information about special rules set for the mission.
-     * Can be `undefined|null` if no special rules are defined.
+     * Can be `null` if no special rules are defined.
      * Will be added as HTML in frontend, thus allows for regular HTML styling
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof Mission
      */
     @Attribute({
@@ -304,7 +307,7 @@ export class Mission extends Model {
             notEmpty: true
         }
     })
-    public rules?: string;
+    public rules: string | null;
 
     /**
      * Indicates the visibility status of the mission.
@@ -322,9 +325,9 @@ export class Mission extends Model {
 
     /**
      * UID of the community the mission is associated with.
-     * Can be `undefined|null` if the creating user has no community assigned
+     * Can be `null` if the creating user has no community assigned
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof Mission
      */
     @Attribute({
@@ -338,16 +341,16 @@ export class Mission extends Model {
         onDelete: 'SET NULL',
         onUpdate: 'CASCADE'
     })
-    public communityUid?: string;
+    public communityUid: string | null;
 
     /**
      * Eager-loaded community instance.
      * Only included if the mission is associated with a community and it has been eager-loaded via sequelize
      *
-     * @type {Community|undefined}
+     * @type {(Community | null | undefined)}
      * @memberof Mission
      */
-    public community?: Community;
+    public community?: Community | null;
 
     /**
      * UID of the user that created the mission
@@ -371,7 +374,7 @@ export class Mission extends Model {
      * Eager-loaded creator user instance.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {User|undefined}
+     * @type {(User | undefined)}
      * @memberof Mission
      */
     public creator?: User;
@@ -380,7 +383,7 @@ export class Mission extends Model {
      * Eager-loaded list of slot groups associated with the mission.
      * Only included if the mission has slot groups associated and it has been eager-loaded via sequelize
      *
-     * @type {MissionSlotGroup[]|undefined}
+     * @type {(MissionSlotGroup[] | undefined)}
      * @memberof Mission
      */
     public slotGroups?: MissionSlotGroup[];
@@ -508,6 +511,19 @@ export class Mission extends Model {
         }
         const slotGroup = slotGroups[0];
 
+        const currentSlots = _.sortBy(await slotGroup.getSlots(), 'orderNumber');
+        slotPayload.orderNumber = slotPayload.insertAfter + 1;
+
+        if (slotPayload.insertAfter !== currentSlots.length) {
+            await Promise.map(currentSlots, (slot: MissionSlot) => {
+                if (slot.orderNumber < slotPayload.orderNumber) {
+                    return slot;
+                }
+
+                return slot.increment('orderNumber');
+            });
+        }
+
         return slotGroup.createSlot(slotPayload);
     }
 
@@ -520,6 +536,35 @@ export class Mission extends Model {
      */
     public async findSlot(slotUid: string): Promise<MissionSlot | null> {
         return MissionSlot.findById(slotUid);
+    }
+
+    /**
+     * Returns the number of slots currently created for the mission
+     *
+     * @returns {Promise<number>} Number of slots
+     * @memberof Mission
+     */
+    public async getSlotCount(): Promise<number> {
+        return await MissionSlot.count({
+            include: [
+                {
+                    model: MissionSlotGroup,
+                    as: 'slotGroup',
+                    attributes: ['uid'],
+                    include: [
+                        {
+                            model: Mission,
+                            as: 'mission',
+                            attributes: ['uid'],
+                            where: {
+                                uid: this.uid
+                            }
+                        }
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                }
+            ]
+        });
     }
 
     /**
@@ -541,6 +586,55 @@ export class Mission extends Model {
                 return slots.concat(await slotGroup.getSlots());
             },
             []);
+    }
+
+    /**
+     * Returns the number of slots that have not been assigned yet.
+     * Excludes slots with registrations by default
+     *
+     * @param {boolean} [excludeRegistrations=true] Excludes slots with registrations from unassigned slot count
+     * @returns {Promise<number>} Number of unassigned slots
+     * @memberof Mission
+     */
+    public async getUnassignedSlotCount(excludeRegistrations: boolean = true): Promise<number> {
+        const slots = await MissionSlot.findAll({
+            attributes: ['uid'],
+            where: {
+                assigneeUid: {
+                    $eq: null
+                }
+            },
+            include: [
+                {
+                    model: MissionSlotGroup,
+                    as: 'slotGroup',
+                    attributes: ['uid'],
+                    include: [
+                        {
+                            model: Mission,
+                            as: 'mission',
+                            attributes: ['uid'],
+                            where: {
+                                uid: this.uid
+                            }
+                        }
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                }
+            ]
+        });
+
+        if (!excludeRegistrations) {
+            return slots.length;
+        }
+
+        const slotsWithoutRegistrations = await Promise.filter(slots, async (slot: MissionSlot) => {
+            const slotRegistrationCount = await MissionSlotRegistration.count({ where: { slotUid: slot.uid } });
+
+            return slotRegistrationCount === 0;
+        });
+
+        return slotsWithoutRegistrations.length;
     }
 
     /**
@@ -622,6 +716,46 @@ export class Mission extends Model {
     }
 
     /**
+     * Recalculates and adapts the order numbers of all slots in the mission.
+     * Slots are ordered one after another according to the slot group and the old position within the group
+     *
+     * @returns {Promise<void>} Promise fulfilled when recalculation is finished
+     * @memberof Mission
+     */
+    public async recalculateSlotOrderNumbers(): Promise<void> {
+        let slotGroups = await MissionSlotGroup.findAll({
+            where: {
+                missionUid: this.uid
+            },
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slots'
+                }
+            ]
+        });
+        slotGroups = _.sortBy(slotGroups, 'orderNumber');
+
+        let slotOrderNumber = 0; // Start at 0 because value gets increased at start of every iteration
+        const slotsToUpdate: MissionSlot[] = [];
+        _.each(slotGroups, async (slotGroup: MissionSlotGroup) => {
+            const slots = _.sortBy(slotGroup.slots, 'orderNumber');
+
+            _.each(slots, (slot: MissionSlot) => {
+                slotOrderNumber += 1;
+
+                if (slot.orderNumber !== slotOrderNumber) {
+                    slotsToUpdate.push(slot.set({ orderNumber: slotOrderNumber }));
+                }
+            });
+        });
+
+        await Promise.map(slotsToUpdate, (slot: MissionSlot) => {
+            return slot.save();
+        });
+    }
+
+    /**
      * Returns a public representation of the mission instance, as transmitted via API
      *
      * @returns {Promise<IPublicMission>} Object containing public mission information
@@ -631,14 +765,20 @@ export class Mission extends Model {
         if (_.isNil(this.creator)) {
             this.creator = await this.getCreator();
         }
-        const publicCreator = await this.creator.toPublicObject();
+
+        const [publicCreator, totalSlotCount, unassignedSlotCount] = await Promise.all([
+            this.creator.toPublicObject(),
+            this.getSlotCount(),
+            this.getUnassignedSlotCount()
+        ]);
 
         return {
             title: this.title,
             slug: this.slug,
-            description: this.description,
             startTime: this.startTime,
-            creator: publicCreator
+            creator: publicCreator,
+            totalSlotCount,
+            unassignedSlotCount
         };
     }
 
@@ -649,18 +789,22 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public async toDetailedPublicObject(): Promise<IDetailedPublicMission> {
-        let publicCommunity: IPublicCommunity | null = null;
         if (!_.isNil(this.communityUid)) {
             if (_.isNil(this.community)) {
                 this.community = await this.getCommunity();
             }
-            publicCommunity = await this.community.toPublicObject();
         }
 
         if (_.isNil(this.creator)) {
             this.creator = await this.getCreator();
         }
-        const publicCreator = await this.creator.toPublicObject();
+
+        const [publicCommunity, publicCreator, totalSlotCount, unassignedSlotCount] = await Promise.all([
+            !_.isNil(this.communityUid) && !_.isNil(this.community) ? this.community.toPublicObject() : Promise.resolve(null),
+            this.creator.toPublicObject(),
+            this.getSlotCount(),
+            this.getUnassignedSlotCount()
+        ]);
 
         return {
             title: this.title,
@@ -677,7 +821,9 @@ export class Mission extends Model {
             rules: _.isNil(this.rules) ? null : this.rules,
             visibility: this.visibility,
             community: publicCommunity,
-            creator: publicCreator
+            creator: publicCreator,
+            totalSlotCount,
+            unassignedSlotCount
         };
     }
 
@@ -695,9 +841,10 @@ export class Mission extends Model {
 export interface IPublicMission {
     title: string;
     slug: string;
-    description: string;
     startTime: Date;
     creator: IPublicUser;
+    totalSlotCount: number;
+    unassignedSlotCount: number;
     isAssignedToAnySlot?: boolean; // only returned for logged in users
     isRegisteredForAnySlot?: boolean; // only returned for logged in users
 }
@@ -710,6 +857,7 @@ export interface IPublicMission {
  * @extends {IPublicMission}
  */
 export interface IDetailedPublicMission extends IPublicMission {
+    description: string;
     detailedDescription: string;
     bannerImageUrl: string | null;
     briefingTime: Date;

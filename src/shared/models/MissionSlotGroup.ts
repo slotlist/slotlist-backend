@@ -96,9 +96,9 @@ export class MissionSlotGroup extends Model {
 
     /**
      * Short, optional description of the mission slot group, describing the selected group.
-     * Can be `undefined|null` if not required
+     * Can be `null` if not required
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof MissionSlotGroup
      */
     @Attribute({
@@ -109,7 +109,7 @@ export class MissionSlotGroup extends Model {
             notEmpty: true
         }
     })
-    public description?: string;
+    public description: string | null;
 
     /**
      * UID of the mission the slot group is associated with.
@@ -133,7 +133,7 @@ export class MissionSlotGroup extends Model {
      * Eager-loaded mission instance.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {Mission|undefined}
+     * @type {(Mission | undefined)}
      * @memberof MissionSlotGroup
      */
     public mission?: Mission;
@@ -142,7 +142,7 @@ export class MissionSlotGroup extends Model {
      * Eager-loaded list of slots associated with this slot group.
      * Only included if the group has slots associated and it has been eager-loaded via sequelize
      *
-     * @type {MissionSlot[]|undefined}
+     * @type {(MissionSlot[] | undefined)}
      * @memberof MissionSlotGroup
      */
     public slots?: MissionSlot[];

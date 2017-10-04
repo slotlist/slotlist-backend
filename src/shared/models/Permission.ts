@@ -101,7 +101,7 @@ export class Permission extends Model {
      * Eager-loaded user instance the permission was granted for.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {User|undefined}
+     * @type {(User | undefined)}
      * @memberof Permission
      */
     public user?: User;

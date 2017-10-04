@@ -106,9 +106,9 @@ export class Community extends Model {
 
     /**
      * Website URL of the community.
-     * Can be `undefined|null` if no website URL was provided
+     * Can be `null` if no website URL was provided
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof Community
      */
     @Attribute({
@@ -120,7 +120,7 @@ export class Community extends Model {
             isUrl: true
         }
     })
-    public website?: string;
+    public website: string | null;
 
     /**
      * Slug used for identifying a community in the frontend.
@@ -152,7 +152,7 @@ export class Community extends Model {
      * Eager-loaded list of member applications associated with the community.
      * Only included if the community has applications associated and it has been eager-loaded via sequelize
      *
-     * @type {CommunityApplication[]|undefined}
+     * @type {(CommunityApplication[] | undefined)}
      * @memberof Community
      */
     public applications?: CommunityApplication[];
@@ -161,7 +161,7 @@ export class Community extends Model {
      * Eager-loaded list of members/users associated with the community.
      * Only included if the community has users associated and it has been eager-loaded via sequelize
      *
-     * @type {User[]|undefined}
+     * @type {(User[] | undefined)}
      * @memberof Community
      */
     public members?: User[];
@@ -170,7 +170,7 @@ export class Community extends Model {
      * Eager-loaded list missions associated with the community.
      * Only included if the community has missions associated and it has been eager-loaded via sequelize
      *
-     * @type {Mission[]|undefined}
+     * @type {(Mission[] | undefined)}
      * @memberof Community
      */
     public missions?: Mission[];
@@ -476,16 +476,10 @@ export class Community extends Model {
      */
     public async toDetailedPublicObject(): Promise<IDetailedPublicCommunity> {
         const leaders = await this.getLeaders();
-        const publicLeaders = await Promise.map(leaders, (leader: User) => {
-            return leader.toPublicObject();
-        });
 
         if (_.isNil(this.members)) {
             this.members = await this.getMembers();
         }
-        const publicMembers = await Promise.map(this.members, (member: User) => {
-            return member.toPublicObject();
-        });
 
         if (_.isNil(this.missions)) {
             this.missions = await this.getMissions({
@@ -496,9 +490,18 @@ export class Community extends Model {
                 }
             });
         }
-        const publicMissions = await Promise.map(this.missions, (mission: Mission) => {
-            return mission.toPublicObject();
-        });
+
+        const [publicLeaders, publicMembers, publicMissions] = await Promise.all([
+            Promise.map(leaders, (leader: User) => {
+                return leader.toPublicObject();
+            }),
+            Promise.map(this.members, (member: User) => {
+                return member.toPublicObject();
+            }),
+            Promise.map(this.missions, (mission: Mission) => {
+                return mission.toPublicObject();
+            })
+        ]);
 
         return {
             uid: this.uid,

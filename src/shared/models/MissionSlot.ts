@@ -127,9 +127,9 @@ export class MissionSlot extends Model {
 
     /**
      * Short, optional description of the mission slot, describing the selected role.
-     * Can be `undefined|null` if not required
+     * Can be `null` if not required
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof MissionSlot
      */
     @Attribute({
@@ -140,14 +140,14 @@ export class MissionSlot extends Model {
             notEmpty: true
         }
     })
-    public description?: string;
+    public description: string | null;
 
     /**
      * Detailed, optional description of the mission slot, further explaining the responsibilities and the selected role.
-     * Can be `undefined|null` if not required.
+     * Can be `null` if not required.
      * Can contain HTML for formatting
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof MissionSlot
      */
     @Attribute({
@@ -175,9 +175,9 @@ export class MissionSlot extends Model {
 
     /**
      * UID of the user that has been assigned to the slot.
-     * Can be `undefined|null` if no final assignment has been made yet
+     * Can be `null` if no final assignment has been made yet
      *
-     * @type {string|undefined|null}
+     * @type {(string | null)}
      * @memberof MissionSlot
      */
     @Attribute({
@@ -191,22 +191,22 @@ export class MissionSlot extends Model {
         onDelete: 'SET NULL',
         onUpdate: 'CASCADE'
     })
-    public assigneeUid?: string;
+    public assigneeUid: string | null;
 
     /**
      * Eager-loaded assigned user instance.
      * Only included if the slot has a user assigned and it has been eager-loaded via sequelize
      *
-     * @type {User|undefined}
+     * @type {(User | null | undefined)}
      * @memberof MissionSlot
      */
-    public assignee?: User;
+    public assignee?: User | null;
 
     /**
      * Eager-loaded list of slot registrations associated with this slot.
      * Only included if the slot has registrations associated and it has been eager-loaded via sequelize
      *
-     * @type {MissionSlotRegistration[]|undefined}
+     * @type {(MissionSlotRegistration[] | undefined)}
      * @memberof MissionSlot
      */
     public registrations?: MissionSlotRegistration[];
@@ -215,7 +215,7 @@ export class MissionSlot extends Model {
      * UID of the community the slot is restricted to. If set, only members of this community can register for the slot.
      * Setting this to `null` removes the restrictions and opens the slot to everyone
      *
-     * @type {string|null}
+     * @type {(string | null)}
      * @memberof MissionSlot
      */
     @Attribute({
@@ -229,16 +229,16 @@ export class MissionSlot extends Model {
         onDelete: 'SET NULL',
         onUpdate: 'CASCADE'
     })
-    public restrictedCommunityUid: string;
+    public restrictedCommunityUid: string | null;
 
     /**
      * Eager-loaded instance of restricted community.
      * Only included if the slot is restricted to a community and it has been eager-loaded via sequelize
      *
-     * @type {Community|undefined}
+     * @type {(Community | null | undefined)}
      * @memberof MissionSlot
      */
-    public restrictedCommunity?: Community;
+    public restrictedCommunity?: Community | null;
 
     /**
      * UID of the slot groups the slot is associated with.
@@ -262,7 +262,7 @@ export class MissionSlot extends Model {
      * Eager-loaded slot group instance.
      * Only included if it has been eager-loaded via sequelize
      *
-     * @type {MissionSlotGroup|undefined}
+     * @type {(MissionSlotGroup | undefined)}
      * @memberof MissionSlot
      */
     public slotGroup?: MissionSlotGroup;
@@ -391,25 +391,26 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public async toPublicObject(): Promise<IPublicMissionSlot> {
-        let publicAssignee: IPublicUser | null = null;
         if (!_.isNil(this.assigneeUid)) {
             if (_.isNil(this.assignee)) {
                 this.assignee = await this.getAssignee();
             }
-            publicAssignee = await this.assignee.toPublicObject();
         }
 
         if (_.isNil(this.registrations)) {
             this.registrations = await this.getRegistrations();
         }
 
-        let publicRestrictedCommunity: IPublicCommunity | null = null;
         if (!_.isNil(this.restrictedCommunityUid)) {
             if (_.isNil(this.restrictedCommunity)) {
                 this.restrictedCommunity = await this.getRestrictedCommunity();
             }
-            publicRestrictedCommunity = await this.restrictedCommunity.toPublicObject();
         }
+
+        const [publicAssignee, publicRestrictedCommunity] = await Promise.all([
+            !_.isNil(this.assigneeUid) && !_.isNil(this.assignee) ? this.assignee.toPublicObject() : Promise.resolve(null),
+            !_.isNil(this.restrictedCommunityUid) && !_.isNil(this.restrictedCommunity) ? this.restrictedCommunity.toPublicObject() : Promise.resolve(null)
+        ]);
 
         return {
             uid: this.uid,
@@ -467,4 +468,5 @@ export interface IMissionSlotCreatePayload {
     description: string | null;
     restrictedCommunityUid: string | null;
     reserve: boolean;
+    insertAfter: number;
 }
