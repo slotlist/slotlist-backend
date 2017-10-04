@@ -860,8 +860,7 @@ export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
             throw Boom.notFound('Mission not found');
         }
 
-        let slotGroups = await mission.getSlotGroups();
-        slotGroups = _.sortBy(slotGroups, 'orderNumber');
+        const slotGroups = _.sortBy(await mission.getSlotGroups(), 'orderNumber');
         const slotGroup = _.find(slotGroups, { uid: slotGroupUid });
         if (_.isNil(slotGroup)) {
             log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Mission slot group with given UID not found');
@@ -1048,15 +1047,54 @@ export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission slot not found');
         }
 
-        log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Deleting mission slot');
+        const orderNumber = slot.orderNumber;
 
-        await slot.destroy();
+        const slotGroups = await mission.getSlotGroups({ where: { uid: slot.slotGroupUid } });
+        if (_.isNil(slotGroups) || _.isEmpty(slotGroups)) {
+            log.debug(
+                { function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid, slotGroupUid: slot.slotGroupUid },
+                'Mission slot group with given UID not found');
+            throw Boom.notFound('Mission slot group not found');
+        }
+        const slotGroup = slotGroups[0];
 
-        log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot');
+        const currentSlots = _.orderBy(await slotGroup.getSlots(), 'orderNumber');
 
-        return {
-            success: true
-        };
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Deleting mission slot');
+
+            await slot.destroy();
+
+            let slotOrderNumber = 1;
+            const slotsToUpdate: MissionSlot[] = [];
+            _.each(currentSlots, (missionSlot: MissionSlot) => {
+                if (missionSlot.orderNumber === orderNumber) {
+                    return;
+                }
+
+                if (missionSlot.orderNumber !== slotOrderNumber) {
+                    slotsToUpdate.push(missionSlot.set({ orderNumber: slotOrderNumber }));
+                }
+
+                slotOrderNumber += 1;
+            });
+
+            await Promise.map(slotsToUpdate, (missionSlot: MissionSlot) => {
+                return missionSlot.save();
+            });
+
+            log.debug(
+                { function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid, orderNumber },
+                'Successfully adapted mission slot ordering, recalculating mission slot order numbers');
+
+            await mission.recalculateSlotOrderNumbers();
+
+            log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot');
+
+            return {
+                success: true
+            };
+        });
     })());
 }
 
