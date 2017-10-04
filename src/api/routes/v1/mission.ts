@@ -1097,7 +1097,6 @@ export const mission = [
                 }),
                 payload: Joi.object().required().keys({
                     title: Joi.string().min(1).max(255).optional().description('New title of the slot').example('Platoon Lead'),
-                    orderNumber: Joi.number().integer().positive().allow(0).min(0).optional().description('New order number for sorting slotlist').example(0),
                     difficulty: Joi.number().integer().positive().allow(0).min(0).max(4).optional().description('New difficulity of the slot, ranging from 0 (easiest) ' +
                         'to 4 (hardest)').example(4),
                     description: Joi.string().allow(null).min(1).optional().description('New optional short description of the slot')
@@ -1107,7 +1106,9 @@ export const mission = [
                     restrictedCommunityUid: Joi.string().allow(null).guid().length(36).optional().description('New UID of the community the slot is restricted to. ' +
                         'Setting this to `null` removes the restriction and opens the slot to everyone').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     reserve: Joi.bool().optional().description('New indicator whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
-                        'filled) or a regular one (false)').example(false)
+                        'filled) or a regular one (false)').example(false),
+                    moveAfter: Joi.number().integer().positive().allow(0).optional().description('Order number of the slot the slot should be moved after. Allows for ' +
+                        'reordering of slots - all other order numbers will be adapted accordingly').example(9)
                 })
             },
             response: {
@@ -1126,11 +1127,12 @@ export const mission = [
                             schema: forbiddenSchema
                         },
                         404: {
-                            description: 'No mission with given slug or no slot with the given UID was found',
+                            description: 'No mission with given slug, slot with the given UID or no slot group with the slot\'s group UID was found',
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Mission not found', 'Mission slot not found').required().description('Message further describing the error')
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found', 'Mission slot group not found').required()
+                                    .description('Message further describing the error')
                             })
                         },
                         500: {
