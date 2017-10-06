@@ -174,6 +174,20 @@ export class MissionSlot extends Model {
     public reserve: boolean;
 
     /**
+     * Indicates whether the slot is a blocked slot (true, no users can register) or a regular one (false)
+     * Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info
+     *
+     * @type {boolean}
+     * @memberof MissionSlot
+     */
+    @Attribute({
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    })
+    public blocked: boolean;
+
+    /**
      * UID of the user that has been assigned to the slot.
      * Can be `null` if no final assignment has been made yet
      *
@@ -422,6 +436,7 @@ export class MissionSlot extends Model {
             detailedDescription: _.isNil(this.detailedDescription) ? null : this.detailedDescription,
             restrictedCommunity: publicRestrictedCommunity,
             reserve: this.reserve,
+            blocked: this.blocked,
             assignee: publicAssignee,
             registrationCount: this.registrations.length
         };
@@ -448,6 +463,7 @@ export interface IPublicMissionSlot {
     description: string | null;
     restrictedCommunity: IPublicCommunity | null;
     reserve: boolean;
+    blocked: boolean;
     assignee: IPublicUser | null;
     registrationCount: number;
     registrationUid?: string; // only returned if user has registered for the slot
@@ -468,5 +484,6 @@ export interface IMissionSlotCreatePayload {
     description: string | null;
     restrictedCommunityUid: string | null;
     reserve: boolean;
+    blocked: boolean;
     insertAfter: number;
 }

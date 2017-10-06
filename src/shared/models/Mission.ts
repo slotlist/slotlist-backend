@@ -602,7 +602,8 @@ export class Mission extends Model {
             where: {
                 assigneeUid: {
                     $eq: null
-                }
+                },
+                blocked: false // blocked slots count as assigned since the could be assigned manually by the mission creator
             },
             include: [
                 {

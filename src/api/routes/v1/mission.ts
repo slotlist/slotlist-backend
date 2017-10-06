@@ -1034,6 +1034,8 @@ export const mission = [
                         'Setting this to `null` removes the restriction and opens the slot to everyone').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     reserve: Joi.bool().required().description('Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
                         'filled) or a regular one (false)').example(false),
+                    blocked: Joi.bool().required().description('Indicates whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
+                        'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
                     insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot the new slot should be inserted ' +
                         'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
                 }).required()
@@ -1107,6 +1109,8 @@ export const mission = [
                         'Setting this to `null` removes the restriction and opens the slot to everyone').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     reserve: Joi.bool().optional().description('New indicator whether the slot is a reserve slot (true, will only be assigned if all other slots have been ' +
                         'filled) or a regular one (false)').example(false),
+                    blocked: Joi.bool().optional().description('New indicator whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
+                        'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
                     moveAfter: Joi.number().integer().positive().allow(0).optional().description('Order number of the slot the slot should be moved after. Allows for ' +
                         'reordering of slots - all other order numbers will be adapted accordingly').example(9)
                 })
@@ -1245,8 +1249,12 @@ export const mission = [
                 'hapi-swagger': {
                     responses: {
                         403: {
-                            description: 'A user without appropriate permissions is accessing the endpoint',
-                            schema: forbiddenSchema
+                            description: 'A user without appropriate permissions is accessing the endpoint or the mission slot is marked as blocked',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(403).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Forbidden', 'Mission slot is blocked').required().description('Message further describing the error')
+                            })
                         },
                         404: {
                             description: 'No mission with given slug, no slot with the given UID or no user with the given UID was found',
@@ -1380,11 +1388,12 @@ export const mission = [
                 'hapi-swagger': {
                     responses: {
                         403: {
-                            description: 'A user tried to register for a restricted slot without being a member of the restricted community',
+                            description: 'A user tried to register for a blocked slot or a restricted slot without being a member of the restricted community',
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(403).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Not a member of restricted community').required().description('Message further describing the error')
+                                message: Joi.string().equal('Mission slot is blocked', 'Not a member of restricted community').required()
+                                    .description('Message further describing the error')
                             })
                         },
                         404: {
