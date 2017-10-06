@@ -17,6 +17,8 @@ export const missionSlotSchema = Joi.object().keys({
     description: Joi.string().allow(null).min(1).optional().description('Optional short description of the slot').example('Leads Platoon Luchs and coordinates logistics'),
     reserve: Joi.bool().required().description('Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been filled) or a ' +
         'regular one (false)').example(false),
+    blocked: Joi.bool().required().description('Indicates whether the slot is a blocked slot (true, no users can register) or a regular one (false). Blocked slots can be ' +
+        'used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
     restrictedCommunity: communitySchema.allow(null).default(null).optional().description('Community the slot has been restricted to. If a value is set, only members of ' +
         'this community can register for the slot. If `null` is returned, no restrictions apply and everyone can register'),
     assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be null if no final assignment has been completed yet'),

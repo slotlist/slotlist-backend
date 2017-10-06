@@ -973,7 +973,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         return sequelize.transaction(async (t: Transaction) => {
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
-                await slot.update(payload, { allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restricted', 'reserve'] });
+                await slot.update(payload, { allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked'] });
             } else {
                 log.debug({ function: 'updateMissionSlotGroup', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot');
 
@@ -1009,7 +1009,9 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
                 payload.orderNumber = orderNumber;
 
-                await slot.update(payload, { allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restricted', 'reserve', 'orderNumber'] });
+                await slot.update(payload, {
+                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber']
+                });
 
                 log.debug(
                     { function: 'updateMissionSlotGroup', slug, slotUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
@@ -1118,6 +1120,13 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         if (_.isNil(slot)) {
             log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
+        }
+
+        if (slot.blocked) {
+            log.debug(
+                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                'User tried to assign to a blocked slot, rejecting');
+            throw Boom.notFound('Mission slot is blocked');
         }
 
         const targetUser = await User.findById(targetUserUid);
@@ -1351,6 +1360,13 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'updateMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid },
                 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
+        }
+
+        if (slot.blocked) {
+            log.debug(
+                { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, userCommunityUid },
+                'User tried to register for a blocked slot, rejecting');
+            throw Boom.forbidden('Mission slot is blocked');
         }
 
         if (!_.isNil(slot.restrictedCommunityUid) && !_.isEqual(userCommunityUid, slot.restrictedCommunityUid)) {
