@@ -100,6 +100,14 @@ export const auth = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        401: {
+                            description: 'User stored in JWT does not exist in database anymore',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User not found').required().description('Message further describing the error')
+                            })
+                        },
                         500: {
                             description: 'An error occured while processing the request',
                             schema: internalServerErrorSchema
@@ -143,7 +151,7 @@ export const auth = [
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Current user not found').required().description('Message further describing the error')
+                                message: Joi.string().equal('User not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
@@ -188,6 +196,72 @@ export const auth = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        401: {
+                            description: 'User stored in JWT does not exist in database anymore',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/auth/account/delete',
+        handler: controller.deleteAccount,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes the user\'s account and all information associated, including mission data',
+            notes: 'Deletes the user\'s account and all information associated, including mission data. This operation is final and requires "verification" by '
+            + ' confirm the user\'s current nickname. Regular user authentication is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'auth', 'account', 'delete', 'authenticated'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                payload: Joi.object().required().keys({
+                    nickname: Joi.string().min(1).max(255).required().description('Exact current nickname of user, as a confirmation for the deletion').example('MorpheusXAUT')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteAccountResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        401: {
+                            description: 'User stored in JWT does not exist in database anymore',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The nickname provided did not exactly match the user\'s current nickname',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Provided nickname does not match current nickname').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
                         500: {
                             description: 'An error occured while processing the request',
                             schema: internalServerErrorSchema

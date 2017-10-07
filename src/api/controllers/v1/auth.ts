@@ -58,8 +58,8 @@ export function refreshJWT(request: Hapi.Request, reply: Hapi.ReplyWithContinue)
 
         const user = await User.findById(userUid);
         if (_.isNil(user)) {
-            log.warn({ function: 'refreshJWT', userUid }, 'User not found in database anymore while refreshing JWT, aborting');
-            throw Boom.notFound('User not found');
+            log.warn({ function: 'refreshJWT', userUid }, 'Did not find user to refresh JWT for logged in user, returning 401 to force re-authentication');
+            throw Boom.unauthorized('User not found');
         }
 
         const token = await user.generateJWT();
@@ -101,7 +101,7 @@ export function getAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
         });
         if (_.isNil(user)) {
             log.warn({ function: 'getAccountDetails', userUid }, 'Did not find user profile for logged in user, returning 401 to force re-authentication');
-            throw Boom.notFound('Current user not found');
+            throw Boom.unauthorized('User not found');
         }
 
         if (_.isNil(user.missions)) {
@@ -155,7 +155,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
         });
         if (_.isNil(user)) {
             log.warn({ function: 'patchAccountDetails', userUid }, 'Did not find user profile for logged in user, returning 401 to force re-authentication');
-            throw Boom.unauthorized('Current user not found');
+            throw Boom.unauthorized('User not found');
         }
 
         if (_.isUndefined(user.community)) {
@@ -186,5 +186,33 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             user: _.defaults(publicUser, { permissions }),
             token
         };
+    })());
+}
+
+export function deleteAccount(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const userUid = request.auth.credentials.user.uid;
+        const payload = request.payload;
+
+        log.debug({ function: 'deleteAccount', userUid, payload }, 'Received request to delete user account');
+
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.warn({ function: 'deleteAccount', userUid, payload }, 'Did not find user to delete for logged in user, returning 401 to force re-authentication');
+            throw Boom.unauthorized('User not found');
+        }
+
+        if (payload.nickname !== user.nickname) {
+            log.warn({ function: 'deleteAccount', userUid, payload }, 'Provided nickname does not exactly match user\'s current nickname, aborting');
+            throw Boom.conflict('Provided nickname does not match current nickname');
+        }
+
+        log.info({ function: 'deleteAccount', userUid, payload }, 'Deleting user account');
+
+        await user.destroy();
+
+        log.info({ function: 'deleteAccount', userUid, payload }, 'Successfully deleted user account');
+
+        return { success: true };
     })());
 }
