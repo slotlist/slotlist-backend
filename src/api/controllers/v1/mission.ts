@@ -26,6 +26,7 @@ const log = logger.child({ route: 'community', routeVersion: 'v1' });
  */
 
 export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         let userUid: string | null = null;
         let userCommunityUid: string | null = null;
@@ -38,54 +39,38 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
         }
 
         const queryOptions: any = {
-            limit: request.query.limit,
-            offset: request.query.offset,
             order: [['startTime', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
 
-        if (request.query.includeEnded === false) {
-            queryOptions.where = {
-                endTime: {
-                    $gt: moment.utc()
-                }
-            };
-        }
-
         if (_.isNil(userUid)) {
-            if (_.isNil(queryOptions.where)) {
-                queryOptions.where = {
-                    visibility: 'public'
-                };
-            } else {
-                queryOptions.where.visibility = 'public';
-            }
+            queryOptions.where = {
+                visibility: 'public'
+            };
         } else {
-            queryOptions.where = _.defaults(
-                {
-                    $or: [
-                        {
-                            creatorUid: userUid
-                        },
-                        {
-                            visibility: 'public'
-                        },
-                        {
-                            visibility: 'hidden',
-                            $or: [
-                                {
-                                    creatorUid: userUid
-                                },
-                                // tslint:disable-next-line:max-line-length
-                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                            ]
-                        },
-                        {
-                            visibility: 'private',
-                            creatorUid: userUid
-                        }
-                    ]
-                },
-                queryOptions.where);
+            queryOptions.where = {
+                $or: [
+                    {
+                        creatorUid: userUid
+                    },
+                    {
+                        visibility: 'public'
+                    },
+                    {
+                        visibility: 'hidden',
+                        $or: [
+                            {
+                                creatorUid: userUid
+                            },
+                            // tslint:disable-next-line:max-line-length
+                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                        ]
+                    },
+                    {
+                        visibility: 'private',
+                        creatorUid: userUid
+                    }
+                ]
+            };
 
             if (!_.isNil(userCommunityUid)) {
                 queryOptions.where.$or.push({
@@ -95,34 +80,80 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
             }
         }
 
-        const result = await Mission.findAndCountAll(queryOptions);
-
-        const missionCount = result.rows.length;
-        const moreAvailable = (queryOptions.offset + missionCount) < result.count;
-        const missionList = await Promise.map(result.rows, async (mission: Mission) => {
-            const publicMission = await mission.toPublicObject();
-
-            if (!_.isNil(userUid)) {
-                const [isAssignedToAnySlot, isRegisteredForAnySlot] = await Promise.all([
-                    mission.isUserAssignedToAnySlot(userUid),
-                    mission.isUserRegisteredForAnySlot(userUid)
-                ]);
-
-                publicMission.isAssignedToAnySlot = isAssignedToAnySlot;
-                publicMission.isRegisteredForAnySlot = isRegisteredForAnySlot;
+        if (_.isNil(request.query.startDate)) {
+            if (request.query.includeEnded === false) {
+                queryOptions.where.endTime = {
+                    $gt: moment.utc()
+                };
             }
 
-            return publicMission;
-        });
+            queryOptions.limit = request.query.limit;
+            queryOptions.offset = request.query.offset;
 
-        return {
-            limit: queryOptions.limit,
-            offset: queryOptions.offset,
-            count: missionCount,
-            total: result.count,
-            moreAvailable: moreAvailable,
-            missions: missionList
-        };
+            const result = await Mission.findAndCountAll(queryOptions);
+
+            const missionCount = result.rows.length;
+            const moreAvailable = (queryOptions.offset + missionCount) < result.count;
+            const missionList = await Promise.map(result.rows, async (mission: Mission) => {
+                const publicMission = await mission.toPublicObject();
+
+                if (!_.isNil(userUid)) {
+                    const [isAssignedToAnySlot, isRegisteredForAnySlot] = await Promise.all([
+                        mission.isUserAssignedToAnySlot(userUid),
+                        mission.isUserRegisteredForAnySlot(userUid)
+                    ]);
+
+                    publicMission.isAssignedToAnySlot = isAssignedToAnySlot;
+                    publicMission.isRegisteredForAnySlot = isRegisteredForAnySlot;
+                }
+
+                return publicMission;
+            });
+
+            return {
+                limit: queryOptions.limit,
+                offset: queryOptions.offset,
+                count: missionCount,
+                total: result.count,
+                moreAvailable: moreAvailable,
+                missions: missionList
+            };
+        } else {
+            if (_.isNil(request.query.endDate)) {
+                throw Boom.badRequest('Mission filter end date must be provided if start date is set');
+            }
+
+            queryOptions.where.startTime = {
+                $gte: moment(request.query.startDate).utc()
+            };
+            queryOptions.where.endTime = {
+                $lte: moment(request.query.endDate).utc()
+            };
+
+            const missions = await Mission.findAll(queryOptions);
+
+            const missionList = await Promise.map(missions, async (mission: Mission) => {
+                const publicMission = await mission.toPublicObject();
+
+                if (!_.isNil(userUid)) {
+                    const [isAssignedToAnySlot, isRegisteredForAnySlot] = await Promise.all([
+                        mission.isUserAssignedToAnySlot(userUid),
+                        mission.isUserRegisteredForAnySlot(userUid)
+                    ]);
+
+                    publicMission.isAssignedToAnySlot = isAssignedToAnySlot;
+                    publicMission.isRegisteredForAnySlot = isRegisteredForAnySlot;
+                }
+
+                return publicMission;
+            });
+
+            return {
+                startDate: request.query.startDate,
+                endDate: request.query.endDate,
+                missions: missionList
+            };
+        }
     })());
 }
 
