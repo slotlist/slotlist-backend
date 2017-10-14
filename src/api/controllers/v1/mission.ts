@@ -1548,6 +1548,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 }
 
 export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
@@ -1616,22 +1617,40 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         const registration = registrations[0];
 
         if (registration.userUid !== userUid) {
-            log.info(
-                { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
-                'User tried to delete mission slot registration that was created by a different user, denying');
-            throw Boom.forbidden();
+            const requiredPermissions = [`mission.${slug}.creator`, `mission.${slug}.editor`];
+            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
+            if (_.has(parsedPermissions, '*')) {
+                log.debug(
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
+                    'User has global wildcard permission, allowing mission slot registration deletion');
+            }
+
+            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
+                return findPermission(parsedPermissions, requiredPermission);
+            });
+
+            if (_.isEmpty(foundPermissions)) {
+                log.info(
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
+                    'User tried to delete mission slot registration that was created by a different user, denying');
+                throw Boom.forbidden();
+            } else {
+                log.debug(
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
+                    'User has mission creator or editor permission, allowing mission slot registration deletion');
+            }
         }
 
         return sequelize.transaction(async (t: Transaction) => {
             if (registration.confirmed) {
                 log.debug(
-                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
                     'Mission slot registration is confirmed, checking slot assignee');
 
-                if (slot.assigneeUid === userUid) {
+                if (slot.assigneeUid === registration.userUid) {
                     log.debug(
-                        { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
-                        'Mission slot assignee is current user, removing association and deleting mission slot registration');
+                        { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
+                        'Mission slot assignee is registration user, removing association and deleting mission slot registration');
 
                     await Promise.all([
                         slot.update({ assigneeUid: null }),
@@ -1639,21 +1658,24 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     ]);
                 } else {
                     log.debug(
-                        { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        {
+                            function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid,
+                            registrationUserUid: registration.userUid, assigneeUid: slot.assigneeUid
+                        },
                         'Mission slot assignee is different user, only deleting mission slot registration');
 
                     await registration.destroy();
                 }
             } else {
                 log.debug(
-                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
                     'Mission slot registration is not confirmed, only deleting mission slot registration');
 
                 await registration.destroy();
             }
 
             log.debug(
-                { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid },
+                { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
                 'Successfully deleted mission slot registration');
 
             return {

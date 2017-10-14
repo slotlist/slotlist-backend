@@ -1527,8 +1527,8 @@ export const mission = [
                 mode: 'required'
             },
             description: 'Deletes an existing mission slot registration',
-            notes: 'Allows a user to delete their mission slot registration. Registrations can only be deleted by the user that created them. Regular user authentication ' +
-            'required to access this endpoint',
+            notes: 'Allows a user to delete their mission slot registration. Registrations can only be deleted by the user that created them or by mission creators and users' +
+            'with the `mission.SLUG.editor` permission. Regular user authentication required to access this endpoint',
             tags: ['api', 'delete', 'v1', 'missions', 'slot', 'registration', 'authenticated'],
             validate: {
                 options: {
