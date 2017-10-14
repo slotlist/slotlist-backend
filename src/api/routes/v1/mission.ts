@@ -58,25 +58,45 @@ export const mission = [
                         .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
+                    includeEnded: Joi.boolean().default(false).optional().description('Include ended missions in retrieved list, defaults to false').optional(),
+                    startDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to start retrieving missions from. Used for mission ' +
+                        'calendar, to be used in conjunction with `endDate`. Endpoint ignores all other query parameters provided if a `startDate` has been provided'),
+                    endDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to end retrieving missions, inclusive. Used for mission ' +
+                        'calendar, to be used in conjunction with `startDate`. Must be provided if `startDate` has been set')
                 })
             },
             response: {
                 schema: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).required()
-                        .description('Limit for number of missions to retrieve, as provided via query'),
-                    offset: Joi.number().integer().positive().allow(0).min(0).required()
-                        .description('Number of missions to skip before retrieving new ones from database, as provided via query'),
-                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionList.max).required()
-                        .description('Actual number of missions returned'),
-                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of missions stored'),
-                    moreAvailable: Joi.bool().required().description('Indicates whether more missions are available and can be retrieved using pagination'),
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionList.max).optional()
+                        .description('Limit for number of missions to retrieve, as provided via query. Omitted if query including `startDate` was executed'),
+                    offset: Joi.number().integer().positive().allow(0).min(0).optional()
+                        .description('Number of missions to skip before retrieving new ones from database, as provided via query. Omitted if query including `startDate` was ' +
+                        'executed'),
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionList.max).optional()
+                        .description('Actual number of missions returned. Omitted if query including `startDate` was executed'),
+                    total: Joi.number().integer().positive().allow(0).min(0).optional().description('Total number of missions stored. Omitted if query including `startDate` ' +
+                        'was executed'),
+                    moreAvailable: Joi.bool().optional().description('Indicates whether more missions are available and can be retrieved using pagination. Omitted if query ' +
+                        'including `startDate` was executed'),
+                    startDate: Joi.date().optional().description('Date and time (in UTC) missions where retrieved from, as provided via query. Omitted if no `startDate` was ' +
+                        'set in the request'),
+                    endDate: Joi.date().optional().description('Date and time (in UTC) missions retrievel ended at, as provided via query. Omitted if no `startDate` was set' +
+                        ' in the request'),
                     missions: Joi.array().items(schemas.missionSchema.optional()).required().description('List of missions retrieved')
                 }).label('GetMissionListResponse').description('Response containing list of currently created missions')
             },
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        400: {
+                            description: 'A `startDate` value was set, but no `endDate` was provided',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Bad Request').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission filter end date must be provided if start date is set').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
                         500: {
                             description: 'An error occured while processing the request',
                             schema: internalServerErrorSchema
@@ -1507,8 +1527,8 @@ export const mission = [
                 mode: 'required'
             },
             description: 'Deletes an existing mission slot registration',
-            notes: 'Allows a user to delete their mission slot registration. Registrations can only be deleted by the user that created them. Regular user authentication ' +
-            'required to access this endpoint',
+            notes: 'Allows a user to delete their mission slot registration. Registrations can only be deleted by the user that created them or by mission creators and users' +
+            'with the `mission.SLUG.editor` permission. Regular user authentication required to access this endpoint',
             tags: ['api', 'delete', 'v1', 'missions', 'slot', 'registration', 'authenticated'],
             validate: {
                 options: {
