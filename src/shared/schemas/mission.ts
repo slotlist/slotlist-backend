@@ -12,6 +12,8 @@ export const missionSchema = Joi.object().keys({
         .description('Slug used for uniquely identifying a mission in the frontend, easier to read than a UUID').example('all-of-altis'),
     startTime: Joi.date().required().description('Date and time the missions starts (slotting/briefing times are stored separately and available via mission details')
         .example('2017-09-02T17:00:00.000Z'),
+    endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an estimation by the mission ' +
+        'creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
     creator: userSchema.required().description('Creator of the mission'),
     totalSlotCount: Joi.number().integer().positive().allow(0).min(0).description('Total number of slots created for the mission').example(9),
     unassignedSlotCount: Joi.number().integer().positive().allow(0).min(0).description('Number of unassigned slots, excluding slots with registrations').example(9),
@@ -35,8 +37,6 @@ export const missionDetailsSchema = missionSchema.keys({
         .example('2017-09-02T16:00:00.000Z'),
     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server and choose their reserved slot ' +
         'at this time').example('2017-09-02T16:00:00.000Z'),
-    endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an estimation by the mission ' +
-        'creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
     repositoryUrl: Joi.string().allow(null).min(1).default(null).optional()
         .description('URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
         .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),

@@ -777,6 +777,7 @@ export class Mission extends Model {
             title: this.title,
             slug: this.slug,
             startTime: this.startTime,
+            endTime: this.endTime,
             creator: publicCreator,
             totalSlotCount,
             unassignedSlotCount
@@ -843,6 +844,7 @@ export interface IPublicMission {
     title: string;
     slug: string;
     startTime: Date;
+    endTime: Date;
     creator: IPublicUser;
     totalSlotCount: number;
     unassignedSlotCount: number;
@@ -863,7 +865,6 @@ export interface IDetailedPublicMission extends IPublicMission {
     bannerImageUrl: string | null;
     briefingTime: Date;
     slottingTime: Date;
-    endTime: Date;
     repositoryUrl: string | null;
     techSupport: string | null;
     rules: string | null;
