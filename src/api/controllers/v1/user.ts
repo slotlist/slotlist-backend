@@ -7,6 +7,7 @@ import { col, fn, literal } from 'sequelize';
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
 import { User } from '../../../shared/models/User';
+import { findPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
@@ -16,6 +17,11 @@ const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
 export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
+        let userUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+        }
+
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
@@ -29,15 +35,40 @@ export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue
                 }
             };
 
-            log.debug({ function: 'getUserList', queryOptions }, 'Including search parameter in query options');
+            log.debug({ function: 'getUserList', queryOptions, userUid }, 'Including search parameter in query options');
         }
 
         const result = await User.findAndCountAll(queryOptions);
 
+        let includeAdminDetails: boolean = false;
+        if (!_.isNil(userUid)) {
+            const requiredPermissions = ['admin.user'];
+            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
+            if (_.has(parsedPermissions, '*')) {
+                log.debug(
+                    { function: 'getUserList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                    'User has global wildcard permission, returning admin user details');
+
+                includeAdminDetails = true;
+            }
+
+            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
+                return findPermission(parsedPermissions, requiredPermission);
+            });
+
+            if (foundPermissions.length > 0) {
+                log.debug(
+                    { function: 'getUserList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                    'User has user admin permission, returning admin user details');
+
+                includeAdminDetails = true;
+            }
+        }
+
         const userCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + userCount) < result.count;
         const userList = await Promise.map(result.rows, (user: User) => {
-            return user.toPublicObject();
+            return user.toPublicObject(includeAdminDetails);
         });
 
         return {
@@ -53,9 +84,13 @@ export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue
 
 export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const userUid = request.params.uid;
+        const targetUserUid = request.params.userUid;
+        let userUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+        }
 
-        const user = await User.findById(userUid, {
+        const user = await User.findById(targetUserUid, {
             include: [
                 {
                     model: Community,
@@ -68,11 +103,36 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
             ]
         });
         if (_.isNil(user)) {
-            log.debug({ function: 'getUserDetails', userUid }, 'User with given UID not found');
+            log.debug({ function: 'getUserDetails', targetUserUid }, 'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 
-        const detailedPublicUser = await user.toDetailedPublicObject();
+        let includeAdminDetails: boolean = false;
+        if (!_.isNil(userUid)) {
+            const requiredPermissions = ['admin.user'];
+            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
+            if (_.has(parsedPermissions, '*')) {
+                log.debug(
+                    { function: 'getUserDetails', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                    'User has global wildcard permission, returning admin user details');
+
+                includeAdminDetails = true;
+            }
+
+            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
+                return findPermission(parsedPermissions, requiredPermission);
+            });
+
+            if (foundPermissions.length > 0) {
+                log.debug(
+                    { function: 'getUserDetails', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                    'User has user admin permission, returning admin user details');
+
+                includeAdminDetails = true;
+            }
+        }
+
+        const detailedPublicUser = await user.toDetailedPublicObject(includeAdminDetails);
 
         return {
             user: detailedPublicUser
@@ -80,9 +140,35 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
     })());
 }
 
+export function modifyUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const targetUserUid = request.params.userUid;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const user = await User.findById(targetUserUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'User with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Updating user');
+
+        await user.update(payload, { allowed: ['nickname', 'active'] });
+
+        log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Successfully updated user');
+
+        const publicUser = await user.toPublicObject(true);
+
+        return {
+            user: publicUser
+        };
+    })());
+}
+
 export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const targetUserUid = request.params.uid;
+        const targetUserUid = request.params.userUid;
         let userUid: string | null = null;
         let userCommunityUid: string | null = null;
         if (request.auth.isAuthenticated) {

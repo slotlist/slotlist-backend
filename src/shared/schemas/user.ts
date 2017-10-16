@@ -16,7 +16,9 @@ export const userSchema = Joi.object().keys({
         slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
             .description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID').example('spezialeinheit-luchs')
     }).required().label('Community').description('Public community information, as displayed in overview lists')]).allow(null).default(null).optional().label('Community')
-        .description('Community the user is associated with. Can be null if user is not assigned to community')
+        .description('Community the user is associated with. Can be null if user is not assigned to community'),
+    steamId: Joi.string().min(1).optional().description('Steam ID of the user. Only returned for admins with the user admin permission').example('76561198002621790'),
+    active: Joi.bool().optional().description('Indicates whether the user account is active and thus useable. Only returned for admins with the user admin permission')
 }).required().label('User').description('Public user information, as displayed in overview lists');
 
 import { missionSchema } from './mission';
