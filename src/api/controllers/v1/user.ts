@@ -251,6 +251,7 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
             limit: queryOptions.limit,
             offset: queryOptions.offset,
             count: missionCount,
+            total: result.count,
             moreAvailable: moreAvailable,
             missions: missionList
         };

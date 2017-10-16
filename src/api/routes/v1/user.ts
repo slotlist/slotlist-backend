@@ -222,6 +222,7 @@ export const user = [
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.userMissionList.max).required()
                         .description('Actual number of missions returned'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more missions are available and can be retrieved using pagination'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of missions stored for this user'),
                     missions: Joi.array().items(missionSchema.optional()).required().description('List of missions retrieved')
                 }).label('GetUserMissionListResponse').description('Response containing list of missions created by the user')
             },

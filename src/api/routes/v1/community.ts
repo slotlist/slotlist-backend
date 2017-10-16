@@ -722,6 +722,7 @@ export const community = [
                     count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.communityMissionList.max).required()
                         .description('Actual number of members returned'),
                     moreAvailable: Joi.bool().required().description('Indicates whether more members are available and can be retrieved using pagination'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of missions stored for this community'),
                     members: Joi.array().items(userSchema.optional()).required().description('List of members retrieved')
                 }).label('GetCommunityMemberListResponse').description('Response containing list of members assigned to the community')
             },
