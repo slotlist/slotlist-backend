@@ -190,6 +190,20 @@ export class User extends Model {
     public permissions?: Permission[];
 
     /**
+     * Indicates whether the user account is active and can thus make requests.
+     * This flag can be used to ban users from using the service - setting this to `false` will deny their login and thus only allow unauthenticated access
+     *
+     * @type {boolean}
+     * @memberof User
+     */
+    @Attribute({
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    })
+    public active: boolean;
+
+    /**
      * Time (and date) the user instance was created
      *
      * @type {Date}

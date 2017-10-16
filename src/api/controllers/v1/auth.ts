@@ -41,6 +41,11 @@ export function verifySteamLogin(request: Hapi.Request, reply: Hapi.ReplyWithCon
                 nickname: steamNickname
             }).save();
         } else {
+            if (!user.active) {
+                log.debug({ function: 'verifySteamLogin', steamId, user: user.toPublicObject() }, 'User already exists in database, but was set as deactivated. Rejecting login');
+                throw Boom.forbidden('User deactivated');
+            }
+
             log.debug({ function: 'verifySteamLogin', steamId, user: user.toPublicObject() }, 'User already exists in database, generating JWT');
         }
 
@@ -60,6 +65,11 @@ export function refreshJWT(request: Hapi.Request, reply: Hapi.ReplyWithContinue)
         if (_.isNil(user)) {
             log.warn({ function: 'refreshJWT', userUid }, 'Did not find user to refresh JWT for logged in user, returning 401 to force re-authentication');
             throw Boom.unauthorized('User not found');
+        }
+
+        if (!user.active) {
+            log.debug({ function: 'refreshJWT', userUid }, 'User was set as deactivated, rejecting JWT refresh');
+            throw Boom.forbidden('User deactivated');
         }
 
         const token = await user.generateJWT();
@@ -200,6 +210,11 @@ export function deleteAccount(request: Hapi.Request, reply: Hapi.ReplyWithContin
         if (_.isNil(user)) {
             log.warn({ function: 'deleteAccount', userUid, payload }, 'Did not find user to delete for logged in user, returning 401 to force re-authentication');
             throw Boom.unauthorized('User not found');
+        }
+
+        if (!user.active) {
+            log.debug({ function: 'deleteAccount', userUid, payload }, 'User was set as deactivated, rejecting account deletion');
+            throw Boom.forbidden('User deactivated');
         }
 
         if (payload.nickname !== user.nickname) {
