@@ -6,8 +6,9 @@ import { col, fn, literal } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
+import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
-import { findPermission, parsePermissions } from '../../../shared/util/acl';
+import { hasPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
@@ -40,29 +41,11 @@ export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue
 
         const result = await User.findAndCountAll(queryOptions);
 
-        let includeAdminDetails: boolean = false;
-        if (!_.isNil(userUid)) {
-            const requiredPermissions = ['admin.user'];
-            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
-                log.debug(
-                    { function: 'getUserList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has global wildcard permission, returning admin user details');
-
-                includeAdminDetails = true;
-            }
-
-            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-                return findPermission(parsedPermissions, requiredPermission);
-            });
-
-            if (foundPermissions.length > 0) {
-                log.debug(
-                    { function: 'getUserList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has user admin permission, returning admin user details');
-
-                includeAdminDetails = true;
-            }
+        const includeAdminDetails = _.isNil(userUid) ? false : hasPermission(request.auth.credentials.permissions, 'admin.user');
+        if (includeAdminDetails) {
+            log.debug(
+                { function: 'getUserList', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                'User has user admin permission, returning admin user details');
         }
 
         const userCount = result.rows.length;
@@ -107,29 +90,11 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
             throw Boom.notFound('User not found');
         }
 
-        let includeAdminDetails: boolean = false;
-        if (!_.isNil(userUid)) {
-            const requiredPermissions = ['admin.user'];
-            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
-                log.debug(
-                    { function: 'getUserDetails', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has global wildcard permission, returning admin user details');
-
-                includeAdminDetails = true;
-            }
-
-            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-                return findPermission(parsedPermissions, requiredPermission);
-            });
-
-            if (foundPermissions.length > 0) {
-                log.debug(
-                    { function: 'getUserDetails', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has user admin permission, returning admin user details');
-
-                includeAdminDetails = true;
-            }
+        const includeAdminDetails = _.isNil(userUid) ? false : hasPermission(request.auth.credentials.permissions, 'admin.user');
+        if (includeAdminDetails) {
+            log.debug(
+                { function: 'getUserDetails', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                'User has user admin permission, returning admin user details');
         }
 
         const detailedPublicUser = await user.toDetailedPublicObject(includeAdminDetails);
@@ -146,22 +111,73 @@ export function modifyUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const user = await User.findById(targetUserUid);
-        if (_.isNil(user)) {
+        const targetUser = await User.findById(targetUserUid, {
+            include: [
+                {
+                    model: Permission,
+                    as: 'permissions',
+                    attributes: ['permission']
+                }
+            ]
+        });
+        if (_.isNil(targetUser)) {
             log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 
+        const targetUserPermissions = _.map(await targetUser.getPermissions(), 'permission');
+        if (hasPermission(targetUserPermissions, 'admin') && !hasPermission(request.auth.credentials.permissions, 'admin.superadmin')) {
+            log.info({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Admin tried to modify user details of other admin, rejecting');
+            throw Boom.forbidden();
+        }
+
         log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Updating user');
 
-        await user.update(payload, { allowed: ['nickname', 'active'] });
+        await targetUser.update(payload, { allowed: ['nickname', 'active'] });
 
         log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Successfully updated user');
 
-        const publicUser = await user.toPublicObject(true);
+        const publicUser = await targetUser.toPublicObject(true);
 
         return {
             user: publicUser
+        };
+    })());
+}
+
+export function deleteUser(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const targetUserUid = request.params.userUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const targetUser = await User.findById(targetUserUid, {
+            include: [
+                {
+                    model: Permission,
+                    as: 'permissions',
+                    attributes: ['permission']
+                }
+            ]
+        });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'deleteUser', targetUserUid, userUid }, 'User with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        const targetUserPermissions = _.map(await targetUser.getPermissions(), 'permission');
+        if (hasPermission(targetUserPermissions, 'admin') && !hasPermission(request.auth.credentials.permissions, 'admin.superadmin')) {
+            log.info({ function: 'deleteUser', targetUserUid, userUid }, 'Admin tried to delete other admin, rejecting');
+            throw Boom.forbidden();
+        }
+
+        log.info({ function: 'deleteUser', targetUserUid, userUid }, 'Deleting user');
+
+        await targetUser.destroy();
+
+        log.info({ function: 'deleteUser', targetUserUid, userUid }, 'Successfully deleted user');
+
+        return {
+            success: true
         };
     })());
 }

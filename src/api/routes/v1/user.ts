@@ -163,8 +163,72 @@ export const user = [
                 'hapi-swagger': {
                     responses: {
                         403: {
-                            description: 'A user without appropriate permissions is accessing the endpoint',
-                            schema: forbiddenSchema
+                            description: 'An admin tried updating another admin account or a user without appropriate permissions is accessing the endpoint',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Forbidden').required().description('Message further describing the error')
+                            })
+                        },
+                        404: {
+                            description: 'No user with given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/users/{userUid}',
+        handler: controller.deleteUser,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Allows administrators to delete a specific user',
+            notes: 'Allows administrators to delete a specific user, permanentely removing all data related to their account from the database. This endpoint' +
+            'can only be used by administrators with the `admin.user` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'users', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    userUid: Joi.string().guid().length(36).required().description('UID of the user to delete').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteUserResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['admin.user']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'An admin tried deleting another admin account or a user without appropriate permissions is accessing the endpoint',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Forbidden').required().description('Message further describing the error')
+                            })
                         },
                         404: {
                             description: 'No user with given UID was found',

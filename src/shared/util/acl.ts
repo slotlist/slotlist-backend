@@ -60,3 +60,18 @@ export function parsePermissions(permissions: string[]): any {
 
     return parsedPermissions;
 }
+
+/**
+ * Parses the provided permission array and checks if the user has the requested target permission.
+ * Also checks for `*` and `admin.superadmin` permissions since those implicitly grant every other permission
+ *
+ * @export
+ * @param {string[]} permissions Array of permission to parse
+ * @param {string} targetPermission Permission to search for
+ * @returns {boolean} Indicates whether the permission was found
+ */
+export function hasPermission(permissions: string[], targetPermission: string): boolean {
+    const parsedPermissions = parsePermissions(permissions);
+
+    return _.has(parsedPermissions, '*') || findPermission(parsedPermissions, 'admin.superadmin') || findPermission(parsedPermissions, targetPermission);
+}
