@@ -8,7 +8,7 @@ import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
-import { hasPermission, parsePermissions } from '../../../shared/util/acl';
+import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
