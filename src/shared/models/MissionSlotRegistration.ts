@@ -208,10 +208,11 @@ export class MissionSlotRegistration extends Model {
     /**
      * Returns a public representation of the mission slot registration instance, as transmitted via API
      *
+     * @param {boolean} [includeDetails=false] Allows for slot registration details such as the UID or comment to be included
      * @returns {Promise<IPublicMissionSlotRegistration>} Object containing public mission slot registration information
      * @memberof MissionSlotRegistration
      */
-    public async toPublicObject(includeDetails: boolean = true): Promise<IPublicMissionSlotRegistration> {
+    public async toPublicObject(includeDetails: boolean = false): Promise<IPublicMissionSlotRegistration> {
         if (_.isNil(this.user)) {
             this.user = await this.getUser();
         }

@@ -190,6 +190,20 @@ export class User extends Model {
     public permissions?: Permission[];
 
     /**
+     * Indicates whether the user account is active and can thus make requests.
+     * This flag can be used to ban users from using the service - setting this to `false` will deny their login and thus only allow unauthenticated access
+     *
+     * @type {boolean}
+     * @memberof User
+     */
+    @Attribute({
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
+    })
+    public active: boolean;
+
+    /**
      * Time (and date) the user instance was created
      *
      * @type {Date}
@@ -406,10 +420,11 @@ export class User extends Model {
     /**
      * Returns a public representation of the user instance, as transmitted via API
      *
+     * @param {boolean} [includeAdminDetails=false] Allows for admin details such as Steam ID and `active` status to be included
      * @returns {Promise<IPublicUser>} Object containing public user information
      * @memberof User
      */
-    public async toPublicObject(): Promise<IPublicUser> {
+    public async toPublicObject(includeAdminDetails: boolean = false): Promise<IPublicUser> {
         let publicCommunity: IPublicCommunity | null = null;
         if (!_.isNil(this.communityUid)) {
             if (_.isNil(this.community)) {
@@ -421,7 +436,9 @@ export class User extends Model {
         return {
             uid: this.uid,
             nickname: this.nickname,
-            community: publicCommunity
+            community: publicCommunity,
+            steamId: includeAdminDetails ? this.steamId : undefined,
+            active: includeAdminDetails ? this.active : undefined
         };
     }
 
@@ -429,10 +446,11 @@ export class User extends Model {
      * Returns a detailed public representation of the user instance, as transmitted via API.
      * Also includes missions created by the user as well as the community the user belongs to
      *
+     * @param {boolean} [includeAdminDetails=false] Allows for admin details such as Steam ID and `active` status to be included
      * @returns {Promise<IDetailedPublicUser>} Object containing detailed public user information
      * @memberof User
      */
-    public async toDetailedPublicObject(): Promise<IDetailedPublicUser> {
+    public async toDetailedPublicObject(includeAdminDetails: boolean = false): Promise<IDetailedPublicUser> {
         if (!_.isNil(this.communityUid)) {
             if (_.isNil(this.community)) {
                 this.community = await this.getCommunity();
@@ -454,7 +472,9 @@ export class User extends Model {
             uid: this.uid,
             nickname: this.nickname,
             community: publicCommunity,
-            missions: publicMissions
+            missions: publicMissions,
+            steamId: includeAdminDetails ? this.steamId : undefined,
+            active: includeAdminDetails ? this.active : undefined
         };
     }
 
@@ -474,6 +494,8 @@ export interface IPublicUser {
     uid: string;
     nickname: string;
     community: IPublicCommunity | null;
+    steamId?: string;
+    active?: boolean;
 }
 
 /**

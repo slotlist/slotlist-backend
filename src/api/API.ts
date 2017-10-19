@@ -90,7 +90,7 @@ export class API {
                                         return [res, `ERROR --> ${data.url.path}`];
                                     },
                                     response: (data: any): any => {
-                                        const res: any = _.omit(data, 'config', 'labels');
+                                        const res: any = _.omit(data, 'config', 'labels', 'responsePayload', 'requestPayload');
 
                                         return [res, `--> ${data.path}`];
                                     }

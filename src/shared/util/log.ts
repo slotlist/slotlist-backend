@@ -19,7 +19,6 @@ const serializers: bunyan.Serializers = {
 
         const auth = _.cloneDeep(req.auth);
         const headers = _.cloneDeep(req.headers);
-        const payload = _.cloneDeep(req.payload);
         if (_.isString(auth.token)) {
             auth.token = '***REDACTED***';
         }
@@ -29,17 +28,6 @@ const serializers: bunyan.Serializers = {
         }
         if (_.isString(headers.authorization)) {
             headers.authorization = '***REDACTED***';
-        }
-        if (!_.isNil(payload)) {
-            if (_.isString(payload.token)) {
-                payload.token = '***REDACTED***';
-            }
-            if (_.isString(payload.detailedDescription)) {
-                payload.detailedDescription = '***SNIP***';
-            }
-            if (!_.isNil(payload.image)) {
-                payload.image = '***SNIP***';
-            }
         }
 
         return {
@@ -51,51 +39,12 @@ const serializers: bunyan.Serializers = {
             mime: req.mime,
             params: req.params,
             path: req.path,
-            payload: payload,
             query: req.query,
             state: req.state,
             url: req.url
         };
     },
     res: bunyan.stdSerializers.res,
-    responsePayload: (responsePayload: any) => {
-        if (_.isNil(responsePayload)) {
-            return responsePayload;
-        }
-
-        const payload = _.cloneDeep(responsePayload);
-        if (_.isString(payload.token)) {
-            payload.token = '***REDACTED***';
-        }
-
-        if (_.isObject(payload.mission) && _.isString(payload.mission.detailedDescription)) {
-            payload.mission.detailedDescription = '***SNIP***';
-        }
-
-        if (_.isObject(payload.mission) && !_.isNil(payload.mission.image)) {
-            payload.mission.image = '***SNIP***';
-        }
-
-        return payload;
-    },
-    requestPayload: (requestPayload: any) => {
-        if (_.isNil(requestPayload)) {
-            return requestPayload;
-        }
-
-        const payload = _.cloneDeep(requestPayload);
-        if (_.isString(payload.token)) {
-            payload.token = '***REDACTED***';
-        }
-        if (_.isString(payload.detailedDescription)) {
-            payload.detailedDescription = '***SNIP***';
-        }
-        if (!_.isNil(payload.image)) {
-            payload.image = '***SNIP***';
-        }
-
-        return payload;
-    },
     payload: (payload: any) => {
         if (_.isNil(payload)) {
             return payload;

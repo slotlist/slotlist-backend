@@ -6,7 +6,9 @@ import { col, fn, literal } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
+import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
+import { hasPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
@@ -16,6 +18,11 @@ const log = logger.child({ route: 'community', routeVersion: 'v1' });
 
 export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
+        let userUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+        }
+
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
@@ -29,15 +36,22 @@ export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue
                 }
             };
 
-            log.debug({ function: 'getUserList', queryOptions }, 'Including search parameter in query options');
+            log.debug({ function: 'getUserList', queryOptions, userUid }, 'Including search parameter in query options');
         }
 
         const result = await User.findAndCountAll(queryOptions);
 
+        const includeAdminDetails = _.isNil(userUid) ? false : hasPermission(request.auth.credentials.permissions, 'admin.user');
+        if (includeAdminDetails) {
+            log.debug(
+                { function: 'getUserList', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                'User has user admin permission, returning admin user details');
+        }
+
         const userCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + userCount) < result.count;
         const userList = await Promise.map(result.rows, (user: User) => {
-            return user.toPublicObject();
+            return user.toPublicObject(includeAdminDetails);
         });
 
         return {
@@ -53,9 +67,13 @@ export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue
 
 export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const userUid = request.params.uid;
+        const targetUserUid = request.params.userUid;
+        let userUid: string | null = null;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+        }
 
-        const user = await User.findById(userUid, {
+        const user = await User.findById(targetUserUid, {
             include: [
                 {
                     model: Community,
@@ -68,11 +86,18 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
             ]
         });
         if (_.isNil(user)) {
-            log.debug({ function: 'getUserDetails', userUid }, 'User with given UID not found');
+            log.debug({ function: 'getUserDetails', targetUserUid }, 'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 
-        const detailedPublicUser = await user.toDetailedPublicObject();
+        const includeAdminDetails = _.isNil(userUid) ? false : hasPermission(request.auth.credentials.permissions, 'admin.user');
+        if (includeAdminDetails) {
+            log.debug(
+                { function: 'getUserDetails', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                'User has user admin permission, returning admin user details');
+        }
+
+        const detailedPublicUser = await user.toDetailedPublicObject(includeAdminDetails);
 
         return {
             user: detailedPublicUser
@@ -80,9 +105,86 @@ export function getUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithConti
     })());
 }
 
+export function modifyUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const targetUserUid = request.params.userUid;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const targetUser = await User.findById(targetUserUid, {
+            include: [
+                {
+                    model: Permission,
+                    as: 'permissions',
+                    attributes: ['permission']
+                }
+            ]
+        });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'User with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        const targetUserPermissions = _.map(await targetUser.getPermissions(), 'permission');
+        if (hasPermission(targetUserPermissions, 'admin') && !hasPermission(request.auth.credentials.permissions, 'admin.superadmin')) {
+            log.info({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Admin tried to modify user details of other admin, rejecting');
+            throw Boom.forbidden();
+        }
+
+        log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Updating user');
+
+        await targetUser.update(payload, { allowed: ['nickname', 'active'] });
+
+        log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Successfully updated user');
+
+        const publicUser = await targetUser.toPublicObject(true);
+
+        return {
+            user: publicUser
+        };
+    })());
+}
+
+export function deleteUser(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const targetUserUid = request.params.userUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const targetUser = await User.findById(targetUserUid, {
+            include: [
+                {
+                    model: Permission,
+                    as: 'permissions',
+                    attributes: ['permission']
+                }
+            ]
+        });
+        if (_.isNil(targetUser)) {
+            log.debug({ function: 'deleteUser', targetUserUid, userUid }, 'User with given UID not found');
+            throw Boom.notFound('User not found');
+        }
+
+        const targetUserPermissions = _.map(await targetUser.getPermissions(), 'permission');
+        if (hasPermission(targetUserPermissions, 'admin') && !hasPermission(request.auth.credentials.permissions, 'admin.superadmin')) {
+            log.info({ function: 'deleteUser', targetUserUid, userUid }, 'Admin tried to delete other admin, rejecting');
+            throw Boom.forbidden();
+        }
+
+        log.info({ function: 'deleteUser', targetUserUid, userUid }, 'Deleting user');
+
+        await targetUser.destroy();
+
+        log.info({ function: 'deleteUser', targetUserUid, userUid }, 'Successfully deleted user');
+
+        return {
+            success: true
+        };
+    })());
+}
+
 export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
-        const targetUserUid = request.params.uid;
+        const targetUserUid = request.params.userUid;
         let userUid: string | null = null;
         let userCommunityUid: string | null = null;
         if (request.auth.isAuthenticated) {
@@ -165,6 +267,7 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
             limit: queryOptions.limit,
             offset: queryOptions.offset,
             count: missionCount,
+            total: result.count,
             moreAvailable: moreAvailable,
             missions: missionList
         };

@@ -65,6 +65,14 @@ export const auth = [
             plugins: {
                 'hapi-swagger': {
                     responses: {
+                        403: {
+                            description: 'The user account has been deactivated by an administrator',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User deactivated').required().description('Message further describing the error')
+                            })
+                        },
                         500: {
                             description: 'An error occured while processing the request',
                             schema: internalServerErrorSchema
@@ -106,6 +114,14 @@ export const auth = [
                                 statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'The user account has been deactivated by an administrator',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User deactivated').required().description('Message further describing the error')
                             })
                         },
                         500: {
@@ -251,6 +267,14 @@ export const auth = [
                                 statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Unauthorized').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('User not found').required().description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'The user account has been deactivated by an administrator',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(401).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('User deactivated').required().description('Message further describing the error')
                             })
                         },
                         409: {
