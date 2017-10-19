@@ -1,6 +1,6 @@
 import * as Joi from 'joi';
 
-import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
+import { internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
 import * as schemas from '../../../shared/schemas/user';
 import * as controller from '../../controllers/v1/user';
