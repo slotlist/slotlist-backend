@@ -15,6 +15,7 @@ import {
 import { Mission } from '../../../shared/models/Mission';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
+import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
 // tslint:disable-next-line:import-name
@@ -621,43 +622,38 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
             order: [['startTime', 'ASC'], [fn('UPPER', col('title')), 'ASC']]
         };
 
-        if (request.query.includeEnded === false) {
-            queryOptions.where = {
-                endTime: {
-                    $gt: moment.utc()
-                }
-            };
-        }
-
         if (_.isNil(userUid)) {
-            queryOptions.where.visibility = 'public';
+            queryOptions.where = {
+                visibility: 'public'
+            };
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info({ function: 'getCommunityMissionList', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning all community missions');
+            queryOptions.where = {};
         } else {
-            queryOptions.where = _.defaults(
-                {
-                    $or: [
-                        {
-                            creatorUid: userUid
-                        },
-                        {
-                            visibility: 'public'
-                        },
-                        {
-                            visibility: 'hidden',
-                            $or: [
-                                {
-                                    creatorUid: userUid
-                                },
-                                // tslint:disable-next-line:max-line-length
-                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                            ]
-                        },
-                        {
-                            visibility: 'private',
-                            creatorUid: userUid
-                        }
-                    ]
-                },
-                queryOptions.where);
+            queryOptions.where = {
+                $or: [
+                    {
+                        creatorUid: userUid
+                    },
+                    {
+                        visibility: 'public'
+                    },
+                    {
+                        visibility: 'hidden',
+                        $or: [
+                            {
+                                creatorUid: userUid
+                            },
+                            // tslint:disable-next-line:max-line-length
+                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                        ]
+                    },
+                    {
+                        visibility: 'private',
+                        creatorUid: userUid
+                    }
+                ]
+            };
 
             if (!_.isNil(userCommunityUid)) {
                 queryOptions.where.$or.push({
@@ -665,6 +661,12 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
                     communityUid: userCommunityUid
                 });
             }
+        }
+
+        if (request.query.includeEnded === false) {
+            queryOptions.where.endTime = {
+                $gt: moment.utc()
+            };
         }
 
         const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
