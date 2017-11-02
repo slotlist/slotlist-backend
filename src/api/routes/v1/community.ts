@@ -986,7 +986,7 @@ export const community = [
             },
             plugins: {
                 acl: {
-                    permissions: ['community.{{missionSlug}}.founder']
+                    permissions: ['community.{{communitySlug}}.founder']
                 },
                 'hapi-swagger': {
                     responses: {
