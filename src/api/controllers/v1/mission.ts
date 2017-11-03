@@ -14,12 +14,12 @@ import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegis
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { instance as ImageService, MISSION_IMAGE_PATH } from '../../../shared/services/ImageService';
-import { findPermission, parsePermissions } from '../../../shared/util/acl';
+import { findPermission, hasPermission, parsePermissions } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
 // tslint:disable-next-line:import-name
 import slugger from '../../../shared/util/slug';
-const log = logger.child({ route: 'community', routeVersion: 'v1' });
+const log = logger.child({ route: 'mission', routeVersion: 'v1' });
 
 /**
  * Handlers for V1 of mission endpoints
@@ -46,6 +46,9 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
             queryOptions.where = {
                 visibility: 'public'
             };
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info({ function: 'getMissionList', userUid, hasPermission: true }, 'User has mission admin permissions, returning all missions');
+            queryOptions.where = {};
         } else {
             queryOptions.where = {
                 $or: [
@@ -62,7 +65,7 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                                 creatorUid: userUid
                             },
                             // tslint:disable-next-line:max-line-length
-                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                         ]
                     },
                     {
@@ -279,33 +282,31 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
         if (_.isNil(userUid)) {
             queryOptions.where.visibility = 'public';
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info({ function: 'getMissionDetails', userUid, hasPermission: true }, 'User has mission admin permissions, returning mission details');
         } else {
-            queryOptions.where = _.defaults(
+            queryOptions.where.$or = [
                 {
+                    creatorUid: userUid
+                },
+                {
+                    visibility: 'public'
+                },
+                {
+                    visibility: 'hidden',
                     $or: [
                         {
                             creatorUid: userUid
                         },
-                        {
-                            visibility: 'public'
-                        },
-                        {
-                            visibility: 'hidden',
-                            $or: [
-                                {
-                                    creatorUid: userUid
-                                },
-                                // tslint:disable-next-line:max-line-length
-                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                            ]
-                        },
-                        {
-                            visibility: 'private',
-                            creatorUid: userUid
-                        }
+                        // tslint:disable-next-line:max-line-length
+                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
-                queryOptions.where);
+                {
+                    visibility: 'private',
+                    creatorUid: userUid
+                }
+            ];
 
             if (!_.isNil(userCommunityUid)) {
                 queryOptions.where.$or.push({
@@ -514,6 +515,227 @@ export function deleteMissionBannerImage(request: Hapi.Request, reply: Hapi.Repl
     })());
 }
 
+export function duplicateMission(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        let payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
+
+        if (payload.slug === 'slugAvailable') {
+            log.debug({ function: 'duplicateMission', payload, userUid }, 'Received `slugAvailable` slug, rejecting');
+
+            throw Boom.badRequest('Disallowed slug');
+        }
+
+        // Make sure payload is properly "slugged"
+        payload.slug = slugger(payload.slug);
+
+        const user = await User.findById(userUid, { include: [{ model: Community, as: 'community' }] });
+        if (_.isNil(user)) {
+            log.debug({ function: 'duplicateMission', payload, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        const currentMission = await Mission.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: Community,
+                    as: 'community'
+                },
+                {
+                    model: User,
+                    as: 'creator'
+                },
+                {
+                    model: MissionSlotGroup,
+                    as: 'slotGroups',
+                    include: [
+                        {
+                            model: MissionSlot,
+                            as: 'slots'
+                        }
+                    ]
+                }
+            ]
+        });
+        if (_.isNil(currentMission)) {
+            log.debug({ function: 'duplicateMission', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        payload.creatorUid = userUid;
+        payload = _.defaults(payload, (<any>currentMission).dataValues);
+
+        if (!_.isNil(payload.addToCommunity)) {
+            if (payload.addToCommunity === true && !_.isNil(userCommunityUid)) {
+                payload.communityUid = userCommunityUid;
+            } else if (payload.addToCommunity === false) {
+                payload.communityUid = undefined;
+                delete payload.communityUid;
+            }
+
+            payload.addToCommunity = undefined;
+            delete payload.addToCommunity;
+        } else if (!_.isNil(currentMission.communityUid)) {
+            payload.communityUid = currentMission.communityUid;
+        }
+
+        payload.uid = undefined;
+        delete payload.uid;
+
+        if (_.isNil(payload.title)) {
+            payload.title = currentMission.title;
+        }
+        if (_.isNil(payload.briefingTime)) {
+            payload.briefingTime = currentMission.briefingTime;
+        }
+        if (_.isNil(payload.endTime)) {
+            payload.endTime = currentMission.endTime;
+        }
+        if (_.isNil(payload.slottingTime)) {
+            payload.slottingTime = currentMission.slottingTime;
+        }
+        if (_.isNil(payload.startTime)) {
+            payload.startTime = currentMission.startTime;
+        }
+
+        // tslint:disable-next-line:max-func-body-length
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid }, 'Duplicating mission');
+
+            let mission: Mission;
+            try {
+                mission = await Mission.create(payload);
+            } catch (err) {
+                if (err.name === 'SequelizeUniqueConstraintError') {
+                    log.debug(
+                        { function: 'duplicateMission', slug, payload, userUid, currentMissionUid: currentMission.uid, err },
+                        'Received unique constraint error during mission duplication');
+
+                    throw Boom.conflict('Mission slug already exists');
+                }
+
+                log.warn({ function: 'duplicateMission', slug, payload, userUid, currentMissionUid: currentMission.uid, err }, 'Received error during mission duplication');
+                throw err;
+            }
+
+            log.debug(
+                { function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid, missionUid: mission.uid },
+                'Created new mission, duplicating slot groups and slots');
+
+            if (_.isNil(currentMission.slotGroups)) {
+                currentMission.slotGroups = await currentMission.getSlotGroups();
+            }
+
+            await Promise.map(currentMission.slotGroups, async (currentSlotGroup: MissionSlotGroup) => {
+                log.debug(
+                    { function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid, missionUid: mission.uid, currentSlotGroupUid: currentSlotGroup.uid },
+                    'Duplicating slot group');
+
+                const slotGroupPayload = (<any>currentSlotGroup).dataValues;
+                slotGroupPayload.uid = undefined;
+                delete slotGroupPayload.uid;
+
+                const slotGroup = await mission.createSlotGroup(slotGroupPayload);
+
+                log.debug(
+                    {
+                        function: 'duplicateMission',
+                        slug,
+                        userUid,
+                        currentMissionUid: currentMission.uid,
+                        missionUid: mission.uid,
+                        currentSlotGroupUid: currentSlotGroup.uid,
+                        slotGroupUid: slotGroup.uid
+                    },
+                    'Created new mission slot group, duplicating slots');
+
+                if (_.isNil(currentSlotGroup.slots)) {
+                    currentSlotGroup.slots = await currentSlotGroup.getSlots();
+                }
+
+                await Promise.map(currentSlotGroup.slots, async (currentSlot: MissionSlot) => {
+                    log.debug(
+                        {
+                            function: 'duplicateMission',
+                            slug,
+                            userUid,
+                            currentMissionUid: currentMission.uid,
+                            missionUid: mission.uid,
+                            currentSlotGroupUid: currentSlotGroup.uid,
+                            slotGroupUid: slotGroup.uid,
+                            currentSlotUid: currentSlot.uid
+                        },
+                        'Duplicating mission slot');
+
+                    const slotPayload = (<any>currentSlot).dataValues;
+                    slotPayload.uid = undefined;
+                    delete slotPayload.uid;
+
+                    if (!_.isNil(slotPayload.assigneeUid)) {
+                        slotPayload.assigneeUid = null;
+                    }
+
+                    const slot = await slotGroup.createSlot(slotPayload);
+
+                    log.debug(
+                        {
+                            function: 'duplicateMission',
+                            slug,
+                            userUid,
+                            currentMissionUid: currentMission.uid,
+                            missionUid: mission.uid,
+                            currentSlotGroupUid: currentSlotGroup.uid,
+                            slotGroupUid: slotGroup.uid,
+                            currentSlotUid: currentSlot.uid,
+                            slotUid: slot.uid
+                        },
+                        'Duplicated mission slot');
+                });
+            });
+
+            await mission.recalculateSlotOrderNumbers();
+
+            log.debug(
+                { function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid, missionUid: mission.uid },
+                'Created new mission, adding user as creator');
+
+            try {
+                await user.createPermission({ permission: `mission.${mission.slug}.creator` });
+            } catch (err) {
+                if (err.name === 'SequelizeUniqueConstraintError') {
+                    log.debug(
+                        { function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid, missionUid: mission.uid, err },
+                        'Received unique constraint error during creator permission creation');
+
+                    throw Boom.conflict('Mission creator permission already exists');
+                }
+
+                log.warn(
+                    { function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid, missionUid: mission.uid, err },
+                    'Received error during creator permission creation');
+                throw err;
+            }
+
+            log.debug({ function: 'duplicateMission', slug, userUid, currentMissionUid: currentMission.uid, missionUid: mission.uid }, 'Successfully duplicated mission');
+
+            const detailedPublicMission = await mission.toDetailedPublicObject();
+            const token = await user.generateJWT();
+
+            return {
+                mission: detailedPublicMission,
+                token: token
+            };
+        });
+    })());
+}
+
 export function getMissionPermissionList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
@@ -673,33 +895,31 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
 
         if (_.isNil(userUid)) {
             queryOptionsMission.where.visibility = 'public';
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info({ function: 'getMissionDetails', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning mission details');
         } else {
-            queryOptionsMission.where = _.defaults(
+            queryOptionsMission.where.$or = [
                 {
+                    creatorUid: userUid
+                },
+                {
+                    visibility: 'public'
+                },
+                {
+                    visibility: 'hidden',
                     $or: [
                         {
                             creatorUid: userUid
                         },
-                        {
-                            visibility: 'public'
-                        },
-                        {
-                            visibility: 'hidden',
-                            $or: [
-                                {
-                                    creatorUid: userUid
-                                },
-                                // tslint:disable-next-line:max-line-length
-                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                            ]
-                        },
-                        {
-                            visibility: 'private',
-                            creatorUid: userUid
-                        }
+                        // tslint:disable-next-line:max-line-length
+                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
-                queryOptionsMission.where);
+                {
+                    visibility: 'private',
+                    creatorUid: userUid
+                }
+            ];
 
             if (!_.isNil(userCommunityUid)) {
                 queryOptionsMission.where.$or.push({
@@ -1561,38 +1781,45 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 
         const queryOptionsMission: any = {
             where: {
-                slug,
-                $or: [
-                    {
-                        creatorUid: userUid
-                    },
-                    {
-                        visibility: 'public'
-                    },
-                    {
-                        visibility: 'hidden',
-                        $or: [
-                            {
-                                creatorUid: userUid
-                            },
-                            // tslint:disable-next-line:max-line-length
-                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                        ]
-                    },
-                    {
-                        visibility: 'private',
-                        creatorUid: userUid
-                    }
-                ]
+                slug
             },
             attributes: ['uid']
         };
 
-        if (!_.isNil(userCommunityUid)) {
-            queryOptionsMission.where.$or.push({
-                visibility: 'community',
-                communityUid: userCommunityUid
-            });
+        if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info(
+                { function: 'deleteMissionSlotRegistration', slug, slotUid, registrationUid, userUid, hasPermission: true },
+                'User has mission admin permissions, returning mission details');
+        } else {
+            queryOptionsMission.where.$or = [
+                {
+                    creatorUid: userUid
+                },
+                {
+                    visibility: 'public'
+                },
+                {
+                    visibility: 'hidden',
+                    $or: [
+                        {
+                            creatorUid: userUid
+                        },
+                        // tslint:disable-next-line:max-line-length
+                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                    ]
+                },
+                {
+                    visibility: 'private',
+                    creatorUid: userUid
+                }
+            ];
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptionsMission.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
         }
 
         const mission = await Mission.findOne(queryOptionsMission);

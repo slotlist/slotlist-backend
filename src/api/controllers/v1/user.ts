@@ -10,7 +10,7 @@ import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
-const log = logger.child({ route: 'community', routeVersion: 'v1' });
+const log = logger.child({ route: 'user', routeVersion: 'v1' });
 
 /**
  * Handlers for V1 of user endpoints
@@ -210,34 +210,37 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
         }
 
         if (_.isNil(userUid)) {
-            queryOptions.where.visibility = 'public';
+            queryOptions.where = {
+                visibility: 'public'
+            };
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info({ function: 'getCommunityMissionList', targetUserUid, userUid, hasPermission: true }, 'User has mission admin permissions, returning all community missions');
+            queryOptions.where = {};
         } else {
-            queryOptions.where = _.defaults(
-                {
-                    $or: [
-                        {
-                            creatorUid: userUid
-                        },
-                        {
-                            visibility: 'public'
-                        },
-                        {
-                            visibility: 'hidden',
-                            $or: [
-                                {
-                                    creatorUid: userUid
-                                },
-                                // tslint:disable-next-line:max-line-length
-                                literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                            ]
-                        },
-                        {
-                            visibility: 'private',
-                            creatorUid: userUid
-                        }
-                    ]
-                },
-                queryOptions.where);
+            queryOptions.where = {
+                $or: [
+                    {
+                        creatorUid: userUid
+                    },
+                    {
+                        visibility: 'public'
+                    },
+                    {
+                        visibility: 'hidden',
+                        $or: [
+                            {
+                                creatorUid: userUid
+                            },
+                            // tslint:disable-next-line:max-line-length
+                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                        ]
+                    },
+                    {
+                        visibility: 'private',
+                        creatorUid: userUid
+                    }
+                ]
+            };
 
             if (!_.isNil(userCommunityUid)) {
                 queryOptions.where.$or.push({
@@ -245,6 +248,12 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
                     communityUid: userCommunityUid
                 });
             }
+        }
+
+        if (request.query.includeEnded === false) {
+            queryOptions.where.endTime = {
+                $gt: moment.utc()
+            };
         }
 
         const user = await User.findById(targetUserUid);

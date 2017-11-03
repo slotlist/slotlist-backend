@@ -181,7 +181,7 @@ export const mission = [
                     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
                         'and choose their reserved slot at this time').example('2017-09-02T16:00:00.000Z'),
                     startTime: Joi.date().required().description('Date and time the missions starts (slotting/briefing times are stored separately and available ' +
-                        'via mission details').example('2017-09-02T17:00:00.000Z'),
+                        'via mission details)').example('2017-09-02T17:00:00.000Z'),
                     endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
                     repositoryUrl: Joi.string().allow(null).min(1).default(null).optional()
@@ -324,7 +324,7 @@ export const mission = [
                     slottingTime: Joi.date().optional().description('New date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
                         'and choose their reserved slot at this time').example('2017-09-02T16:00:00.000Z'),
                     startTime: Joi.date().optional().description('New date and time the missions starts (slotting/briefing times are stored separately and available ' +
-                        'via mission details').example('2017-09-02T17:00:00.000Z'),
+                        'via mission details)').example('2017-09-02T17:00:00.000Z'),
                     endTime: Joi.date().optional().description('New estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
                     repositoryUrl: Joi.string().allow(null).min(1).optional()
@@ -560,6 +560,96 @@ export const mission = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found', 'No mission banner image set').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions/{missionSlug}/duplicate',
+        handler: controller.duplicateMission,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Duplicates an exiting mission',
+            notes: 'Duplicates an existing mission using the provided new mission slug. All mission times can also be specified and thus overwritten, defaulting to the current ' +
+            'mission\'s times if omitted. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. Regular user authentication ' +
+            'with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'duplicate', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to create permission for').example('all-of-altis')
+                }),
+                payload: Joi.object().keys({
+                    slug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug to set for duplication mission, required')
+                        .example('all-of-altis'),
+                    visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).optional()
+                        .description('Sets the visibility setting for the duplicated mission. Missions with `public` visibility are visible to everyone, `hidden` missions are ' +
+                        'only visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
+                        'creator\'s community. The `private` visibility setting restricts access to selected users, although this functionality is currently not implemented yet ' +
+                        '(as of 2017-08-23)')
+                        .example(MISSION_VISIBILITY_PUBLIC),
+                    title: Joi.string().min(1).max(255).allow(null).default(null).optional().description('Title for duplicated mission. If omitted, copies the current ' +
+                        'mission\'s title').example('All of Altis'),
+                    addToCommunity: Joi.boolean().allow(null).default(null).optional()
+                        .description('Indicates whether the duplicated mission should also be associated with the user\'s community (if set). If omitted, copies the current ' +
+                        'mission\'s community setting'),
+                    briefingTime: Joi.date().allow(null).default(null).optional().description('Optional date and time the duplicated mission briefing starts, in UTC. If ' +
+                        'omitted, the current mission times will be used').example('2017-09-02T16:00:00.000Z'),
+                    slottingTime: Joi.date().allow(null).default(null).optional().description('Optional date and time the mission slotting starts, in UTC. If omitted, ' +
+                        'the current mission times will be used').example('2017-09-02T16:00:00.000Z'),
+                    startTime: Joi.date().allow(null).default(null).optional().description('Optional date and time the missions starts, in UTC. If omitted, the current ' +
+                        'mission times will be used').example('2017-09-02T16:00:00.000Z'),
+                    endTime: Joi.date().allow(null).default(null).optional().description('Optional estimated date and time the missions ends, in UTC. If omitted, the current ' +
+                        'mission times will be used').example('2017-09-02T16:00:00.000Z')
+                }).required()
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    mission: schemas.missionDetailsSchema,
+                    token: Joi.string().min(1).required().description('Refreshed JWT including updated permissions')
+                }).label('DuplicateMissionResponse').description('Response containing details of duplicated mission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'A mission with the given slug already exists or the user already has mission creator permissions',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission slug already exists', 'Mission creator permission already exists').required()
+                                    .description('Message further describing the error')
                             })
                         },
                         500: {

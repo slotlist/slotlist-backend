@@ -402,8 +402,10 @@ export const community = [
                         .description('Limit for number of applications to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of applications to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUSES).optional()
-                        .description('Allows for filtering of applications with the selected status').example(COMMUNITY_APPLICATION_STATUS_SUBMITTED)
+                    status: Joi.string().equal(COMMUNITY_APPLICATION_STATUSES).optional().description('Allows for filtering of applications with the selected status. Takes ' +
+                        'preference over `includeProcessed` flag').example(COMMUNITY_APPLICATION_STATUS_SUBMITTED),
+                    includeProcessed: Joi.boolean().default(false).optional().description('Include processed applications (accepted/denied) in retrieved list, defaults to ' +
+                        'false. Is overwritten by `status` parameter').optional()
                 })
             },
             response: {
@@ -986,7 +988,7 @@ export const community = [
             },
             plugins: {
                 acl: {
-                    permissions: ['community.{{missionSlug}}.founder']
+                    permissions: ['community.{{communitySlug}}.founder']
                 },
                 'hapi-swagger': {
                     responses: {
