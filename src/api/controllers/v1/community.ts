@@ -304,6 +304,10 @@ export function getCommunityApplicationList(request: Hapi.Request, reply: Hapi.R
             queryOptions.where = {
                 status: status
             };
+        } else if (request.query.includeProcessed === false) {
+            queryOptions.where = {
+                status: COMMUNITY_APPLICATION_STATUS_SUBMITTED
+            };
         }
 
         const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
