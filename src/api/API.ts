@@ -211,10 +211,10 @@ export class API {
             }
 
             const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
+            if (_.has(parsedPermissions, '*') || findPermission(parsedPermissions, 'admin.superadmin')) {
                 log.debug(
                     { function: 'checkACL', permissions, strict, credentials, userUid: credentials.user.uid, hasPermission: true },
-                    'User has global wildcard permission, allowing');
+                    'User has super admin permissions, allowing');
 
                 return reply.continue();
             }
