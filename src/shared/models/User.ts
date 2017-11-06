@@ -25,6 +25,7 @@ import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
 import { MissionSlot } from './MissionSlot';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
+import { MissionSlotTemplate } from './MissionSlotTemplate';
 import { Permission } from './Permission';
 
 /**
@@ -51,6 +52,7 @@ export class User extends Model {
      *         missions: HasMany,
      *         missionSlots: HasMany,
      *         missionSlotRegistrations: HasMany,
+     *         missionSlotTemplates: HasMany,
      *         permissions: HasMany
      *     }}
      * @memberof User
@@ -61,6 +63,7 @@ export class User extends Model {
         missions: HasMany,
         missionSlots: HasMany,
         missionSlotRegistrations: HasMany,
+        missionSlotTemplates: HasMany,
         permissions: HasMany
     };
 
@@ -181,6 +184,15 @@ export class User extends Model {
     public missionSlotRegistrations?: MissionSlotRegistration[];
 
     /**
+     * Eager-loaded list of mission slot templates created by the user.
+     * Only included if the user has created mission slot templates and it has been eager-loaded via sequelize
+     *
+     * @type {(MissionSlotTemplate[] | undefined)}
+     * @memberof User
+     */
+    public missionSlotTemplates?: MissionSlotTemplate[];
+
+    /**
      * Eager-loaded list of permissions associated with the user.
      * Only included if the user has permissions associated and it has been eager-loaded via sequelize
      *
@@ -292,6 +304,16 @@ export class User extends Model {
      * @memberof User
      */
     public getMissionSlotRegistrations: HasManyGetAssociationsMixin<MissionSlotRegistration>;
+
+    /**
+     * Retrieves the user's mission slot templates.
+     * Returns an empty array if the user has created no mission slot templates
+     *
+     * @type {HasManyGetAssociationsMixin<MissionSlotTemplate>}
+     * @returns {Promise<MissionSlotTemplate[]>} List of mission slot templates
+     * @memberof User
+     */
+    public getMissionSlotTemplates: HasManyGetAssociationsMixin<MissionSlotTemplate>;
 
     /**
      * Retrieves the user's permissions.

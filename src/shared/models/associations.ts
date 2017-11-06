@@ -4,6 +4,7 @@ import { Mission } from './Mission';
 import { MissionSlot } from './MissionSlot';
 import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
+import { MissionSlotTemplate } from './MissionSlotTemplate';
 import { Permission } from './Permission';
 import { User } from './User';
 
@@ -38,6 +39,8 @@ export function createAssociations(): void {
     MissionSlotRegistration.associations.slot = MissionSlotRegistration.belongsTo(MissionSlot, { as: 'slot', foreignKey: 'slotUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     MissionSlotRegistration.associations.user = MissionSlotRegistration.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
+    MissionSlotTemplate.associations.creator = MissionSlotTemplate.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
     Permission.associations.user = Permission.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
     User.associations.applications = User.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
@@ -45,6 +48,7 @@ export function createAssociations(): void {
     User.associations.missions = User.hasMany(Mission, { as: 'missions', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.missionSlots = User.hasMany(MissionSlot, { as: 'missionSlots', foreignKey: 'assigneeUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.missionSlotRegistrations = User.hasMany(MissionSlotRegistration, { as: 'missionSlotRegistrations', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.missionSlotTemplates = User.hasMany(MissionSlotTemplate, { as: 'missionSlotTemplates', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.permissions = User.hasMany(Permission, { as: 'permissions', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 }
 // tslint:enable:max-line-length

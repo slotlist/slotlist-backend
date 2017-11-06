@@ -1185,11 +1185,11 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 return slot;
             });
 
-            log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Recalculating mission slot order numbers');
+            log.debug({ function: 'createMissionSlot', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Recalculating mission slot order numbers');
 
             await mission.recalculateSlotOrderNumbers();
 
-            log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
+            log.debug({ function: 'createMissionSlot', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
 
             const publicMissionSlots = await Promise.map(slots, (slot: MissionSlot) => {
                 return slot.toPublicObject();
