@@ -55,16 +55,6 @@ export function getMissionSlotTemplateList(request: Hapi.Request, reply: Hapi.Re
                         visibility: 'public'
                     },
                     {
-                        visibility: 'hidden',
-                        $or: [
-                            {
-                                creatorUid: userUid
-                            },
-                            // tslint:disable-next-line:max-line-length
-                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
-                        ]
-                    },
-                    {
                         visibility: 'private',
                         creatorUid: userUid
                     }
@@ -155,16 +145,6 @@ export function getMissionSlotTemplateDetails(request: Hapi.Request, reply: Hapi
                 },
                 {
                     visibility: 'public'
-                },
-                {
-                    visibility: 'hidden',
-                    $or: [
-                        {
-                            creatorUid: userUid
-                        },
-                        // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
-                    ]
                 },
                 {
                     visibility: 'private',
