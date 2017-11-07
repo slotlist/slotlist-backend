@@ -144,9 +144,7 @@ export function getMissionSlotTemplateDetails(request: Hapi.Request, reply: Hapi
             ]
         };
 
-        if (_.isNil(userUid)) {
-            queryOptions.where.visibility = 'public';
-        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+        if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
             log.info(
                 { function: 'getMissionSlotTemplateDetails', slotTemplateUid, userUid, hasPermission: true },
                 'User has mission admin permissions, returning mission slot template details');
@@ -192,6 +190,72 @@ export function getMissionSlotTemplateDetails(request: Hapi.Request, reply: Hapi
 
         return {
             slotTemplate: detailedPublicMissionSlot
+        };
+    })());
+}
+
+export function updateMissionSlotTemplate(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slotTemplateUid = request.params.slotTemplateUid;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const slotTemplate = await MissionSlotTemplate.findOne({
+            where: {
+                uid: slotTemplateUid,
+                creatorUid: userUid
+            },
+            include: [
+                {
+                    model: User,
+                    as: 'creator',
+                    include: [
+                        {
+                            model: Community,
+                            as: 'community'
+                        }
+                    ]
+                }
+            ]
+        });
+        if (_.isNil(slotTemplate)) {
+            log.debug({ function: 'updateMissionSlotTemplate', slotTemplateUid, payload, userUid }, 'Mission slot template with given UID not found');
+            throw Boom.notFound('Mission slot template not found');
+        }
+
+        log.debug({ function: 'updateMissionSlotTemplate', slotTemplateUid, payload, userUid }, 'Updating mission slot template');
+
+        await slotTemplate.update(payload, { allowed: ['slotGroups', 'title', 'visibility'] });
+
+        log.debug({ function: 'updateMission', slotTemplateUid, payload, userUid }, 'Successfully updated mission slot template');
+
+        const detailedPublicMissionSlot = await slotTemplate.toDetailedPublicObject();
+
+        return {
+            slotTemplate: detailedPublicMissionSlot
+        };
+    })());
+}
+
+export function deleteMissionSlotTemplate(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slotTemplateUid = request.params.slotTemplateUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const slotTemplate = await MissionSlotTemplate.findOne({ where: { uid: slotTemplateUid, creatorUid: userUid } });
+        if (_.isNil(slotTemplate)) {
+            log.debug({ function: 'deleteMissionSlotTemplate', slotTemplateUid, userUid }, 'Mission slot template with given UID not found');
+            throw Boom.notFound('Mission slot template not found');
+        }
+
+        log.debug({ function: 'deleteMissionSlotTemplate', slotTemplateUid, userUid }, 'Deleting mission slot template');
+
+        await slotTemplate.destroy();
+
+        log.debug({ function: 'deleteMissionSlotTemplate', slotTemplateUid, userUid }, 'Successfully deleted mission slot template');
+
+        return {
+            success: true
         };
     })());
 }

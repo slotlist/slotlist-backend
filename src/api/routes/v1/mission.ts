@@ -1665,5 +1665,68 @@ export const mission = [
                 }
             }
         }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions/{missionSlug}/slotTemplates/{slotTemplateUid}',
+        handler: controller.applyMissionSlotTemplate,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Applies the selected mission slot template to the mission',
+            notes: 'Applies the selected mission slot template to the mission, adding the slot groups and slots provided by it to the slotlist. This endpoint can only be ' +
+            'used by mission creators and users with the `mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this ' +
+            'endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'slot', 'template', 'apply', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to apply slot template to').example('all-of-altis'),
+                    slotTemplateUid: Joi.string().guid().length(36).required().description('UID of the mission slot template to apply')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                }),
+                payload: Joi.object().keys({
+                    insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot group the mission slot template should be ' +
+                        'applied after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
+                }).required()
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slotGroups: Joi.array().items(missionSlotGroupSchema.optional()).required().description('List of mission slot groups created')
+                }).label('ApplyMissionSlotTemplateResponse').description('Response containing the mission\'s slot list (in slot groups)')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug or no mission slot template with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot template not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
     }
 ];
