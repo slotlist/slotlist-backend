@@ -25,18 +25,18 @@ export const missionSlotTemplate = [
         config: {
             auth: {
                 strategy: 'jwt',
-                mode: 'required'
+                mode: 'optional'
             },
             description: 'Returns a list of all available mission slot templates',
             notes: 'Returns a paginated list of all mission slot templates available to the user, including default templates. Up to 100 templates can be requested at once, ' +
-            'pagination has to be used to retrieve the rest. Regular user authentication is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'missionSlotTemplates', 'list', 'authenticated'],
+            'pagination has to be used to retrieve the rest. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missionSlotTemplates', 'list'],
             validate: {
                 options: {
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 query: Joi.object().required().keys({
                     limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotTemplateList.max).default(LIMITS.missionSlotTemplateList.default).optional()
@@ -135,17 +135,17 @@ export const missionSlotTemplate = [
         config: {
             auth: {
                 strategy: 'jwt',
-                mode: 'required'
+                mode: 'optional'
             },
             description: 'Returns details of a mission slot template',
-            notes: 'Returns details of a mission slot template, including a full slot group and slot list. Regular user authentication is required to access this endpoint',
-            tags: ['api', 'get', 'v1', 'missionSlotTemplates', 'details', 'authenticated'],
+            notes: 'Returns details of a mission slot template, including a full slot group and slot list. No authentication is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missionSlotTemplates', 'details'],
             validate: {
                 options: {
                     abortEarly: false
                 },
                 headers: Joi.object({
-                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                    authorization: Joi.string().min(1).optional().description('`JWT <TOKEN>` used for authorization, optional').example('JWT <TOKEN>')
                 }).unknown(true),
                 params: Joi.object().required().keys({
                     slotTemplateUid: Joi.string().guid().length(36).required().description('UID of the mission slot template').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')

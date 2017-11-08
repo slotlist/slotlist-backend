@@ -16,12 +16,15 @@ const log = logger.child({ route: 'missionSlotTemplate', routeVersion: 'v1' });
  */
 
 export function getMissionSlotTemplateList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
-    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
-        const userUid = request.auth.credentials.user.uid;
+        let userUid: string | null = null;
         let userCommunityUid: string | null = null;
-        if (!_.isNil(request.auth.credentials.user.community)) {
-            userCommunityUid = request.auth.credentials.user.community.uid;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
         }
 
         const queryOptions: any = {
@@ -42,7 +45,11 @@ export function getMissionSlotTemplateList(request: Hapi.Request, reply: Hapi.Re
             ]
         };
 
-        if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+        if (_.isNil(userUid)) {
+            queryOptions.where = {
+                visibility: 'public'
+            };
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
             log.info({ function: 'getMissionSlotTemplateList', userUid, hasPermission: true }, 'User has mission admin permissions, returning all mission slot templates');
             queryOptions.where = {};
         } else {
@@ -112,10 +119,14 @@ export function createMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Rep
 export function getMissionSlotTemplateDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slotTemplateUid = request.params.slotTemplateUid;
-        const userUid = request.auth.credentials.user.uid;
+        let userUid: string | null = null;
         let userCommunityUid: string | null = null;
-        if (!_.isNil(request.auth.credentials.user.community)) {
-            userCommunityUid = request.auth.credentials.user.community.uid;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
         }
 
         const queryOptions: any = {
@@ -134,7 +145,9 @@ export function getMissionSlotTemplateDetails(request: Hapi.Request, reply: Hapi
             ]
         };
 
-        if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+        if (_.isNil(userUid)) {
+            queryOptions.where.visibility = 'public';
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
             log.info(
                 { function: 'getMissionSlotTemplateDetails', slotTemplateUid, userUid, hasPermission: true },
                 'User has mission admin permissions, returning mission slot template details');
