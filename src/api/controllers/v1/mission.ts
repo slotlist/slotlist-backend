@@ -2022,10 +2022,12 @@ export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Repl
                 });
             }
 
-            await Promise.map(slotTemplate.slotGroups, async (slotGroup: IMissionSlotTemplateSlotGroup) => {
+            await Promise.map(slotTemplate.slotGroups, async (slotGroup: IMissionSlotTemplateSlotGroup, index: number) => {
                 log.debug(
                     { function: 'applyMissionSlotTemplate', payload, slotTemplateUid, userUid, missionUid: mission.uid },
                     'Creating new mission slot group from template');
+
+                slotGroup.orderNumber = orderNumber + index;
 
                 const newSlotGroup = await mission.createSlotGroup(slotGroup);
 
