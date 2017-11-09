@@ -1966,16 +1966,6 @@ export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Repl
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
-                    $or: [
-                        {
-                            creatorUid: userUid
-                        },
-                        // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
-                    ]
-                },
-                {
                     visibility: 'private',
                     creatorUid: userUid
                 }
