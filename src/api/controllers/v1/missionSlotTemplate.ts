@@ -1,13 +1,14 @@
 import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
-import { col, fn } from 'sequelize';
+import { col, fn, literal } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { MissionSlotTemplate } from '../../../shared/models/MissionSlotTemplate';
 import { User } from '../../../shared/models/User';
 import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
+import { sequelize } from '../../../shared/util/sequelize';
 // tslint:disable-next-line:import-name
 const log = logger.child({ route: 'missionSlotTemplate', routeVersion: 'v1' });
 
@@ -71,7 +72,9 @@ export function getMissionSlotTemplateList(request: Hapi.Request, reply: Hapi.Re
             if (!_.isNil(userCommunityUid)) {
                 queryOptions.where.$or.push({
                     visibility: 'community',
-                    communityUid: userCommunityUid
+                    creatorUid: {
+                        $in: [literal(`SELECT "uid" FROM "users" WHERE "communityUid" = ${sequelize.escape(userCommunityUid)}`)]
+                    }
                 });
             }
         }
@@ -168,7 +171,9 @@ export function getMissionSlotTemplateDetails(request: Hapi.Request, reply: Hapi
             if (!_.isNil(userCommunityUid)) {
                 queryOptions.where.$or.push({
                     visibility: 'community',
-                    communityUid: userCommunityUid
+                    creatorUid: {
+                        $in: [literal(`SELECT "uid" FROM "users" WHERE "communityUid" = ${sequelize.escape(userCommunityUid)}`)]
+                    }
                 });
             }
         }

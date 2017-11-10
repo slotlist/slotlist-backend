@@ -1974,7 +1974,9 @@ export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Repl
             if (!_.isNil(userCommunityUid)) {
                 queryOptionsSlotTemplate.where.$or.push({
                     visibility: 'community',
-                    communityUid: userCommunityUid
+                    creatorUid: {
+                        $in: [literal(`SELECT "uid" FROM "users" WHERE "communityUid" = ${sequelize.escape(userCommunityUid)}`)]
+                    }
                 });
             }
         }
