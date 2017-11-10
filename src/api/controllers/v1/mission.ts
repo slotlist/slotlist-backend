@@ -11,6 +11,7 @@ import { Mission } from '../../../shared/models/Mission';
 import { IMissionSlotCreatePayload, IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
 import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
+import { IMissionSlotTemplateSlot, IMissionSlotTemplateSlotGroup, MissionSlotTemplate } from '../../../shared/models/MissionSlotTemplate';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { instance as ImageService, MISSION_IMAGE_PATH } from '../../../shared/services/ImageService';
@@ -392,7 +393,7 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         }
 
         return sequelize.transaction(async (t: Transaction) => {
-            log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Deleting Mission');
+            log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Deleting mission');
 
             await Promise.all([
                 mission.destroy(),
@@ -1017,7 +1018,7 @@ export function createMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
             });
 
             log.debug(
-                { function: 'createMissionSlotGroup', payload, userUid, missionUid: mission.uid, missionSlotGroupUid: newSlotGroup.uid },
+                { function: 'createMissionSlotGroup', slug, payload, userUid, missionUid: mission.uid, missionSlotGroupUid: newSlotGroup.uid },
                 'Successfully created new mission slot group');
 
             const publicSlotGroup = await newSlotGroup.toPublicObject();
@@ -1185,11 +1186,11 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 return slot;
             });
 
-            log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Recalculating mission slot order numbers');
+            log.debug({ function: 'createMissionSlot', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Recalculating mission slot order numbers');
 
             await mission.recalculateSlotOrderNumbers();
 
-            log.debug({ function: 'createMission', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
+            log.debug({ function: 'createMissionSlot', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
 
             const publicMissionSlots = await Promise.map(slots, (slot: MissionSlot) => {
                 return slot.toPublicObject();
@@ -1907,6 +1908,211 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 
             return {
                 success: true
+            };
+        });
+    })());
+}
+
+export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotTemplateUid = request.params.slotTemplateUid;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
+
+        const mission = await Mission.findOne({
+            where: {
+                slug
+            },
+            include: [
+                {
+                    model: MissionSlotGroup,
+                    as: 'slotGroups',
+                    include: [
+                        {
+                            model: MissionSlot,
+                            as: 'slots'
+                        }
+                    ]
+                }
+            ]
+        });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionSlotRegistration', slug, slotTemplateUid, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const queryOptionsSlotTemplate: any = {
+            where: {
+                uid: slotTemplateUid
+            }
+        };
+
+        if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info(
+                { function: 'applyMissionSlotTemplate', slug, slotTemplateUid, payload, userUid, hasPermission: true },
+                'User has mission admin permissions, allowing mission slot template application');
+        } else {
+            queryOptionsSlotTemplate.where.$or = [
+                {
+                    creatorUid: userUid
+                },
+                {
+                    visibility: 'public'
+                },
+                {
+                    visibility: 'private',
+                    creatorUid: userUid
+                }
+            ];
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptionsSlotTemplate.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
+        }
+
+        const slotTemplate = await MissionSlotTemplate.findOne(queryOptionsSlotTemplate);
+        if (_.isNil(slotTemplate)) {
+            log.debug({ function: 'applyMissionSlotTemplate', slug, slotTemplateUid, payload, userUid }, 'Mission slot template with given UID not found');
+            throw Boom.notFound('Mission slot template not found');
+        }
+
+        if (_.isNil(mission.slotGroups)) {
+            mission.slotGroups = await mission.getSlotGroups();
+        }
+
+        const slotTemplateGroupCount = slotTemplate.slotGroups.length;
+        const currentSlotGroups = _.sortBy(mission.slotGroups, 'orderNumber');
+        const orderNumber = payload.insertAfter + 1;
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug(
+                { function: 'applyMissionSlotTemplate', slug, slotTemplateUid, payload, userUid, missionUid: mission.uid, slotGroupCount: slotTemplateGroupCount },
+                'Applying mission slot template');
+
+            if (payload.insertAfter !== currentSlotGroups.length) {
+                log.debug(
+                    { function: 'createMissionSlotGroup', slug, slotTemplateUid, payload, userUid, missionUid: mission.uid },
+                    'Mission slot template will be inserted in between current groups');
+
+                await Promise.map(currentSlotGroups, (slotGroup: MissionSlotGroup) => {
+                    if (slotGroup.orderNumber < orderNumber) {
+                        return slotGroup;
+                    }
+
+                    return slotGroup.increment('orderNumber', { by: slotTemplateGroupCount });
+                });
+            }
+
+            await Promise.map(slotTemplate.slotGroups, async (slotGroup: IMissionSlotTemplateSlotGroup, index: number) => {
+                log.debug(
+                    { function: 'applyMissionSlotTemplate', payload, slotTemplateUid, userUid, missionUid: mission.uid },
+                    'Creating new mission slot group from template');
+
+                slotGroup.orderNumber = orderNumber + index;
+
+                const newSlotGroup = await mission.createSlotGroup(slotGroup);
+
+                log.debug(
+                    {
+                        function: 'applyMissionSlotTemplate',
+                        payload,
+                        slotTemplateUid,
+                        userUid,
+                        missionUid: mission.uid,
+                        missionSlotGroupUid: newSlotGroup.uid,
+                        slotCount: slotGroup.slots.length
+                    },
+                    'Successfully created new mission slot group from template, creating slots');
+
+                await Promise.map(slotGroup.slots, async (slot: IMissionSlotTemplateSlot) => {
+                    log.debug(
+                        { function: 'applyMissionSlotTemplate', payload, slotTemplateUid, userUid, missionUid: mission.uid, missionSlotGroupUid: newSlotGroup.uid },
+                        'Creating new mission slot from template');
+
+                    const newSlot = await newSlotGroup.createSlot(slot);
+
+                    log.debug(
+                        {
+                            function: 'applyMissionSlotTemplate',
+                            payload,
+                            slotTemplateUid,
+                            userUid,
+                            missionUid: mission.uid,
+                            missionSlotGroupUid: newSlotGroup.uid,
+                            missionSlotUid: newSlot.uid
+                        },
+                        'Successfully created new mission slot from template');
+                });
+
+                log.debug(
+                    {
+                        function: 'applyMissionSlotTemplate',
+                        payload,
+                        slotTemplateUid,
+                        userUid,
+                        missionUid: mission.uid,
+                        missionSlotGroupUid: newSlotGroup.uid,
+                        slotCount: slotGroup.slots.length
+                    },
+                    'Successfully created mission slot group and slots from template');
+            });
+
+            log.debug(
+                { function: 'applyMissionSlotTemplate', slug, slotTemplateUid, payload, userUid, missionUid: mission.uid, slotGroupCount: slotTemplateGroupCount },
+                'Successfully applied mission slot template, recalculating slot order numbers');
+
+            await mission.recalculateSlotOrderNumbers();
+
+            log.debug(
+                { function: 'applyMissionSlotTemplate', slug, slotTemplateUid, payload, userUid, missionUid: mission.uid },
+                'Successfully applied mission slot template');
+
+            let missionSlotGroups = await mission.getSlotGroups();
+            missionSlotGroups = _.orderBy(missionSlotGroups, ['orderNumber', (g: MissionSlotGroup) => { return g.title.toUpperCase(); }], ['asc', 'asc']);
+
+            const publicMissionSlotGroups = await Promise.map(missionSlotGroups, (slotGroup: MissionSlotGroup) => {
+                return slotGroup.toPublicObject();
+            });
+
+            const slotUids = _.reduce(
+                publicMissionSlotGroups,
+                (uids: string[], slotGroup: IPublicMissionSlotGroup) => {
+                    return uids.concat(_.map(slotGroup.slots, (slot: IPublicMissionSlot) => {
+                        return slot.uid;
+                    }));
+                },
+                []);
+
+            let registrations: MissionSlotRegistration[] = [];
+            registrations = await MissionSlotRegistration.findAll({
+                where: {
+                    slotUid: {
+                        $in: slotUids
+                    },
+                    userUid: userUid
+                }
+            });
+
+            _.each(publicMissionSlotGroups, (slotGroup: IPublicMissionSlotGroup) => {
+                _.each(slotGroup.slots, (slot: IPublicMissionSlot) => {
+                    const registration = _.find(registrations, { slotUid: slot.uid });
+                    if (!_.isNil(registration)) {
+                        slot.registrationUid = registration.uid;
+                    }
+                });
+            });
+
+            return {
+                slotGroups: publicMissionSlotGroups
             };
         });
     })());
