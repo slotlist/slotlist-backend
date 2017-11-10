@@ -1,7 +1,7 @@
 import * as Boom from 'boom';
 import * as Hapi from 'hapi';
 import * as _ from 'lodash';
-import { col, fn, literal } from 'sequelize';
+import { col, fn } from 'sequelize';
 
 import { Community } from '../../../shared/models/Community';
 import { MissionSlotTemplate } from '../../../shared/models/MissionSlotTemplate';
