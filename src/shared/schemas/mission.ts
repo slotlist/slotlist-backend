@@ -15,8 +15,16 @@ export const missionSchema = Joi.object().keys({
     endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an estimation by the mission ' +
         'creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
     creator: userSchema.required().description('Creator of the mission'),
-    totalSlotCount: Joi.number().integer().positive().allow(0).min(0).description('Total number of slots created for the mission').example(9),
-    unassignedSlotCount: Joi.number().integer().positive().allow(0).min(0).description('Number of unassigned slots, excluding slots with registrations').example(9),
+    slotCounts: Joi.object().keys({
+        assigned: Joi.number().integer().positive().allow(0).min(0).description('Number of slots with assignments').example(9),
+        blocked: Joi.number().integer().positive().allow(0).min(0).description('Number of blocked slots').example(9),
+        open: Joi.number().integer().positive().allow(0).min(0).description('Number of slots without an assignment or any registrations, including slots restricted to the ' +
+            'user\'s community').example(9),
+        reserve: Joi.number().integer().positive().allow(0).min(0).description('Number of reserve slots').example(9),
+        restricted: Joi.number().integer().positive().allow(0).min(0).description('Number of restricted slots').example(9),
+        total: Joi.number().integer().positive().allow(0).min(0).description('Total number of slots created for the mission').example(9),
+        unassigned: Joi.number().integer().positive().allow(0).min(0).description('Number of slots with registrations that have not been assigned yet').example(9)
+    }).required().label('slotCounts').description('Slot counts for the mission, including number of slots with different states such as `open`, `unassigned` or `assigned`'),
     isAssignedToAnySlot: Joi.bool().optional().description('Indicates whether the user is assigned to any slot in the mission. Only present for requests by authenticated users')
         .example(true),
     isRegisteredForAnySlot: Joi.bool().optional().description('Indicates whether the user is registered for any slot in the mission. Only present for requests by ' +

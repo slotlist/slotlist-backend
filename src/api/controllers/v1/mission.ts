@@ -99,7 +99,7 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
             const missionCount = result.rows.length;
             const moreAvailable = (queryOptions.offset + missionCount) < result.count;
             const missionList = await Promise.map(result.rows, async (mission: Mission) => {
-                const publicMission = await mission.toPublicObject();
+                const publicMission = await mission.toPublicObject(userUid, userCommunityUid);
 
                 if (!_.isNil(userUid)) {
                     const [isAssignedToAnySlot, isRegisteredForAnySlot] = await Promise.all([
@@ -137,7 +137,7 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
             const missions = await Mission.findAll(queryOptions);
 
             const missionList = await Promise.map(missions, async (mission: Mission) => {
-                const publicMission = await mission.toPublicObject();
+                const publicMission = await mission.toPublicObject(userUid, userCommunityUid);
 
                 if (!_.isNil(userUid)) {
                     const [isAssignedToAnySlot, isRegisteredForAnySlot] = await Promise.all([
@@ -323,7 +323,7 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission not found');
         }
 
-        const detailedPublicMission = await mission.toDetailedPublicObject();
+        const detailedPublicMission = await mission.toDetailedPublicObject(userUid, userCommunityUid);
 
         return {
             mission: detailedPublicMission
@@ -1486,9 +1486,15 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
         let userUid: string | null = null;
+        let userCommunityUid: string | null = null;
         if (request.auth.isAuthenticated) {
             userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
         }
+
         const queryOptions: any = {
             limit: request.query.limit,
             offset: request.query.offset,
@@ -1496,7 +1502,50 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             order: [['slotUid', 'ASC'], ['createdAt', 'ASC']]
         };
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const queryOptionsMission: any = {
+            where: { slug },
+            attributes: ['uid']
+        };
+
+        if (_.isNil(userUid)) {
+            queryOptionsMission.where.visibility = 'public';
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info(
+                { function: 'getMissionSlotRegistrationList', slug, slotUid, userUid, hasPermission: true },
+                'User has mission admin permissions, returning all mission slot registrations');
+        } else {
+            queryOptionsMission.where.$or = [
+                {
+                    creatorUid: userUid
+                },
+                {
+                    visibility: 'public'
+                },
+                {
+                    visibility: 'hidden',
+                    $or: [
+                        {
+                            creatorUid: userUid
+                        },
+                        // tslint:disable-next-line:max-line-length
+                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                    ]
+                },
+                {
+                    visibility: 'private',
+                    creatorUid: userUid
+                }
+            ];
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptionsMission.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
+        }
+
+        const mission = await Mission.findOne(queryOptionsMission);
         if (_.isNil(mission)) {
             log.debug({ function: 'getMissionSlotRegistrations', slug, slotUid, userUid, queryOptions }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1565,39 +1614,46 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         payload.userUid = userUid;
 
         const queryOptionsMission: any = {
-            where: {
-                slug,
-                $or: [
-                    {
-                        creatorUid: userUid
-                    },
-                    {
-                        visibility: 'public'
-                    },
-                    {
-                        visibility: 'hidden',
-                        $or: [
-                            {
-                                creatorUid: userUid
-                            },
-                            // tslint:disable-next-line:max-line-length
-                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
-                        ]
-                    },
-                    {
-                        visibility: 'private',
-                        creatorUid: userUid
-                    }
-                ]
-            },
+            where: { slug },
             attributes: ['uid']
         };
 
-        if (!_.isNil(userCommunityUid)) {
-            queryOptionsMission.where.$or.push({
-                visibility: 'community',
-                communityUid: userCommunityUid
-            });
+        if (_.isNil(userUid)) {
+            queryOptionsMission.where.visibility = 'public';
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
+            log.info(
+                { function: 'createMissionSlotRegistration', slug, slotUid, userUid, hasPermission: true },
+                'User has mission admin permissions, allowing all slot registrations');
+        } else {
+            queryOptionsMission.where.$or = [
+                {
+                    creatorUid: userUid
+                },
+                {
+                    visibility: 'public'
+                },
+                {
+                    visibility: 'hidden',
+                    $or: [
+                        {
+                            creatorUid: userUid
+                        },
+                        // tslint:disable-next-line:max-line-length
+                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                    ]
+                },
+                {
+                    visibility: 'private',
+                    creatorUid: userUid
+                }
+            ];
+
+            if (!_.isNil(userCommunityUid)) {
+                queryOptionsMission.where.$or.push({
+                    visibility: 'community',
+                    communityUid: userCommunityUid
+                });
+            }
         }
 
         const mission = await Mission.findOne(queryOptionsMission);
