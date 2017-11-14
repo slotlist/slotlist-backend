@@ -20,6 +20,7 @@ const log = logger.child({ model: 'Community' });
 
 import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
+import { MissionAccess } from './MissionAccess';
 import { Permission } from './Permission';
 import { IPublicUser, User } from './User';
 
@@ -44,6 +45,7 @@ export class Community extends Model {
      * @type {{
      *         applications: HasMany
      *         members: HasMany,
+     *         missionAccesses: HasMany,
      *         missions: HasMany,
      *         restrictedSlots: HasMany
      *     }}
@@ -52,6 +54,7 @@ export class Community extends Model {
     public static associations: {
         applications: HasMany,
         members: HasMany,
+        missionAccesses: HasMany,
         missions: HasMany,
         restrictedSlots: HasMany
     };
@@ -167,6 +170,15 @@ export class Community extends Model {
     public members?: User[];
 
     /**
+     * Eager-loaded list mission accesses granted to the community.
+     * Only included if the community has accesses granted and it has been eager-loaded via sequelize
+     *
+     * @type {(MissionAccess[] | undefined)}
+     * @memberof Community
+     */
+    public missionAccesses?: MissionAccess[];
+
+    /**
      * Eager-loaded list missions associated with the community.
      * Only included if the community has missions associated and it has been eager-loaded via sequelize
      *
@@ -242,6 +254,16 @@ export class Community extends Model {
      * @memberof Community
      */
     public getMembers: HasManyGetAssociationsMixin<User>;
+
+    /**
+     * Retrieves the community's mission access instances.
+     * Returns an empty array if the community has not been granted any mission access
+     *
+     * @type {HasManyGetAssociationsMixin<MissionAccess>}
+     * @returns {Promise<MissionAccess[]>} List of mission accesses
+     * @memberof Community
+     */
+    public getMissionAccesses: HasManyGetAssociationsMixin<MissionAccess>;
 
     /**
      * Retrieves the community's mission instances.
