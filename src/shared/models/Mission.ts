@@ -538,14 +538,20 @@ export class Mission extends Model {
         return MissionSlot.findById(slotUid);
     }
 
+    // tslint:disable:max-line-length
     /**
-     * Returns the number of slots currently created for the mission
+     * Returns slot count information about the current mission.
+     * Slot counts include counts of `unassigned`, `blocked`, `assigned`, etc. slots.
      *
-     * @returns {Promise<number>} Number of slots
+     * @param {(string | null)} [requestingUserUid=null] UID of user requesting mission information, only available for some calls if user is authenticated
+     * @param {(string | null)} [requestingUserCommunityUid=null] UID of communtiy of user requesting mission information, only available for some calls if user is authenticated and in a community
+     * @returns {Promise<IMissionSlotCounts>} Number of slots with different status
      * @memberof Mission
      */
-    public async getSlotCount(): Promise<number> {
-        return await MissionSlot.count({
+    // tslint:enable:max-line-length
+    public async getSlotCounts(requestingUserUid: string | null = null, requestingUserCommunityUid: string | null = null): Promise<IMissionSlotCounts> {
+        const slots = await MissionSlot.findAll({
+            attributes: ['assigneeUid', 'blocked', 'reserve', 'restrictedCommunityUid', 'uid'],
             include: [
                 {
                     model: MissionSlotGroup,
@@ -562,9 +568,44 @@ export class Mission extends Model {
                         }
                     ],
                     required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                },
+                {
+                    model: MissionSlotRegistration,
+                    as: 'registrations',
+                    attributes: ['uid']
                 }
             ]
         });
+
+        const counts: IMissionSlotCounts = {
+            assigned: 0,
+            blocked: 0,
+            open: 0,
+            reserve: 0,
+            restricted: 0,
+            total: slots.length,
+            unassigned: 0
+        };
+
+        _.each(slots, (slot: MissionSlot) => {
+            if (!_.isNil(slot.assigneeUid)) {
+                counts.assigned += 1;
+            } else if (slot.blocked) {
+                counts.blocked += 1;
+            } else if (!_.isNil(slot.restrictedCommunityUid) && slot.restrictedCommunityUid === requestingUserCommunityUid && _.isEmpty(slot.registrations)) {
+                counts.open += 1;
+            } else if (!_.isNil(slot.restrictedCommunityUid) && slot.restrictedCommunityUid !== requestingUserCommunityUid && _.isEmpty(slot.registrations)) {
+                counts.restricted += 1;
+            } else if (!_.isEmpty(slot.registrations)) {
+                counts.unassigned += 1;
+            } else if (slot.reserve) {
+                counts.reserve += 1;
+            } else {
+                counts.open += 1;
+            }
+        });
+
+        return counts;
     }
 
     /**
@@ -586,56 +627,6 @@ export class Mission extends Model {
                 return slots.concat(await slotGroup.getSlots());
             },
             []);
-    }
-
-    /**
-     * Returns the number of slots that have not been assigned yet.
-     * Excludes slots with registrations by default
-     *
-     * @param {boolean} [excludeRegistrations=true] Excludes slots with registrations from unassigned slot count
-     * @returns {Promise<number>} Number of unassigned slots
-     * @memberof Mission
-     */
-    public async getUnassignedSlotCount(excludeRegistrations: boolean = true): Promise<number> {
-        const slots = await MissionSlot.findAll({
-            attributes: ['uid'],
-            where: {
-                assigneeUid: {
-                    $eq: null
-                },
-                blocked: false // blocked slots count as assigned since the could be assigned manually by the mission creator
-            },
-            include: [
-                {
-                    model: MissionSlotGroup,
-                    as: 'slotGroup',
-                    attributes: ['uid'],
-                    include: [
-                        {
-                            model: Mission,
-                            as: 'mission',
-                            attributes: ['uid'],
-                            where: {
-                                uid: this.uid
-                            }
-                        }
-                    ],
-                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
-                }
-            ]
-        });
-
-        if (!excludeRegistrations) {
-            return slots.length;
-        }
-
-        const slotsWithoutRegistrations = await Promise.filter(slots, async (slot: MissionSlot) => {
-            const slotRegistrationCount = await MissionSlotRegistration.count({ where: { slotUid: slot.uid } });
-
-            return slotRegistrationCount === 0;
-        });
-
-        return slotsWithoutRegistrations.length;
     }
 
     /**
@@ -756,21 +747,24 @@ export class Mission extends Model {
         });
     }
 
+    // tslint:disable:max-line-length
     /**
      * Returns a public representation of the mission instance, as transmitted via API
      *
+     * @param {(string | null)} [requestingUserUid=null] UID of user requesting mission information, only available for some calls if user is authenticated
+     * @param {(string | null)} [requestingUserCommunityUid=null] UID of communtiy of user requesting mission information, only available for some calls if user is authenticated and in a community
      * @returns {Promise<IPublicMission>} Object containing public mission information
      * @memberof Mission
      */
-    public async toPublicObject(): Promise<IPublicMission> {
+    // tslint:enable:max-line-length
+    public async toPublicObject(requestingUserUid: string | null = null, requestingUserCommunityUid: string | null = null): Promise<IPublicMission> {
         if (_.isNil(this.creator)) {
             this.creator = await this.getCreator();
         }
 
-        const [publicCreator, totalSlotCount, unassignedSlotCount] = await Promise.all([
+        const [publicCreator, slotCounts] = await Promise.all([
             this.creator.toPublicObject(),
-            this.getSlotCount(),
-            this.getUnassignedSlotCount()
+            this.getSlotCounts(requestingUserUid, requestingUserCommunityUid)
         ]);
 
         return {
@@ -779,18 +773,21 @@ export class Mission extends Model {
             startTime: this.startTime,
             endTime: this.endTime,
             creator: publicCreator,
-            totalSlotCount,
-            unassignedSlotCount
+            slotCounts
         };
     }
 
+    // tslint:disable:max-line-length
     /**
      * Returns a detailed public representation of the mission instance, as transmitted via API
      *
+     * @param {(string | null)} [requestingUserUid=null] UID of user requesting mission information, only available for some calls if user is authenticated
+     * @param {(string | null)} [requestingUserCommunityUid=null] UID of communtiy of user requesting mission information, only available for some calls if user is authenticated and in a community
      * @returns {Promise<IDetailedPublicMission>} Object containing detailed public mission information
      * @memberof Mission
      */
-    public async toDetailedPublicObject(): Promise<IDetailedPublicMission> {
+    // tslint:enable:max-line-length
+    public async toDetailedPublicObject(requestingUserUid: string | null = null, requestingUserCommunityUid: string | null = null): Promise<IDetailedPublicMission> {
         if (!_.isNil(this.communityUid)) {
             if (_.isNil(this.community)) {
                 this.community = await this.getCommunity();
@@ -801,11 +798,10 @@ export class Mission extends Model {
             this.creator = await this.getCreator();
         }
 
-        const [publicCommunity, publicCreator, totalSlotCount, unassignedSlotCount] = await Promise.all([
+        const [publicCommunity, publicCreator, slotCounts] = await Promise.all([
             !_.isNil(this.communityUid) && !_.isNil(this.community) ? this.community.toPublicObject() : Promise.resolve(null),
             this.creator.toPublicObject(),
-            this.getSlotCount(),
-            this.getUnassignedSlotCount()
+            this.getSlotCounts(requestingUserUid, requestingUserCommunityUid)
         ]);
 
         return {
@@ -824,8 +820,7 @@ export class Mission extends Model {
             visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator,
-            totalSlotCount,
-            unassignedSlotCount
+            slotCounts
         };
     }
 
@@ -846,8 +841,7 @@ export interface IPublicMission {
     startTime: Date;
     endTime: Date;
     creator: IPublicUser;
-    totalSlotCount: number;
-    unassignedSlotCount: number;
+    slotCounts: IMissionSlotCounts;
     isAssignedToAnySlot?: boolean; // only returned for logged in users
     isRegisteredForAnySlot?: boolean; // only returned for logged in users
 }
@@ -870,4 +864,14 @@ export interface IDetailedPublicMission extends IPublicMission {
     rules: string | null;
     visibility: string;
     community: IPublicCommunity | null;
+}
+
+export interface IMissionSlotCounts {
+    assigned: number;
+    blocked: number;
+    open: number;
+    reserve: number;
+    restricted: number;
+    total: number;
+    unassigned: number;
 }
