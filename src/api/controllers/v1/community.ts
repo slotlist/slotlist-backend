@@ -643,7 +643,6 @@ export function getCommunityMissionList(request: Hapi.Request, reply: Hapi.Reply
                         visibility: 'public'
                     },
                     {
-                        visibility: 'hidden',
                         $or: [
                             // tslint:disable-next-line:max-line-length
                             literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)

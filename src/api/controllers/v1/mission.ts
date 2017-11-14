@@ -61,7 +61,6 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                         visibility: 'public'
                     },
                     {
-                        visibility: 'hidden',
                         $or: [
                             // tslint:disable-next-line:max-line-length
                             literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
@@ -303,7 +302,6 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
                         // tslint:disable-next-line:max-line-length
                         literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
@@ -1012,7 +1010,6 @@ export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.Reply
 }
 
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
-    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
 
@@ -1044,7 +1041,6 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
                         // tslint:disable-next-line:max-line-length
                         literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
@@ -1667,7 +1663,6 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
                         // tslint:disable-next-line:max-line-length
                         literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
@@ -1786,7 +1781,6 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
                         // tslint:disable-next-line:max-line-length
                         literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
@@ -2017,7 +2011,6 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
                         // tslint:disable-next-line:max-line-length
                         literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
@@ -2189,10 +2182,6 @@ export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Repl
                 },
                 {
                     visibility: 'public'
-                },
-                {
-                    visibility: 'private',
-                    creatorUid: userUid
                 }
             ];
 
