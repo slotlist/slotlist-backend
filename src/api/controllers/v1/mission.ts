@@ -549,6 +549,36 @@ export function createMissionAccess(request: Hapi.Request, reply: Hapi.ReplyWith
     })());
 }
 
+export function deleteMissionAccess(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const missionAccessUid = request.params.missionAccessUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const missionAccess = await MissionAccess.findOne({ where: { uid: missionAccessUid, missionUid: mission.uid } });
+        if (_.isNil(missionAccess)) {
+            log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid, missionUid: mission.uid }, 'Mission access with given UID not found');
+            throw Boom.notFound('Mission access not found');
+        }
+
+        log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid, missionUid: mission.uid }, 'Deleting mission access');
+
+        await missionAccess.destroy();
+
+        log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission access');
+
+        return {
+            success: true
+        };
+    })());
+}
+
 export function setMissionBannerImage(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.missionSlug;
