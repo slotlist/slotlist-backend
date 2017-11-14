@@ -8,6 +8,7 @@ import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
+import { MissionAccess } from '../../../shared/models/MissionAccess';
 import { IMissionSlotCreatePayload, IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
 import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
@@ -427,6 +428,126 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 token: token
             };
         });
+    })());
+}
+
+export function getMissionAccessList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    include: [
+                        {
+                            model: Community,
+                            as: 'community'
+                        }
+                    ]
+                },
+                {
+                    model: Community,
+                    as: 'community'
+                }
+            ]
+        };
+
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'getMissionAccessList', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'getMissionAccessList', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        queryOptions.where = {
+            missionUid: mission.uid
+        };
+
+        const result = await MissionAccess.findAndCountAll(queryOptions);
+
+        const accessCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + accessCount) < result.count;
+        const accessList = await Promise.map(result.rows, async (access: MissionAccess) => {
+            return access.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: accessCount,
+            total: result.count,
+            moreAvailable: moreAvailable,
+            accesses: accessList
+        };
+    })());
+}
+
+export function createMissionAccess(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'createMissionAccess', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        let targetCommunity: Community | null = null;
+        if (!_.isNil(payload.communityUid)) {
+            targetCommunity = await Community.findById(payload.communityUid, { attributes: ['uid'] });
+            if (_.isNil(targetCommunity)) {
+                log.debug({ function: 'createMissionAccess', slug, payload, userUid, missionUid: mission.uid }, 'Community with given UID not found for mission access');
+                throw Boom.notFound('Community not found');
+            }
+        }
+
+        let targetUser: User | null = null;
+        if (!_.isNil(payload.userUid)) {
+            targetUser = await User.findById(payload.userUid, { attributes: ['uid'] });
+            if (_.isNil(targetUser)) {
+                log.debug({ function: 'createMissionAccess', slug, payload, userUid, missionUid: mission.uid }, 'User with given UID not found for mission access');
+                throw Boom.notFound('User not found');
+            }
+        }
+
+        log.debug({ function: 'createMissionAccess', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission access');
+
+        let missionAccess: MissionAccess;
+        try {
+            missionAccess = await MissionAccess.create({
+                missionUid: mission.uid,
+                communityUid: _.isNil(payload.communityUid) ? null : payload.communityUid,
+                userUid: _.isNil(payload.userUid) ? null : payload.userUid
+            });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                throw Boom.conflict('Mission access already exists');
+            }
+
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createMissionAccess', payload, userUid, missionUid: mission.uid, accessUid: missionAccess.uid },
+            'Successfully created new mission access');
+
+        const publicAccess = await missionAccess.toPublicObject();
+
+        return {
+            access: publicAccess
+        };
     })());
 }
 

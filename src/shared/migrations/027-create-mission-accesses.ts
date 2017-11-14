@@ -55,6 +55,18 @@ module.exports = {
                 defaultValue: DataTypes.NOW
             }
         });
+
+        await queryInterface.addIndex('missionAccesses', ['missionUid', 'communityUid'], {
+            indexName: 'missionAccesses_unique_missionUid_communityUid',
+            indicesType: 'UNIQUE',
+            indexType: 'BTREE'
+        });
+
+        await queryInterface.addIndex('missionAccesses', ['missionUid', 'userUid'], {
+            indexName: 'missionAccesses_unique_missionUid_userUid',
+            indicesType: 'UNIQUE',
+            indexType: 'BTREE'
+        });
     },
     down: async (queryInterface: any): Promise<void> => {
         await queryInterface.dropTable('missionAccesses');

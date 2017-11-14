@@ -10,9 +10,9 @@ import { Attribute, Options } from 'sequelize-decorators';
 
 import sequelize from '../util/sequelize';
 
-import { Community } from './Community';
+import { Community, IPublicCommunity } from './Community';
 import { Mission } from './Mission';
-import { User } from './User';
+import { IPublicUser, User } from './User';
 
 /**
  * Represents a mission access in database.
@@ -26,6 +26,18 @@ import { User } from './User';
     sequelize,
     tableName: 'missionAccesses',
     paranoid: false,
+    indexes: [
+        {
+            name: 'missionAccesses_unique_missionUid_communityUid',
+            fields: ['missionUid', 'communityUid'],
+            unique: true
+        },
+        {
+            name: 'missionAccesses_unique_missionUid_userUid',
+            fields: ['missionUid', 'userUid'],
+            unique: true
+        }
+    ],
     validate: {
         communityOrUserAccess(): void {
             if (_.isNil(this.communityUid) && _.isNil(this.userUid)) {
@@ -231,11 +243,29 @@ export class MissionAccess extends Model {
      * @memberof MissionAccess
      */
     public async toPublicObject(): Promise<IPublicMissionAccess> {
+        let publicCommunity: IPublicCommunity | undefined;
+        if (!_.isNil(this.communityUid)) {
+            if (_.isNil(this.community)) {
+                this.community = await this.getCommunity();
+            }
+
+            publicCommunity = await this.community.toPublicObject();
+        }
+
+        let publicUser: IPublicUser | undefined;
+        if (!_.isNil(this.userUid)) {
+            if (_.isNil(this.user)) {
+                this.user = await this.getUser();
+            }
+
+            publicUser = await this.user.toPublicObject();
+        }
+
         return {
             uid: this.uid,
-            communityUid: _.isNil(this.communityUid) ? undefined : this.communityUid,
+            community: publicCommunity,
             missionUid: this.missionUid,
-            userUid: _.isNil(this.userUid) ? undefined : this.userUid
+            user: publicUser
         };
     }
 
@@ -252,7 +282,7 @@ export class MissionAccess extends Model {
  */
 export interface IPublicMissionAccess {
     uid: string;
-    communityUid?: string;
+    community?: IPublicCommunity;
     missionUid: string;
-    userUid?: string;
+    user?: IPublicUser;
 }
