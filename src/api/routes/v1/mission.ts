@@ -840,7 +840,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.creator']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {
