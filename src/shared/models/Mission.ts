@@ -18,6 +18,7 @@ import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
 import { Community, IPublicCommunity } from './Community';
+import { MissionAccess } from './MissionAccess';
 import { IMissionSlotCreatePayload, MissionSlot } from './MissionSlot';
 import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
@@ -70,6 +71,7 @@ export class Mission extends Model {
      * @type {{
      *         community: BelongsTo,
      *         creator: BelongsTo,
+     *         missionAccesses: HasMany,
      *         slotGroups: HasMany
      *     }}
      * @memberof Mission
@@ -77,6 +79,7 @@ export class Mission extends Model {
     public static associations: {
         community: BelongsTo,
         creator: BelongsTo,
+        missionAccesses: HasMany,
         slotGroups: HasMany
     };
 
@@ -380,6 +383,15 @@ export class Mission extends Model {
     public creator?: User;
 
     /**
+     * Eager-loaded list accesses granted for the mission.
+     * Only included if the extra access has been granted for the mission and it has been eager-loaded via sequelize
+     *
+     * @type {(MissionAccess[] | undefined)}
+     * @memberof Mission
+     */
+    public missionAccesses?: MissionAccess[];
+
+    /**
      * Eager-loaded list of slot groups associated with the mission.
      * Only included if the mission has slot groups associated and it has been eager-loaded via sequelize
      *
@@ -445,6 +457,16 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public getCreator: BelongsToGetAssociationMixin<User>;
+
+    /**
+     * Retrieves the mission's access instances.
+     * Returns an empty array if the no extra access has been granted for the mission
+     *
+     * @type {HasManyGetAssociationsMixin<MissionAccess>}
+     * @returns {Promise<MissionAccess[]>} List of mission accesses
+     * @memberof Mission
+     */
+    public getMissionAccesses: HasManyGetAssociationsMixin<MissionAccess>;
 
     /**
      * Retrieves the mission's slot group instances.

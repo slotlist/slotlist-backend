@@ -8,6 +8,7 @@ import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import { Mission } from '../../../shared/models/Mission';
+import { MissionAccess } from '../../../shared/models/MissionAccess';
 import { IMissionSlotCreatePayload, IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
 import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
 import { MissionSlotRegistration } from '../../../shared/models/MissionSlotRegistration';
@@ -60,18 +61,17 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                         visibility: 'public'
                     },
                     {
-                        visibility: 'hidden',
                         $or: [
-                            {
-                                creatorUid: userUid
-                            },
                             // tslint:disable-next-line:max-line-length
-                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                            literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                         ]
                     },
                     {
                         visibility: 'private',
-                        creatorUid: userUid
+                        $or: [
+                            // tslint:disable-next-line:max-line-length
+                            literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                        ]
                     }
                 ]
             };
@@ -81,6 +81,14 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptions.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
@@ -294,18 +302,17 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
-                        {
-                            creatorUid: userUid
-                        },
                         // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
                 {
                     visibility: 'private',
-                    creatorUid: userUid
+                    $or: [
+                        // tslint:disable-next-line:max-line-length
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                    ]
                 }
             ];
 
@@ -314,6 +321,14 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptions.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
@@ -411,6 +426,156 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 token: token
             };
         });
+    })());
+}
+
+export function getMissionAccessList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            limit: request.query.limit,
+            offset: request.query.offset,
+            include: [
+                {
+                    model: User,
+                    as: 'user',
+                    include: [
+                        {
+                            model: Community,
+                            as: 'community'
+                        }
+                    ]
+                },
+                {
+                    model: Community,
+                    as: 'community'
+                }
+            ]
+        };
+
+        const user = await User.findById(userUid);
+        if (_.isNil(user)) {
+            log.debug({ function: 'getMissionAccessList', slug, userUid }, 'User from decoded JWT not found');
+            throw Boom.unauthorized('Token user not found');
+        }
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'getMissionAccessList', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        queryOptions.where = {
+            missionUid: mission.uid
+        };
+
+        const result = await MissionAccess.findAndCountAll(queryOptions);
+
+        const accessCount = result.rows.length;
+        const moreAvailable = (queryOptions.offset + accessCount) < result.count;
+        const accessList = await Promise.map(result.rows, async (access: MissionAccess) => {
+            return access.toPublicObject();
+        });
+
+        return {
+            limit: queryOptions.limit,
+            offset: queryOptions.offset,
+            count: accessCount,
+            total: result.count,
+            moreAvailable: moreAvailable,
+            accesses: accessList
+        };
+    })());
+}
+
+export function createMissionAccess(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const payload = request.payload;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'createMissionAccess', slug, payload, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        let targetCommunity: Community | null = null;
+        if (!_.isNil(payload.communityUid)) {
+            targetCommunity = await Community.findById(payload.communityUid, { attributes: ['uid'] });
+            if (_.isNil(targetCommunity)) {
+                log.debug({ function: 'createMissionAccess', slug, payload, userUid, missionUid: mission.uid }, 'Community with given UID not found for mission access');
+                throw Boom.notFound('Community not found');
+            }
+        }
+
+        let targetUser: User | null = null;
+        if (!_.isNil(payload.userUid)) {
+            targetUser = await User.findById(payload.userUid, { attributes: ['uid'] });
+            if (_.isNil(targetUser)) {
+                log.debug({ function: 'createMissionAccess', slug, payload, userUid, missionUid: mission.uid }, 'User with given UID not found for mission access');
+                throw Boom.notFound('User not found');
+            }
+        }
+
+        log.debug({ function: 'createMissionAccess', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission access');
+
+        let missionAccess: MissionAccess;
+        try {
+            missionAccess = await MissionAccess.create({
+                missionUid: mission.uid,
+                communityUid: _.isNil(payload.communityUid) ? null : payload.communityUid,
+                userUid: _.isNil(payload.userUid) ? null : payload.userUid
+            });
+        } catch (err) {
+            if (err.name === 'SequelizeUniqueConstraintError') {
+                throw Boom.conflict('Mission access already exists');
+            }
+
+            throw err;
+        }
+
+        log.debug(
+            { function: 'createMissionAccess', payload, userUid, missionUid: mission.uid, accessUid: missionAccess.uid },
+            'Successfully created new mission access');
+
+        const publicAccess = await missionAccess.toPublicObject();
+
+        return {
+            access: publicAccess
+        };
+    })());
+}
+
+export function deleteMissionAccess(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const missionAccessUid = request.params.missionAccessUid;
+        const userUid = request.auth.credentials.user.uid;
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const missionAccess = await MissionAccess.findOne({ where: { uid: missionAccessUid, missionUid: mission.uid } });
+        if (_.isNil(missionAccess)) {
+            log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid, missionUid: mission.uid }, 'Mission access with given UID not found');
+            throw Boom.notFound('Mission access not found');
+        }
+
+        log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid, missionUid: mission.uid }, 'Deleting mission access');
+
+        await missionAccess.destroy();
+
+        log.debug({ function: 'deleteMissionAccess', slug, missionAccessUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission access');
+
+        return {
+            success: true
+        };
     })());
 }
 
@@ -875,7 +1040,6 @@ export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.Reply
 }
 
 export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
-    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
 
@@ -907,18 +1071,17 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
-                        {
-                            creatorUid: userUid
-                        },
                         // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
                 {
                     visibility: 'private',
-                    creatorUid: userUid
+                    $or: [
+                        // tslint:disable-next-line:max-line-length
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                    ]
                 }
             ];
 
@@ -927,6 +1090,14 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptionsMission.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
@@ -1522,18 +1693,17 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
-                        {
-                            creatorUid: userUid
-                        },
                         // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
                 {
                     visibility: 'private',
-                    creatorUid: userUid
+                    $or: [
+                        // tslint:disable-next-line:max-line-length
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                    ]
                 }
             ];
 
@@ -1542,6 +1712,14 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptionsMission.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
@@ -1633,18 +1811,17 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
-                        {
-                            creatorUid: userUid
-                        },
                         // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
                 {
                     visibility: 'private',
-                    creatorUid: userUid
+                    $or: [
+                        // tslint:disable-next-line:max-line-length
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                    ]
                 }
             ];
 
@@ -1653,6 +1830,14 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptionsMission.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
@@ -1856,18 +2041,17 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     visibility: 'public'
                 },
                 {
-                    visibility: 'hidden',
                     $or: [
-                        {
-                            creatorUid: userUid
-                        },
                         // tslint:disable-next-line:max-line-length
-                        literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor')`)
                     ]
                 },
                 {
                     visibility: 'private',
-                    creatorUid: userUid
+                    $or: [
+                        // tslint:disable-next-line:max-line-length
+                        literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                    ]
                 }
             ];
 
@@ -1876,6 +2060,14 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptionsMission.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
@@ -2020,10 +2212,6 @@ export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Repl
                 },
                 {
                     visibility: 'public'
-                },
-                {
-                    visibility: 'private',
-                    creatorUid: userUid
                 }
             ];
 

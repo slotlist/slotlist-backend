@@ -23,6 +23,7 @@ const log = logger.child({ model: 'User' });
 import { Community, IPublicCommunity } from './Community';
 import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
+import { MissionAccess } from './MissionAccess';
 import { MissionSlot } from './MissionSlot';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { MissionSlotTemplate } from './MissionSlotTemplate';
@@ -49,6 +50,7 @@ export class User extends Model {
      * @type {{
      *         applications: HasMany,
      *         community: BelongsTo,
+     *         missionAccesses: HasMany,
      *         missions: HasMany,
      *         missionSlots: HasMany,
      *         missionSlotRegistrations: HasMany,
@@ -60,6 +62,7 @@ export class User extends Model {
     public static associations: {
         applications: HasMany,
         community: BelongsTo,
+        missionAccesses: HasMany,
         missions: HasMany,
         missionSlots: HasMany,
         missionSlotRegistrations: HasMany,
@@ -155,6 +158,15 @@ export class User extends Model {
      * @memberof User
      */
     public community?: Community | null;
+
+    /**
+     * Eager-loaded list mission accesses granted to the user.
+     * Only included if the user has accesses granted and it has been eager-loaded via sequelize
+     *
+     * @type {(MissionAccess[] | undefined)}
+     * @memberof User
+     */
+    public missionAccesses?: MissionAccess[];
 
     /**
      * Eager-loaded list of missions created by the user.
@@ -274,6 +286,16 @@ export class User extends Model {
      * @memberof User
      */
     public getCommunity: BelongsToGetAssociationMixin<Community>;
+
+    /**
+     * Retrieves the users's mission access instances.
+     * Returns an empty array if the user has not been granted any mission access
+     *
+     * @type {HasManyGetAssociationsMixin<MissionAccess>}
+     * @returns {Promise<MissionAccess[]>} List of mission accesses
+     * @memberof User
+     */
+    public getMissionAccesses: HasManyGetAssociationsMixin<MissionAccess>;
 
     /**
      * Retrieves the user's missions.

@@ -10,6 +10,7 @@ import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
+import { sequelize } from '../../../shared/util/sequelize';
 const log = logger.child({ route: 'user', routeVersion: 'v1' });
 
 /**
@@ -226,18 +227,17 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
                         visibility: 'public'
                     },
                     {
-                        visibility: 'hidden',
                         $or: [
-                            {
-                                creatorUid: userUid
-                            },
                             // tslint:disable-next-line:max-line-length
-                            literal(`'${userUid}' IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
+                            literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "permissions" WHERE "permission" = 'mission.' || "Mission"."slug" || '.editor' OR "permission" = '*')`)
                         ]
                     },
                     {
                         visibility: 'private',
-                        creatorUid: userUid
+                        $or: [
+                            // tslint:disable-next-line:max-line-length
+                            literal(`${sequelize.escape(userUid)} IN (SELECT "userUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "userUid" = ${sequelize.escape(userUid)})`)
+                        ]
                     }
                 ]
             };
@@ -247,6 +247,14 @@ export function getUserMissionList(request: Hapi.Request, reply: Hapi.ReplyWithC
                     visibility: 'community',
                     communityUid: userCommunityUid
                 });
+
+                // $or[3] === visibility: 'private', add check for user's community UID.
+                // Has to be done after userCommunityUid has been checked for `null` since every mission access entry granted to a user has `communityUid: null`,
+                // which would result in incorrect access being granted for communities
+                queryOptions.where.$or[3].$or.push(
+                    // tslint:disable-next-line:max-line-length
+                    literal(`${sequelize.escape(userCommunityUid)} IN (SELECT "communityUid" FROM "missionAccesses" WHERE "missionUid" = "Mission"."uid" AND "communityUid" = ${sequelize.escape(userCommunityUid)})`)
+                );
             }
         }
 
