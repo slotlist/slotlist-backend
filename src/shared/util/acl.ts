@@ -67,11 +67,19 @@ export function parsePermissions(permissions: string[]): any {
  *
  * @export
  * @param {string[]} permissions Array of permission to parse
- * @param {string} targetPermission Permission to search for
- * @returns {boolean} Indicates whether the permission was found
+ * @param {(string | string[])} targetPermissions Permissions to search for
+ * @returns {boolean} Indicates whether one of the permissions was found
  */
-export function hasPermission(permissions: string[], targetPermission: string): boolean {
+export function hasPermission(permissions: string[], targetPermissions: string | string[]): boolean {
     const parsedPermissions = parsePermissions(permissions);
 
-    return _.has(parsedPermissions, '*') || findPermission(parsedPermissions, 'admin.superadmin') || findPermission(parsedPermissions, targetPermission);
+    if (_.has(parsedPermissions, '*') || findPermission(parsedPermissions, 'admin.superadmin')) {
+        return true;
+    }
+
+    if (_.isArray(targetPermissions)) {
+        return _.some(targetPermissions, (targetPermission: string) => findPermission(parsedPermissions, targetPermission));
+    } else {
+        return findPermission(parsedPermissions, targetPermissions);
+    }
 }

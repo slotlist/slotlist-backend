@@ -16,7 +16,7 @@ import { IMissionSlotTemplateSlot, IMissionSlotTemplateSlotGroup, MissionSlotTem
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { instance as ImageService, MISSION_IMAGE_PATH } from '../../../shared/services/ImageService';
-import { findPermission, hasPermission, parsePermissions } from '../../../shared/util/acl';
+import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
 // tslint:disable-next-line:import-name
@@ -1061,7 +1061,7 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
         if (_.isNil(userUid)) {
             queryOptionsMission.where.visibility = 'public';
         } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
-            log.info({ function: 'getMissionDetails', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning mission details');
+            log.info({ function: 'getMissionSlotList', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning full mission list');
         } else {
             queryOptionsMission.where.$or = [
                 {
@@ -1730,28 +1730,12 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         }
 
         let includeDetails: boolean = false;
-        if (!_.isNil(userUid)) {
-            const requiredPermissions = [`mission.${slug}.creator`, `mission.${slug}.editor`];
-            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
-                log.debug(
-                    { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has global wildcard permission, returning slot registration details');
+        if (!_.isNil(userUid) && hasPermission(request.auth.credentials.permissions, ['admin.mission', `mission.${slug}.creator`, `mission.${slug}.editor`])) {
+            log.debug(
+                { function: 'getMissionSlotRegistrationList', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                'User has mission creator, editor or admin permission, returning slot registration details');
 
-                includeDetails = true;
-            }
-
-            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-                return findPermission(parsedPermissions, requiredPermission);
-            });
-
-            if (foundPermissions.length > 0) {
-                log.debug(
-                    { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has mission creator or editor permission, returning slot registration details');
-
-                includeDetails = true;
-            }
+            includeDetails = true;
         }
 
         const slot = await mission.findSlot(slotUid);
@@ -2093,27 +2077,24 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         const registration = registrations[0];
 
         if (registration.userUid !== userUid) {
-            const requiredPermissions = [`mission.${slug}.creator`, `mission.${slug}.editor`];
-            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
+            if (hasPermission(request.auth.credentials.permissions, ['admin.mission', `mission.${slug}.creator`, `mission.${slug}.editor`])) {
                 log.debug(
-                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
-                    'User has global wildcard permission, allowing mission slot registration deletion');
-            }
-
-            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-                return findPermission(parsedPermissions, requiredPermission);
-            });
-
-            if (_.isEmpty(foundPermissions)) {
+                    {
+                        function: 'deleteMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        userUid,
+                        registrationUid,
+                        missionUid: mission.uid,
+                        registrationUserUid: registration.userUid,
+                        credentials: request.auth.credentials
+                    },
+                    'User has mission creator, editor or admin permission, allowing mission slot registration deletion');
+            } else {
                 log.info(
                     { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
                     'User tried to delete mission slot registration that was created by a different user, denying');
                 throw Boom.forbidden();
-            } else {
-                log.debug(
-                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
-                    'User has mission creator or editor permission, allowing mission slot registration deletion');
             }
         }
 
