@@ -1,3 +1,4 @@
+import * as Boom from 'boom';
 import * as _ from 'lodash';
 import {
     BelongsTo,
@@ -158,7 +159,7 @@ export class MissionSlot extends Model {
             notEmpty: true
         }
     })
-    public detailedDescription?: string;
+    public detailedDescription: string | null;
 
     /**
      * Indicates whether the slot is a reserve slot (true, will only be assigned if all other slots have been filled) or a regular one (false)
@@ -189,6 +190,7 @@ export class MissionSlot extends Model {
 
     /**
      * UID of the user that has been assigned to the slot.
+     * Cannot be set at the same time as an `externalAssignee` and vice versa.
      * Can be `null` if no final assignment has been made yet
      *
      * @type {(string | null)}
@@ -198,6 +200,13 @@ export class MissionSlot extends Model {
         type: DataTypes.UUID,
         allowNull: true,
         defaultValue: null,
+        validate: {
+            eitherAssigneeUidOrExternalAssigne(val: any): void {
+                if (!_.isNil(val) && !_.isNil(this.externalAssignee)) {
+                    throw Boom.conflict('Mission slot can only either have assignee or external assignee');
+                }
+            }
+        },
         references: {
             model: User,
             key: 'uid'
@@ -215,6 +224,29 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public assignee?: User | null;
+
+    /**
+     * Nickname of external player assigned to the slot. Allows for slots to be assigned to users not present in the database.
+     * Cannot be set at the same time as an `assigneeUid` and vice versa.
+     * Can be `null` if no external player has been assigned.
+     *
+     * @type {(string | null)}
+     * @memberof MissionSlot
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            notEmpty: true,
+            eitherAssigneeUidOrExternalAssigne(val: any): void {
+                if (!_.isNil(val) && !_.isNil(this.assigneeUid)) {
+                    throw Boom.conflict('Mission slot can only either have assignee or external assignee');
+                }
+            }
+        }
+    })
+    public externalAssignee: string | null;
 
     /**
      * Eager-loaded list of slot registrations associated with this slot.
@@ -438,6 +470,7 @@ export class MissionSlot extends Model {
             reserve: this.reserve,
             blocked: this.blocked,
             assignee: publicAssignee,
+            externalAssignee: _.isNil(this.externalAssignee) ? null : this.externalAssignee,
             registrationCount: this.registrations.length
         };
     }
@@ -465,6 +498,7 @@ export interface IPublicMissionSlot {
     reserve: boolean;
     blocked: boolean;
     assignee: IPublicUser | null;
+    externalAssignee: string | null;
     registrationCount: number;
     registrationUid?: string; // only returned if user has registered for the slot
 }

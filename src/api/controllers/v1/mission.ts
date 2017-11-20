@@ -1393,6 +1393,13 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission slot not found');
         }
 
+        if (!_.isNil(slot.assigneeUid) && !_.isNil(payload.externalAssignee)) {
+            log.debug(
+                { function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid },
+                'User tried to assign an external assignee to a slot with an assignee, rejecting');
+            throw Boom.conflict('Mission slot can only either have assignee or external assignee');
+        }
+
         return sequelize.transaction(async (t: Transaction) => {
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
@@ -1433,7 +1440,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 payload.orderNumber = orderNumber;
 
                 await slot.update(payload, {
-                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber']
+                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber', 'externalAssignee']
                 });
 
                 log.debug(
@@ -1599,6 +1606,11 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         },
                         'Target user is already assigned and force assignment is disabled, rejecting');
                     throw Boom.conflict('User already assigned to another slot');
+                } else if (!_.isNil(slot.externalAssignee)) {
+                    log.debug(
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                        'Slot already has external assignee and force assignment is disabled, rejecting');
+                    throw Boom.conflict('Mission slot can only either have assignee or external assignee');
                 }
             } else {
                 if (!_.isNil(slot.assigneeUid)) {
@@ -1612,6 +1624,11 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         slot.update({ assigneeUid: null }),
                         MissionSlotRegistration.update({ confirmed: false }, { where: { slotUid } })
                     ]);
+                } else if (!_.isNil(slot.externalAssignee)) {
+                    log.debug(
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                        'Slot already has external assignee, removing before assignment');
+                    await slot.update({ externalAssignee: null });
                 }
 
                 if (!_.isNil(targetUserAssignedSlot)) {
@@ -1763,6 +1780,7 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
 }
 
 export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
@@ -1844,6 +1862,11 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, userCommunityUid },
                 'User tried to register for a blocked slot, rejecting');
             throw Boom.forbidden('Mission slot is blocked');
+        } else if (!_.isNil(slot.externalAssignee)) {
+            log.debug(
+                { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, userCommunityUid },
+                'User tried to register for a slot with an external assignee, rejecting');
+            throw Boom.conflict('Mission slot can only either have assignee or external assignee');
         }
 
         if (!_.isNil(slot.restrictedCommunityUid) && !_.isEqual(userCommunityUid, slot.restrictedCommunityUid)) {
@@ -1908,6 +1931,13 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
+        }
+
+        if (!_.isNil(slot.externalAssignee)) {
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                'Mission slot already has external assignee, rejecting registration update');
+            throw Boom.conflict('Mission slot can only either have assignee or external assignee');
         }
 
         const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
