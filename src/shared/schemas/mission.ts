@@ -18,6 +18,7 @@ export const missionSchema = Joi.object().keys({
     slotCounts: Joi.object().keys({
         assigned: Joi.number().integer().positive().allow(0).min(0).description('Number of slots with assignments').example(9),
         blocked: Joi.number().integer().positive().allow(0).min(0).description('Number of blocked slots').example(9),
+        external: Joi.number().integer().positive().allow(0).min(0).description('Number of slots assigned to external users').example(9),
         open: Joi.number().integer().positive().allow(0).min(0).description('Number of slots without an assignment or any registrations, including slots restricted to the ' +
             'user\'s community').example(9),
         reserve: Joi.number().integer().positive().allow(0).min(0).description('Number of reserve slots').example(9),

@@ -178,7 +178,7 @@ export class Permission extends Model {
     public static isValidMissionPermission(missionSlug: string, permission: string): boolean {
         const perm = permission.toLowerCase();
 
-        return perm === `mission.${missionSlug}.editor`;
+        return perm === `mission.${missionSlug}.editor` || perm === `mission.${missionSlug}.slotlist.community`;
     }
 
     ////////////////////////////

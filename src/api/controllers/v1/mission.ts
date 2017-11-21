@@ -16,7 +16,7 @@ import { IMissionSlotTemplateSlot, IMissionSlotTemplateSlotGroup, MissionSlotTem
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
 import { instance as ImageService, MISSION_IMAGE_PATH } from '../../../shared/services/ImageService';
-import { findPermission, hasPermission, parsePermissions } from '../../../shared/util/acl';
+import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
 // tslint:disable-next-line:import-name
@@ -1019,7 +1019,9 @@ export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.Reply
         const permission = await Permission.findOne({
             where: {
                 uid: permissionUid,
-                permission: `mission.${slug}.editor`
+                permission: {
+                    $or: [`mission.${slug}.editor`, `mission.${slug}.slotlist.community`]
+                }
             }
         });
         if (_.isNil(permission)) {
@@ -1061,7 +1063,7 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
         if (_.isNil(userUid)) {
             queryOptionsMission.where.visibility = 'public';
         } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
-            log.info({ function: 'getMissionDetails', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning mission details');
+            log.info({ function: 'getMissionSlotList', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning full mission list');
         } else {
             queryOptionsMission.where.$or = [
                 {
@@ -1393,6 +1395,13 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission slot not found');
         }
 
+        if (!_.isNil(slot.assigneeUid) && !_.isNil(payload.externalAssignee)) {
+            log.debug(
+                { function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid },
+                'User tried to assign an external assignee to a slot with an assignee, rejecting');
+            throw Boom.conflict('Mission slot can only either have assignee or external assignee');
+        }
+
         return sequelize.transaction(async (t: Transaction) => {
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
@@ -1433,7 +1442,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 payload.orderNumber = orderNumber;
 
                 await slot.update(payload, {
-                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber']
+                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber', 'externalAssignee']
                 });
 
                 log.debug(
@@ -1599,6 +1608,11 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         },
                         'Target user is already assigned and force assignment is disabled, rejecting');
                     throw Boom.conflict('User already assigned to another slot');
+                } else if (!_.isNil(slot.externalAssignee)) {
+                    log.debug(
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                        'Slot already has external assignee and force assignment is disabled, rejecting');
+                    throw Boom.conflict('Mission slot can only either have assignee or external assignee');
                 }
             } else {
                 if (!_.isNil(slot.assigneeUid)) {
@@ -1612,6 +1626,11 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         slot.update({ assigneeUid: null }),
                         MissionSlotRegistration.update({ confirmed: false }, { where: { slotUid } })
                     ]);
+                } else if (!_.isNil(slot.externalAssignee)) {
+                    log.debug(
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                        'Slot already has external assignee, removing before assignment');
+                    await slot.update({ externalAssignee: null });
                 }
 
                 if (!_.isNil(targetUserAssignedSlot)) {
@@ -1670,7 +1689,14 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             limit: request.query.limit,
             offset: request.query.offset,
             where: { slotUid },
-            order: [['slotUid', 'ASC'], ['createdAt', 'ASC']]
+            order: [['slotUid', 'ASC'], ['createdAt', 'ASC']],
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slot',
+                    attributes: ['restrictedCommunityUid']
+                }
+            ]
         };
 
         const queryOptionsMission: any = {
@@ -1729,29 +1755,20 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             throw Boom.notFound('Mission not found');
         }
 
-        let includeDetails: boolean = false;
-        if (!_.isNil(userUid)) {
-            const requiredPermissions = [`mission.${slug}.creator`, `mission.${slug}.editor`];
-            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
-                log.debug(
-                    { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has global wildcard permission, returning slot registration details');
+        let includeFullDetails: boolean = false;
+        let includeCommunityDetails: boolean = false;
+        if (!_.isNil(userUid) && hasPermission(request.auth.credentials.permissions, ['admin.mission', `mission.${slug}.creator`, `mission.${slug}.editor`])) {
+            log.debug(
+                { function: 'getMissionSlotRegistrationList', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
+                'User has mission creator, editor or admin permission, returning full slot registration details');
 
-                includeDetails = true;
-            }
+            includeFullDetails = true;
+        } else if (!_.isNil(userUid) && hasPermission(request.auth.credentials.permissions, `mission.${slug}.slotlist.community`) && !_.isNil(userCommunityUid)) {
+            log.debug(
+                { function: 'getMissionSlotRegistrationList', credentials: request.auth.credentials, userUid: userUid, userCommunityUid, hasPermission: true },
+                'User has mission slotlist community permission, returning slot registration details for slots restricted to community');
 
-            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-                return findPermission(parsedPermissions, requiredPermission);
-            });
-
-            if (foundPermissions.length > 0) {
-                log.debug(
-                    { function: 'getMissionSlotRegistrationList', requiredPermissions, credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                    'User has mission creator or editor permission, returning slot registration details');
-
-                includeDetails = true;
-            }
+            includeCommunityDetails = true;
         }
 
         const slot = await mission.findSlot(slotUid);
@@ -1765,7 +1782,8 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const registrationCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + registrationCount) < result.count;
         const registrationList = await Promise.map(result.rows, (registration: MissionSlotRegistration) => {
-            return registration.toPublicObject(includeDetails);
+            return registration.toPublicObject(includeFullDetails ||
+                (includeCommunityDetails && !_.isNil(registration.slot) && userCommunityUid === registration.slot.restrictedCommunityUid));
         });
 
         return {
@@ -1779,6 +1797,7 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
 }
 
 export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
@@ -1860,6 +1879,11 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, userCommunityUid },
                 'User tried to register for a blocked slot, rejecting');
             throw Boom.forbidden('Mission slot is blocked');
+        } else if (!_.isNil(slot.externalAssignee)) {
+            log.debug(
+                { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, userCommunityUid },
+                'User tried to register for a slot with an external assignee, rejecting');
+            throw Boom.conflict('Mission slot can only either have assignee or external assignee');
         }
 
         if (!_.isNil(slot.restrictedCommunityUid) && !_.isEqual(userCommunityUid, slot.restrictedCommunityUid)) {
@@ -1905,12 +1929,17 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 }
 
 export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
         const registrationUid = request.params.registrationUid;
         const confirmed = request.payload.confirmed === true;
         const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(mission)) {
@@ -1926,6 +1955,13 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission slot not found');
         }
 
+        if (!_.isNil(slot.externalAssignee)) {
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                'Mission slot already has external assignee, rejecting registration update');
+            throw Boom.conflict('Mission slot can only either have assignee or external assignee');
+        }
+
         const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
         if (_.isNil(registrations) || _.isEmpty(registrations)) {
             log.debug(
@@ -1934,6 +1970,46 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission slot registration not found');
         }
         const registration = registrations[0];
+
+        if (!hasPermission(request.auth.credentials.permissions, [`mission.${slug}.creator`, `mission.${slug}.editor`])) {
+            if (_.isNil(userCommunityUid)) {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    'User has mission slotlist community permission, but is not associated with any community. Rejecting slot registration update');
+                throw Boom.forbidden();
+            }
+
+            if (userCommunityUid !== slot.restrictedCommunityUid) {
+                log.debug(
+                    {
+                        function: 'updateMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        registrationUid,
+                        confirmed,
+                        userUid,
+                        missionUid: mission.uid,
+                        userCommunityUid,
+                        restrictedCommunityUid: slot.restrictedCommunityUid
+                    },
+                    'User has mission slotlist community permission, but tried to update slot restricted to different community. Rejecting slot registration update');
+                throw Boom.forbidden();
+            }
+
+            log.debug(
+                {
+                    function: 'updateMissionSlotRegistration',
+                    slug,
+                    slotUid,
+                    registrationUid,
+                    confirmed,
+                    userUid,
+                    missionUid: mission.uid,
+                    userCommunityUid,
+                    restrictedCommunityUid: slot.restrictedCommunityUid
+                },
+                'User has mission slotlist community permission and is member of community the slot is restricted to. Allowing slot registration update');
+        }
 
         return sequelize.transaction(async (t: Transaction) => {
             log.debug(
@@ -2093,27 +2169,24 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         const registration = registrations[0];
 
         if (registration.userUid !== userUid) {
-            const requiredPermissions = [`mission.${slug}.creator`, `mission.${slug}.editor`];
-            const parsedPermissions = parsePermissions(request.auth.credentials.permissions);
-            if (_.has(parsedPermissions, '*')) {
+            if (hasPermission(request.auth.credentials.permissions, ['admin.mission', `mission.${slug}.creator`, `mission.${slug}.editor`])) {
                 log.debug(
-                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
-                    'User has global wildcard permission, allowing mission slot registration deletion');
-            }
-
-            const foundPermissions: string[] = _.filter(requiredPermissions, (requiredPermission: string) => {
-                return findPermission(parsedPermissions, requiredPermission);
-            });
-
-            if (_.isEmpty(foundPermissions)) {
+                    {
+                        function: 'deleteMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        userUid,
+                        registrationUid,
+                        missionUid: mission.uid,
+                        registrationUserUid: registration.userUid,
+                        credentials: request.auth.credentials
+                    },
+                    'User has mission creator, editor or admin permission, allowing mission slot registration deletion');
+            } else {
                 log.info(
                     { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
                     'User tried to delete mission slot registration that was created by a different user, denying');
                 throw Boom.forbidden();
-            } else {
-                log.debug(
-                    { function: 'deleteMissionSlotRegistration', slug, slotUid, userUid, registrationUid, missionUid: mission.uid, registrationUserUid: registration.userUid },
-                    'User has mission creator or editor permission, allowing mission slot registration deletion');
             }
         }
 

@@ -1434,6 +1434,9 @@ export const mission = [
                         'filled) or a regular one (false)').example(false),
                     blocked: Joi.bool().optional().description('New indicator whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
+                    externalAssignee: Joi.string().min(1).max(255).allow(null).optional().description('Nickname of external player assigned to the slot. Allows for slots ' +
+                        'to be assigned to users not present in the database. Cannot be set if a user has been assigned and vice versa. Set to `null` to remove the external ' +
+                        'assignee').example('MorpheusXAUT'),
                     moveAfter: Joi.number().integer().positive().allow(0).optional().description('Order number of the slot the slot should be moved after. Allows for ' +
                         'reordering of slots - all other order numbers will be adapted accordingly').example(9)
                 })
@@ -1728,11 +1731,12 @@ export const mission = [
                             })
                         },
                         409: {
-                            description: 'A registration for this mission slot already exists for the user',
+                            description: 'The slot already has an external assignee or a registration for this mission slot already exists for the user',
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Mission slot registration already exists').required().description('Message further describing the error')
+                                message: Joi.string().equal('Mission slot can only either have assignee or external assignee', 'Mission slot registration already exists')
+                                    .required().description('Message further describing the error')
                             })
                         },
                         500: {
@@ -1785,7 +1789,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor', 'mission.{{missionSlug}}.slotlist.community']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -1807,8 +1811,10 @@ export const mission = [
                             schema: Joi.object().required().keys({
                                 statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
-                                message: Joi.string().equal('Mission slot already assigned', 'User already assigned to another slot').required()
-                                    .description('Message further describing the error')
+                                message: Joi.string().equal(
+                                    'Mission slot can only either have assignee or external assignee',
+                                    'Mission slot already assigned',
+                                    'User already assigned to another slot').required().description('Message further describing the error')
                             })
                         },
                         500: {

@@ -573,7 +573,7 @@ export class Mission extends Model {
     // tslint:enable:max-line-length
     public async getSlotCounts(requestingUserUid: string | null = null, requestingUserCommunityUid: string | null = null): Promise<IMissionSlotCounts> {
         const slots = await MissionSlot.findAll({
-            attributes: ['assigneeUid', 'blocked', 'reserve', 'restrictedCommunityUid', 'uid'],
+            attributes: ['assigneeUid', 'blocked', 'externalAssignee', 'reserve', 'restrictedCommunityUid', 'uid'],
             include: [
                 {
                     model: MissionSlotGroup,
@@ -602,6 +602,7 @@ export class Mission extends Model {
         const counts: IMissionSlotCounts = {
             assigned: 0,
             blocked: 0,
+            external: 0,
             open: 0,
             reserve: 0,
             restricted: 0,
@@ -612,6 +613,8 @@ export class Mission extends Model {
         _.each(slots, (slot: MissionSlot) => {
             if (!_.isNil(slot.assigneeUid)) {
                 counts.assigned += 1;
+            } else if (!_.isNil(slot.externalAssignee)) {
+                counts.external += 1;
             } else if (slot.blocked) {
                 counts.blocked += 1;
             } else if (!_.isNil(slot.restrictedCommunityUid) && slot.restrictedCommunityUid === requestingUserCommunityUid && _.isEmpty(slot.registrations)) {
@@ -891,6 +894,7 @@ export interface IDetailedPublicMission extends IPublicMission {
 export interface IMissionSlotCounts {
     assigned: number;
     blocked: number;
+    external: number;
     open: number;
     reserve: number;
     restricted: number;
