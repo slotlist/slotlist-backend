@@ -1019,7 +1019,9 @@ export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.Reply
         const permission = await Permission.findOne({
             where: {
                 uid: permissionUid,
-                permission: `mission.${slug}.editor`
+                permission: {
+                    $or: [`mission.${slug}.editor`, `mission.${slug}.slotlist.community`]
+                }
             }
         });
         if (_.isNil(permission)) {
@@ -1687,7 +1689,14 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             limit: request.query.limit,
             offset: request.query.offset,
             where: { slotUid },
-            order: [['slotUid', 'ASC'], ['createdAt', 'ASC']]
+            order: [['slotUid', 'ASC'], ['createdAt', 'ASC']],
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slot',
+                    attributes: ['restrictedCommunityUid']
+                }
+            ]
         };
 
         const queryOptionsMission: any = {
@@ -1746,13 +1755,20 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
             throw Boom.notFound('Mission not found');
         }
 
-        let includeDetails: boolean = false;
+        let includeFullDetails: boolean = false;
+        let includeCommunityDetails: boolean = false;
         if (!_.isNil(userUid) && hasPermission(request.auth.credentials.permissions, ['admin.mission', `mission.${slug}.creator`, `mission.${slug}.editor`])) {
             log.debug(
                 { function: 'getMissionSlotRegistrationList', credentials: request.auth.credentials, userUid: userUid, hasPermission: true },
-                'User has mission creator, editor or admin permission, returning slot registration details');
+                'User has mission creator, editor or admin permission, returning full slot registration details');
 
-            includeDetails = true;
+            includeFullDetails = true;
+        } else if (!_.isNil(userUid) && hasPermission(request.auth.credentials.permissions, `mission.${slug}.slotlist.community`) && !_.isNil(userCommunityUid)) {
+            log.debug(
+                { function: 'getMissionSlotRegistrationList', credentials: request.auth.credentials, userUid: userUid, userCommunityUid, hasPermission: true },
+                'User has mission slotlist community permission, returning slot registration details for slots restricted to community');
+
+            includeCommunityDetails = true;
         }
 
         const slot = await mission.findSlot(slotUid);
@@ -1766,7 +1782,8 @@ export function getMissionSlotRegistrationList(request: Hapi.Request, reply: Hap
         const registrationCount = result.rows.length;
         const moreAvailable = (queryOptions.offset + registrationCount) < result.count;
         const registrationList = await Promise.map(result.rows, (registration: MissionSlotRegistration) => {
-            return registration.toPublicObject(includeDetails);
+            return registration.toPublicObject(includeFullDetails ||
+                (includeCommunityDetails && !_.isNil(registration.slot) && userCommunityUid === registration.slot.restrictedCommunityUid));
         });
 
         return {
@@ -1912,12 +1929,17 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 }
 
 export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
         const registrationUid = request.params.registrationUid;
         const confirmed = request.payload.confirmed === true;
         const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
         if (_.isNil(mission)) {
@@ -1948,6 +1970,46 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw Boom.notFound('Mission slot registration not found');
         }
         const registration = registrations[0];
+
+        if (!hasPermission(request.auth.credentials.permissions, [`mission.${slug}.creator`, `mission.${slug}.editor`])) {
+            if (_.isNil(userCommunityUid)) {
+                log.debug(
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    'User has mission slotlist community permission, but is not associated with any community. Rejecting slot registration update');
+                throw Boom.forbidden();
+            }
+
+            if (userCommunityUid !== slot.restrictedCommunityUid) {
+                log.debug(
+                    {
+                        function: 'updateMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        registrationUid,
+                        confirmed,
+                        userUid,
+                        missionUid: mission.uid,
+                        userCommunityUid,
+                        restrictedCommunityUid: slot.restrictedCommunityUid
+                    },
+                    'User has mission slotlist community permission, but tried to update slot restricted to different community. Rejecting slot registration update');
+                throw Boom.forbidden();
+            }
+
+            log.debug(
+                {
+                    function: 'updateMissionSlotRegistration',
+                    slug,
+                    slotUid,
+                    registrationUid,
+                    confirmed,
+                    userUid,
+                    missionUid: mission.uid,
+                    userCommunityUid,
+                    restrictedCommunityUid: slot.restrictedCommunityUid
+                },
+                'User has mission slotlist community permission and is member of community the slot is restricted to. Allowing slot registration update');
+        }
 
         return sequelize.transaction(async (t: Transaction) => {
             log.debug(
