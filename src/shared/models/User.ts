@@ -55,6 +55,7 @@ export class User extends Model {
      *         missionSlots: HasMany,
      *         missionSlotRegistrations: HasMany,
      *         missionSlotTemplates: HasMany,
+     *         notifications: HasMany,
      *         permissions: HasMany
      *     }}
      * @memberof User
@@ -67,6 +68,7 @@ export class User extends Model {
         missionSlots: HasMany,
         missionSlotRegistrations: HasMany,
         missionSlotTemplates: HasMany,
+        notifications: HasMany,
         permissions: HasMany
     };
 

@@ -379,8 +379,16 @@ export function createCommunityApplication(request: Hapi.Request, reply: Hapi.Re
             throw err;
         }
 
+        try {
+            await community.createApplicationSubmittedNotifications(userUid);
+        } catch (err) {
+            log.warn(
+                { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid, err },
+                'Received error during community application submitted notifications creation');
+        }
+
         log.debug(
-            { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid, applicationStatus: application.status },
+            { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid },
             'Successfully finished processing user application to community');
 
         return {
@@ -456,7 +464,10 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
                 { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
                 'Successfully updated community application');
 
+            let accepted: boolean = false;
             if (status === COMMUNITY_APPLICATION_STATUS_ACCEPTED) {
+                accepted = true;
+
                 log.debug(
                     { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
                     'Community application was accepted, adding member');
@@ -466,6 +477,14 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
                 log.debug(
                     { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
                     'Successfully added community member');
+            }
+
+            try {
+                await community.createApplicationProcessedNotification(application.userUid, accepted);
+            } catch (err) {
+                log.warn(
+                    { function: 'updateCommunityApplication', slug, applicationUid, userUid, err },
+                    'Received error during community application processed notification creation');
             }
 
             const publicApplication = await application.toPublicObject();
@@ -519,6 +538,14 @@ export function deleteCommunityApplication(request: Hapi.Request, reply: Hapi.Re
                 ]);
             }
 
+            try {
+                await community.createApplicationDeletedNotifications(application.userUid);
+            } catch (err) {
+                log.warn(
+                    { function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid, err },
+                    'Received error during community application deleted notifications creation');
+            }
+
             log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid }, 'Successfully deleted community application');
 
             return {
@@ -560,6 +587,14 @@ export function removeCommunityMember(request: Hapi.Request, reply: Hapi.ReplyWi
                 Permission.destroy({ where: { userUid: memberUid, permission: { $iLike: `community.${slug}.%` } } }),
                 CommunityApplication.destroy({ where: { userUid: memberUid, communityUid: community.uid } })
             ]);
+
+            try {
+                await community.createApplicationRemovedNotification(memberUid);
+            } catch (err) {
+                log.warn(
+                    { function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid, err },
+                    'Received error during community application removed notification creation');
+            }
 
             log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid }, 'Successfully removed community member');
 
@@ -797,6 +832,14 @@ export function createCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
             throw err;
         }
 
+        try {
+            await community.createPermissionNotification(payload.userUid, payload.permission, true);
+        } catch (err) {
+            log.warn(
+                { function: 'createCommunityPermission', payload, userUid, communityUid: community.uid, permissionUid: permission.uid, err },
+                'Received error during community permission granted notification creation');
+        }
+
         log.debug(
             { function: 'createCommunityPermission', payload, userUid, communityUid: community.uid, permissionUid: permission.uid },
             'Successfully created new community permission');
@@ -836,7 +879,18 @@ export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
 
         log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Deleting community permission');
 
+        const permissionUserUid = permission.userUid;
+        const permissionPermission = permission.permission;
+
         await permission.destroy();
+
+        try {
+            await community.createPermissionNotification(permissionUserUid, permissionPermission, false);
+        } catch (err) {
+            log.warn(
+                { function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid, err },
+                'Received error during community permission removed notification creation');
+        }
 
         log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Successfully deleted community permission');
 
