@@ -992,6 +992,14 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
             throw err;
         }
 
+        try {
+            await mission.createPermissionNotification(payload.userUid, payload.permission, true);
+        } catch (err) {
+            log.warn(
+                { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid, err },
+                'Received error during mission permission granted notification creation');
+        }
+
         log.debug(
             { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid },
             'Successfully created new mission permission');
@@ -1031,7 +1039,18 @@ export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.Reply
 
         log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Deleting mission permission');
 
+        const permissionUserUid = permission.userUid;
+        const permissionPermission = permission.permission;
+
         await permission.destroy();
+
+        try {
+            await mission.createPermissionNotification(permissionUserUid, permissionPermission, false);
+        } catch (err) {
+            log.warn(
+                { function: 'createMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid },
+                'Received error during mission permission revoked notification creation');
+        }
 
         log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission permission');
 
@@ -1497,6 +1516,9 @@ export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         return sequelize.transaction(async (t: Transaction) => {
             log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Deleting mission slot');
 
+            const slotAssigneeUid = slot.assigneeUid;
+            const slotTitle = slot.title;
+
             await slot.destroy();
 
             let slotOrderNumber = 1;
@@ -1522,6 +1544,16 @@ export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 'Successfully adapted mission slot ordering, recalculating mission slot order numbers');
 
             await mission.recalculateSlotOrderNumbers();
+
+            if (!_.isNil(slotAssigneeUid)) {
+                try {
+                    await mission.createSlotAssignmentChangedNotification(slotAssigneeUid, slotTitle, false);
+                } catch (err) {
+                    log.warn(
+                        { function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid, err },
+                        'Received error during mission slot unassignment notification creation');
+                }
+            }
 
             log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid, missionUid: mission.uid }, 'Successfully deleted mission slot');
 
@@ -1659,6 +1691,14 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 }), // run an upsert here since the user might already have a registration for the selected slot
                 slot.update({ assigneeUid: targetUserUid })
             ]);
+
+            try {
+                await mission.createSlotAssignmentChangedNotification(targetUserUid, slot.title, true);
+            } catch (err) {
+                log.warn(
+                    { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid, err },
+                    'Received error during mission slot assignment notification creation');
+            }
 
             log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Successfully assigned mission slot');
 
@@ -1916,6 +1956,14 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             throw err;
         }
 
+        try {
+            await mission.createSlotRegistrationSubmittedNotifications(userUid, slot.title);
+        } catch (err) {
+            log.warn(
+                { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid, err },
+                'Received error during mission slot registration submitted notifications creation');
+        }
+
         log.debug(
             { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid },
             'Successfully created new mission slot registration');
@@ -2042,6 +2090,14 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     registration.update({ confirmed })
                 ]);
 
+                try {
+                    await mission.createSlotAssignmentChangedNotification(registration.userUid, slot.title, true);
+                } catch (err) {
+                    log.warn(
+                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, err },
+                        'Received error during mission slot assignment notification creation');
+                }
+
                 log.debug(
                     { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
                     'Successfully confirmed mission slot registration');
@@ -2065,6 +2121,24 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                         'Mission slot assignee does not match registration user, only updating registration');
 
                     await registration.update({ confirmed });
+                }
+
+                try {
+                    await mission.createSlotAssignmentChangedNotification(registration.userUid, slot.title, false);
+                } catch (err) {
+                    log.warn(
+                        {
+                            function: 'updateMissionSlotRegistration',
+                            slug,
+                            slotUid,
+                            registrationUid,
+                            confirmed,
+                            userUid,
+                            missionUid: mission.uid,
+                            assigneeUid: slot.assigneeUid,
+                            err
+                        },
+                        'Received error during mission slot unassignment notification creation');
                 }
             } else {
                 log.debug(
@@ -2221,6 +2295,24 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     'Mission slot registration is not confirmed, only deleting mission slot registration');
 
                 await registration.destroy();
+            }
+
+            if (registration.userUid === userUid) {
+                try {
+                    await mission.createSlotRegistrationRemovedNotifications(userUid, slot.title);
+                } catch (err) {
+                    log.warn(
+                        {
+                            function: 'deleteMissionSlotRegistration',
+                            slug,
+                            slotUid,
+                            userUid,
+                            registrationUid,
+                            missionUid: mission.uid,
+                            registrationUserUid: registration.userUid
+                        },
+                        'Received error during mission slot registration deleted notifications creation');
+                }
             }
 
             log.debug(
