@@ -10,8 +10,19 @@ export const notificationDataCommunityApplicationSchema = Joi.object().keys({
     userNickname: Joi.string().min(1).max(255).required().description('Nickname of the user the application was created for').example('MorpheusXAUT')
 });
 
+export const notificationDataCommunitySchema = Joi.object().keys({
+    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community that was modified').example('spezialeinheit-luchs'),
+    communityName: Joi.string().min(1).max(255).required().description('Name of the community that was modified').example('Spezialeinheit Luchs')
+});
+
 export const notificationDataGenericSchema = Joi.object().keys({
     message: Joi.string().min(1).required().description('Generic notification message to display')
+});
+
+export const notificationDataMissionSchema = Joi.object().keys({
+    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission that was modified')
+        .example('all-of-altis'),
+    missionTitle: Joi.string().min(1).max(255).required().description('Title of the mission that was modified').example('All of Altis')
 });
 
 export const notificationDataMissionSlotSchema = Joi.object().keys({
@@ -38,7 +49,9 @@ export const notificationDataPermissionSchema = Joi.object().keys({
 
 export const notificationDataSchema = Joi.alternatives(
     notificationDataCommunityApplicationSchema,
+    notificationDataCommunitySchema,
     notificationDataGenericSchema,
+    notificationDataMissionSchema,
     notificationDataMissionSlotSchema,
     notificationDataPermissionSchema);
 

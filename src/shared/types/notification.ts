@@ -19,6 +19,10 @@ export const NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED = 'community.applic
  */
 export const NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW = 'community.application.new';
 /**
+ * Notification indicating a community has been deleted by its founder
+ */
+export const NOTIFICATION_TYPE_COMMUNITY_DELETED = 'community.deleted';
+/**
  * Notification indicating a new community permission has been granted to the user
  */
 export const NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED = 'community.permission.granted';
@@ -30,6 +34,10 @@ export const NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED = 'community.permiss
  * Represents a generic notification, mainly used as a default for unknown entries
  */
 export const NOTIFICATION_TYPE_GENERIC = 'generic';
+/**
+ * Notification indicating a mission has been deleted by the creator
+ */
+export const NOTIFICATION_TYPE_MISSION_DELETED = 'mission.deleted';
 /**
  * Notification indicating a new mission permission has been granted to the user
  */
@@ -54,6 +62,10 @@ export const NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED = 'mission.slot.unassigne
  * Notification indiciating a user has unregistered from a slot
  */
 export const NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED = 'mission.slot.unregistered';
+/**
+ * Notification indicating relevant parts of a mission (e.g. the mission times) have been updated
+ */
+export const NOTIFICATION_TYPE_MISSION_UPDATED = 'mission.updated';
 
 /**
  * List of possible `notificationType` values, indicating the trigger of the notification
@@ -64,13 +76,16 @@ export const NOTIFICATION_TYPES = [
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
+    NOTIFICATION_TYPE_COMMUNITY_DELETED,
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED,
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED,
     NOTIFICATION_TYPE_GENERIC,
+    NOTIFICATION_TYPE_MISSION_DELETED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
     NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED,
     NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
     NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
-    NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED
+    NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
+    NOTIFICATION_TYPE_MISSION_UPDATED
 ];

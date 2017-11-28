@@ -376,9 +376,27 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             payload.detailedDescription = await ImageService.parseMissionDescription(slug, payload.detailedDescription);
         }
 
+        let notifyUpdate: boolean = false;
+        if ((!_.isNil(payload.briefingTime) && !moment(payload.briefingTime).isSame(mission.briefingTime)) ||
+            (!_.isNil(payload.endTime) && !moment(payload.endTime).isSame(mission.endTime)) ||
+            (!_.isNil(payload.slottingTime) && !moment(payload.slottingTime).isSame(mission.slottingTime)) ||
+            (!_.isNil(payload.startTime) && !moment(payload.startTime).isSame(mission.startTime))) {
+            notifyUpdate = true;
+        }
+
         await mission.update(payload, {
             allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']
         });
+
+        if (notifyUpdate) {
+            try {
+                await mission.createMissionUpdatedNotifications();
+            } catch (err) {
+                log.warn(
+                    { function: 'updateMission', slug, payload, userUid, missionUid: mission.uid, err },
+                    'Received error during mission updated notifications creation');
+            }
+        }
 
         log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission');
 
@@ -415,6 +433,12 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } }),
                 ImageService.deleteAllMissionImages(urlJoin(MISSION_IMAGE_PATH, slug))
             ]);
+
+            try {
+                await mission.createMissionUpdatedNotifications();
+            } catch (err) {
+                log.warn({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Received error during mission deleted notifications creation');
+            }
 
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Successfully deleted mission');
 
@@ -1316,6 +1340,16 @@ export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
         return sequelize.transaction(async (t: Transaction) => {
             log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid }, 'Deleting mission slot group');
 
+            const slotsWithAssignees = await MissionSlot.findAll({
+                where: {
+                    slotGroupUid: slotGroup.uid,
+                    $not: {
+                        assigneeUid: null
+                    }
+                },
+                attributes: ['assigneeUid', 'title']
+            });
+
             await slotGroup.destroy();
 
             let slotGroupOrderNumber = 1;
@@ -1335,6 +1369,18 @@ export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
             await Promise.map(slotGroupsToUpdate, (group: MissionSlotGroup) => {
                 return group.save();
             });
+
+            if (!_.isEmpty(slotsWithAssignees)) {
+                try {
+                    await Promise.map(slotsWithAssignees, (slot: MissionSlot) => {
+                        return mission.createSlotAssignmentChangedNotification(<string>slot.assigneeUid, slot.title, false);
+                    });
+                } catch (err) {
+                    log.warn(
+                        { function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid, orderNumber, err },
+                        'Received error during mission slot unassignment notification creation');
+                }
+            }
 
             log.debug(
                 { function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid, missionUid: mission.uid, orderNumber },

@@ -19,12 +19,14 @@ import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
 import {
+    NOTIFICATION_TYPE_MISSION_DELETED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
     NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED,
     NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
     NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
-    NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED
+    NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
+    NOTIFICATION_TYPE_MISSION_UPDATED
 } from '../types/notification';
 import { Community, IPublicCommunity } from './Community';
 import { MissionAccess } from './MissionAccess';
@@ -531,47 +533,96 @@ export class Mission extends Model {
     ////////////////////////////
 
     /**
-     * Creates a notification for a slot assignment change for the given user
+     * Creates a notification when a mission has been deleted, notifying all registered users and mission editors
      *
-     * @param {(User | string)} userOrUserUid User or user UID that had the slot assigned or unassigned
-     * @param {string} slotTitle Title of the slot that was assigned or unassigned
-     * @param {boolean} assigned Indicates whether the slot was assigned or unassigned
-     * @returns {Promise<void>} Promise fulfilled when notification was created
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
      * @memberof Mission
      */
-    public async createSlotAssignmentChangedNotification(userOrUserUid: User | string, slotTitle: string, assigned: boolean): Promise<void> {
-        let user: User;
-        if (_.isString(userOrUserUid)) {
-            const u = await User.findById(userOrUserUid);
-            if (_.isNil(u)) {
-                log.warn(
-                    { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: userOrUserUid },
-                    'Cannot create slot assignment notification for mission, user not found');
-                throw Boom.notFound('User not found', { missionUid: this.uid, userUid: userOrUserUid });
-            }
+    public async createMissionDeletedNotifications(): Promise<void> {
+        log.debug({ function: 'createMissionDeletedNotifications', missionUid: this.uid }, 'Creating deleted notification for mission');
 
-            user = u;
-        } else {
-            user = userOrUserUid;
-        }
+        const [registrations, editorPermissions] = await Promise.all([
+            MissionSlotRegistration.findAll({
+                include: [
+                    {
+                        model: MissionSlot,
+                        as: 'slot',
+                        include: [
+                            {
+                                model: Mission,
+                                as: 'mission',
+                                where: {
+                                    uid: this.uid
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }),
+            Permission.findAll({
+                where: {
+                    permission: {
+                        $or: [`mission.${this.slug}.editor`, `mission.${this.slug}.slotlist.community`]
+                    }
+                }
+            })
+        ]);
 
-        log.debug({ function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid }, 'Creating slot assignment notification for mission');
+        const userUids = _.uniq(_.concat(_.map(registrations, 'userUid'), _.map(editorPermissions, 'userUid')));
 
-        await Notification.create({
-            userUid: user.uid,
-            type: assigned ? NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED : NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
-            data: {
-                userUid: user.uid,
-                userNickname: user.nickname,
-                missionSlug: this.slug,
-                missionTitle: this.title,
-                slotTitle: slotTitle
-            }
+        await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                type: NOTIFICATION_TYPE_MISSION_DELETED,
+                data: {
+                    missionSlug: this.slug,
+                    missionTitle: this.title
+                }
+            });
         });
 
-        log.debug(
-            { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid },
-            'Successfully created slot assignment notification for mission');
+        log.debug({ function: 'createMissionDeletedNotifications', missionUid: this.uid }, 'Successfully created deleted notification for mission');
+    }
+
+    /**
+     * Creates a notification when a mission has been updated, notifying all registered users
+     *
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Mission
+     */
+    public async createMissionUpdatedNotifications(): Promise<void> {
+        log.debug({ function: 'createMissionUpdatedNotifications', missionUid: this.uid }, 'Creating updated notifications for mission');
+
+        const registrations = await MissionSlotRegistration.findAll({
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slot',
+                    include: [
+                        {
+                            model: Mission,
+                            as: 'mission',
+                            where: {
+                                uid: this.uid
+                            }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        await Promise.map(registrations, (registration: MissionSlotRegistration) => {
+            return Notification.create({
+                userUid: registration.userUid,
+                type: NOTIFICATION_TYPE_MISSION_UPDATED,
+                data: {
+                    missionSlug: this.slug,
+                    missionTitle: this.title
+                }
+            });
+        });
+
+        log.debug({ function: 'createMissionUpdatedNotifications', missionUid: this.uid }, 'Successfully created updated notifications for mission');
     }
 
     /**
@@ -614,6 +665,50 @@ export class Mission extends Model {
         log.debug(
             { function: 'createPermissionNotification', missionUid: this.uid, userUid: user.uid },
             'Successfully created permission notification for mission');
+    }
+
+    /**
+     * Creates a notification for a slot assignment change for the given user
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that had the slot assigned or unassigned
+     * @param {string} slotTitle Title of the slot that was assigned or unassigned
+     * @param {boolean} assigned Indicates whether the slot was assigned or unassigned
+     * @returns {Promise<void>} Promise fulfilled when notification was created
+     * @memberof Mission
+     */
+    public async createSlotAssignmentChangedNotification(userOrUserUid: User | string, slotTitle: string, assigned: boolean): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create slot assignment notification for mission, user not found');
+                throw Boom.notFound('User not found', { missionUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid }, 'Creating slot assignment notification for mission');
+
+        await Notification.create({
+            userUid: user.uid,
+            type: assigned ? NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED : NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
+            data: {
+                userUid: user.uid,
+                userNickname: user.nickname,
+                missionSlug: this.slug,
+                missionTitle: this.title,
+                slotTitle: slotTitle
+            }
+        });
+
+        log.debug(
+            { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid },
+            'Successfully created slot assignment notification for mission');
     }
 
     /**

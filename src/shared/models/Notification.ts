@@ -13,7 +13,9 @@ import sequelize from '../util/sequelize';
 
 import {
     notificationDataCommunityApplicationSchema,
+    notificationDataCommunitySchema,
     notificationDataGenericSchema,
+    notificationDataMissionSchema,
     notificationDataMissionSlotSchema,
     notificationDataPermissionSchema
 } from '../schemas/notification';
@@ -23,15 +25,18 @@ import {
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
+    NOTIFICATION_TYPE_COMMUNITY_DELETED,
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED,
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED,
     NOTIFICATION_TYPE_GENERIC,
+    NOTIFICATION_TYPE_MISSION_DELETED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
     NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED,
     NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
     NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
     NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
+    NOTIFICATION_TYPE_MISSION_UPDATED,
     NOTIFICATION_TYPES
 } from '../types/notification';
 import { User } from './User';
@@ -96,10 +101,12 @@ export class Notification extends Model {
 
     /**
      * Stores additional data, providing information about what triggered the notification.
-     * Can e.g. contain a missionUid, communityUid, slotUid, permission or likewise.
+     * Can e.g. contain a missionSlug, communitySlug, userUid, permission or likewise.
      *
-     * @type {(INotificationDataCommunityApplication |
+     * @type {(INotificationDataCommunity |
+     *     INotificationDataCommunityApplication |
      *     INotificationDataGeneric |
+     *     INotificationDataMission |
      *     INotificationDataMissionSlot |
      *     INotificationDataPermission)}
      * @memberof Notification
@@ -118,11 +125,18 @@ export class Notification extends Model {
                     case NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED:
                         schema = notificationDataCommunityApplicationSchema;
                         break;
+                    case NOTIFICATION_TYPE_COMMUNITY_DELETED:
+                        schema = notificationDataCommunitySchema;
+                        break;
                     case NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED:
                     case NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED:
                     case NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED:
                     case NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED:
                         schema = notificationDataPermissionSchema;
+                        break;
+                    case NOTIFICATION_TYPE_MISSION_DELETED:
+                    case NOTIFICATION_TYPE_MISSION_UPDATED:
+                        schema = notificationDataMissionSchema;
                         break;
                     case NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED:
                     case NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW:
@@ -142,8 +156,10 @@ export class Notification extends Model {
             }
         }
     })
-    public data: INotificationDataCommunityApplication |
+    public data: INotificationDataCommunity |
+    INotificationDataCommunityApplication |
     INotificationDataGeneric |
+    INotificationDataMission |
     INotificationDataMissionSlot |
     INotificationDataPermission;
 
@@ -265,12 +281,26 @@ export class Notification extends Model {
 export interface IPublicNotification {
     uid: string;
     notificationType: string;
-    data: INotificationDataCommunityApplication |
+    data: INotificationDataCommunity |
+    INotificationDataCommunityApplication |
     INotificationDataGeneric |
+    INotificationDataMission |
     INotificationDataMissionSlot |
     INotificationDataPermission;
     seenAt: Date | null;
     createdAt: Date;
+}
+
+/**
+ * Additional notification data for type `NOTIFICATION_TYPE_COMMUNITY_DELETED`.
+ * Contains information about the community that was deleted.
+ *
+ * @export
+ * @interface INotificationDataCommunity
+ */
+export interface INotificationDataCommunity {
+    communitySlug: string;
+    communityName: string;
 }
 
 /**
@@ -297,6 +327,18 @@ export interface INotificationDataCommunityApplication {
  */
 export interface INotificationDataGeneric {
     message: string;
+}
+
+/**
+ * Additional notification data for types `NOTIFICATION_TYPE_MISSION_DELETED` and `NOTIFICATION_TYPE_MISSION_UPDATED`.
+ * Contains information about the mission that was modified.
+ *
+ * @export
+ * @interface INotificationDataMission
+ */
+export interface INotificationDataMission {
+    missionSlug: string;
+    missionTitle: string;
 }
 
 /**
