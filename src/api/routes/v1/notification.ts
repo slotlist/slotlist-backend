@@ -26,8 +26,8 @@ export const notifications = [
                 mode: 'required'
             },
             description: 'Returns a list of all notifications for the user',
-            notes: 'Returns a paginated list of all notifications for the user, only including unseen ones by default. Up to 250 notifications can be requested at once, ' +
-            'pagination has to be used to retrieve the rest. Regular user authentication is required to access this endpoint',
+            notes: 'Returns a list of all notifications for the user, only including unseen ones by default. Since retrieving a notification will mark it as seen immediately, ' +
+            'no pagination is available for this endpoint. Regular user authentication is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'notifications', 'list'],
             validate: {
                 options: {
@@ -37,25 +37,11 @@ export const notifications = [
                     authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
                 }).unknown(true),
                 query: Joi.object().required().keys({
-                    includeSeen: Joi.bool().default(false).optional().description('Toggles whether already seen notifications should also be included in the retrieved list'),
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.notificationList.max).default(LIMITS.notificationList.default).optional()
-                        .description('Limit for number of notifications to retrieve, defaults to 50 (used for pagination in combination with offset)'),
-                    offset: Joi.number().integer().min(0).default(0).optional()
-                        .description('Number of notifications to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination ' +
-                        'with limit)')
+                    includeSeen: Joi.bool().default(false).optional().description('Toggles whether already seen notifications should also be included in the retrieved list')
                 })
             },
             response: {
                 schema: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.notificationList.max).optional()
-                        .description('Limit for number of notifications to retrieve, as provided via query'),
-                    offset: Joi.number().integer().positive().allow(0).min(0).optional()
-                        .description('Number of notifications to skip before retrieving new ones from database, as provided via query. Omitted if query including ' +
-                        '`startDate` was executed'),
-                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.notificationList.max).optional()
-                        .description('Actual number of notifications returned. Omitted if query including `startDate` was executed'),
-                    total: Joi.number().integer().positive().allow(0).min(0).optional().description('Total number of notifications stored'),
-                    moreAvailable: Joi.bool().optional().description('Indicates whether more notifications are available and can be retrieved using pagination'),
                     notifications: Joi.array().items(schemas.notificationSchema.optional()).required().description('List of notifications retrieved')
                 }).label('GetNotificationListResponse').description('Response containing list of currently unseen notifications')
             },
