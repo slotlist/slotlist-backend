@@ -24,6 +24,7 @@ import {
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
+    NOTIFICATION_TYPE_COMMUNITY_DELETED,
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED,
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED
 } from '../types/notification';
@@ -417,10 +418,12 @@ export class Community extends Model {
             }
         });
 
-        await Promise.map(recruitmentPermissions, (recruitmentPermission: Permission) => {
+        const userUids = _.uniq(_.map(recruitmentPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
             return Notification.create({
-                userUid: recruitmentPermission.userUid,
-                type: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
+                userUid,
+                notificationType: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
                 data: {
                     communitySlug: this.slug,
                     communityName: this.name,
@@ -431,7 +434,7 @@ export class Community extends Model {
         });
 
         log.debug(
-            { function: 'createApplicationDeletedNotification', communityUid: this.uid, userUid: user.uid },
+            { function: 'createApplicationDeletedNotification', communityUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
             'Successfully created application submitted notifications for community');
     }
 
@@ -461,9 +464,9 @@ export class Community extends Model {
 
         log.debug({ function: 'createApplicationProcessedNotification', communityUid: this.uid, userUid: user.uid }, 'Creating application processed notification for community');
 
-        await Notification.create({
+        const notification = await Notification.create({
             userUid: user.uid,
-            type: accepted ? NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED : NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
+            notificationType: accepted ? NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED : NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
             data: {
                 communitySlug: this.slug,
                 communityName: this.name,
@@ -473,7 +476,7 @@ export class Community extends Model {
         });
 
         log.debug(
-            { function: 'createApplicationProcessedNotification', communityUid: this.uid, userUid: user.uid },
+            { function: 'createApplicationProcessedNotification', communityUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
             'Successfully created application processed notification for community');
     }
 
@@ -502,9 +505,9 @@ export class Community extends Model {
 
         log.debug({ function: 'createApplicationRemovedNotification', communityUid: this.uid, userUid: user.uid }, 'Creating application removed notification for community');
 
-        await Notification.create({
+        const notification = await Notification.create({
             userUid: user.uid,
-            type: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
+            notificationType: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
             data: {
                 communitySlug: this.slug,
                 communityName: this.name,
@@ -514,7 +517,7 @@ export class Community extends Model {
         });
 
         log.debug(
-            { function: 'createApplicationRemovedNotification', communityUid: this.uid, userUid: user.uid },
+            { function: 'createApplicationRemovedNotification', communityUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
             'Successfully created application removed notification for community');
     }
 
@@ -551,10 +554,12 @@ export class Community extends Model {
             }
         });
 
-        await Promise.map(recruitmentPermissions, (recruitmentPermission: Permission) => {
+        const userUids = _.uniq(_.map(recruitmentPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
             return Notification.create({
-                userUid: recruitmentPermission.userUid,
-                type: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
+                userUid,
+                notificationType: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
                 data: {
                     communitySlug: this.slug,
                     communityName: this.name,
@@ -565,8 +570,37 @@ export class Community extends Model {
         });
 
         log.debug(
-            { function: 'createApplicationSubmittedNotifications', communityUid: this.uid, userUid: user.uid },
+            { function: 'createApplicationSubmittedNotifications', communityUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
             'Successfully created application submitted notifications for community');
+    }
+
+    /**
+     * Creates a notification when a community has been deleted, notifying all members
+     *
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Community
+     */
+    public async createCommunityDeletedNotifications(): Promise<void> {
+        log.debug({ function: 'createCommunityDeletedNotifications', communityUid: this.uid }, 'Creating deleted notifications for community');
+
+        const members = await User.findAll({ where: { communityUid: this.uid }, attributes: ['uid'] });
+
+        const userUids = _.uniq(_.map(members, 'uid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_COMMUNITY_DELETED,
+                data: {
+                    communitySlug: this.slug,
+                    communityName: this.name
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createCommunityDeletedNotifications', communityUid: this.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created deleted notifications for community');
     }
 
     /**
@@ -596,9 +630,9 @@ export class Community extends Model {
 
         log.debug({ function: 'createPermissionNotification', communityUid: this.uid, userUid: user.uid }, 'Creating permission notification for community');
 
-        await Notification.create({
+        const notification = await Notification.create({
             userUid: user.uid,
-            type: granted ? NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED : NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED,
+            notificationType: granted ? NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED : NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED,
             data: {
                 permission,
                 communitySlug: this.slug,
@@ -607,7 +641,7 @@ export class Community extends Model {
         });
 
         log.debug(
-            { function: 'createPermissionNotification', communityUid: this.uid, userUid: user.uid },
+            { function: 'createPermissionNotification', communityUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
             'Successfully created permission notification for community');
     }
 

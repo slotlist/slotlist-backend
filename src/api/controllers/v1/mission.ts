@@ -428,17 +428,17 @@ export function deleteMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         return sequelize.transaction(async (t: Transaction) => {
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Deleting mission');
 
+            try {
+                await mission.createMissionDeletedNotifications();
+            } catch (err) {
+                log.warn({ function: 'deleteMission', slug, userUid, missionUid: mission.uid, err }, 'Received error during mission deleted notifications creation');
+            }
+
             await Promise.all([
                 mission.destroy(),
                 Permission.destroy({ where: { permission: { $iLike: `mission.${slug}.%` } } }),
                 ImageService.deleteAllMissionImages(urlJoin(MISSION_IMAGE_PATH, slug))
             ]);
-
-            try {
-                await mission.createMissionUpdatedNotifications();
-            } catch (err) {
-                log.warn({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Received error during mission deleted notifications creation');
-            }
 
             log.debug({ function: 'deleteMission', slug, userUid, missionUid: mission.uid }, 'Successfully deleted mission');
 
@@ -986,7 +986,7 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'createMissionPermission', slug, payload, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -997,7 +997,7 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
             throw Boom.badRequest('Invalid mission permission');
         }
 
-        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid'] });
+        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid', 'nickname', 'communityUid'] });
         if (_.isNil(targetUser)) {
             log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Mission permission target user with given UID not found');
             throw Boom.notFound('User not found');
@@ -1017,7 +1017,7 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
         }
 
         try {
-            await mission.createPermissionNotification(payload.userUid, payload.permission, true);
+            await mission.createPermissionNotification(targetUser, payload.permission, true);
         } catch (err) {
             log.warn(
                 { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid, err },
@@ -1042,7 +1042,7 @@ export function deleteMissionPermission(request: Hapi.Request, reply: Hapi.Reply
         const permissionUid = request.params.permissionUid;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'deleteMissionPermission', slug, permissionUid, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1322,7 +1322,7 @@ export function deleteMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
         const slotGroupUid = request.params.slotGroupUid;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'deleteMissionSlotGroup', slug, slotGroupUid, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1534,7 +1534,7 @@ export function deleteMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const slotUid = request.params.slotUid;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'deleteMissionSlot', slug, slotUid, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1620,7 +1620,7 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const targetUserUid = request.payload.userUid;
         const forceAssignment = request.payload.force;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1898,7 +1898,7 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 
         const queryOptionsMission: any = {
             where: { slug },
-            attributes: ['uid']
+            attributes: ['uid', 'slug', 'title']
         };
 
         if (_.isNil(userUid)) {
@@ -2035,7 +2035,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             userCommunityUid = request.auth.credentials.user.community.uid;
         }
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -2221,7 +2221,7 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
             where: {
                 slug
             },
-            attributes: ['uid']
+            attributes: ['uid', 'slug', 'title']
         };
 
         if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {

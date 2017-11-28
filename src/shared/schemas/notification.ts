@@ -30,8 +30,10 @@ export const notificationDataMissionSlotSchema = Joi.object().keys({
         .example('all-of-altis'),
     missionTitle: Joi.string().min(1).max(255).required().description('Title of the mission the slot assignment was changed for').example('All of Altis'),
     slotTitle: Joi.string().min(1).max(255).required().description('Title of the slot the assignment was changed for').example('Platoon Lead'),
-    userUid: Joi.string().guid().length(36).required().description('UID of the user the application was created for').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
-    userNickname: Joi.string().min(1).max(255).required().description('Nickname of the user the application was created for').example('MorpheusXAUT')
+    userUid: Joi.string().guid().length(36).required().description('UID of the user the slot assignment was created for').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+    userNickname: Joi.string().min(1).max(255).required().description('Nickname of the user the slot assignment was created for').example('MorpheusXAUT'),
+    userCommunityTag: Joi.string().min(1).max(255).allow(null).default(null).optional().description('Community tag of the user the slot assignment was created for, if set')
+        .example('SeL')
 });
 
 export const notificationDataPermissionSchema = Joi.object().keys({
@@ -44,8 +46,7 @@ export const notificationDataPermissionSchema = Joi.object().keys({
         'changed was a mission permission').example('all-of-altis'),
     missionTitle: Joi.string().min(1).max(255).optional().description('Title of the mission the permission was changed for. Only present if the permission changed was a ' +
         'mission permission').example('All of Altis')
-}).with('communitySlug', 'communityName').with('missionSlug', 'missionName').without('communitySlug', ['missionSlug', 'missionName'])
-    .without('missionSlug', ['communitySlug', 'communityName']);
+});
 
 export const notificationDataSchema = Joi.alternatives(
     notificationDataCommunityApplicationSchema,

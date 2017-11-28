@@ -539,7 +539,7 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public async createMissionDeletedNotifications(): Promise<void> {
-        log.debug({ function: 'createMissionDeletedNotifications', missionUid: this.uid }, 'Creating deleted notification for mission');
+        log.debug({ function: 'createMissionDeletedNotifications', missionUid: this.uid }, 'Creating deleted notifications for mission');
 
         const [registrations, editorPermissions] = await Promise.all([
             MissionSlotRegistration.findAll({
@@ -547,15 +547,26 @@ export class Mission extends Model {
                     {
                         model: MissionSlot,
                         as: 'slot',
+                        attributes: ['uid'],
                         include: [
                             {
-                                model: Mission,
-                                as: 'mission',
-                                where: {
-                                    uid: this.uid
-                                }
+                                model: MissionSlotGroup,
+                                as: 'slotGroup',
+                                attributes: ['uid'],
+                                include: [
+                                    {
+                                        model: Mission,
+                                        as: 'mission',
+                                        attributes: ['uid'],
+                                        where: {
+                                            uid: this.uid
+                                        }
+                                    }
+                                ],
+                                required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
                             }
-                        ]
+                        ],
+                        required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
                     }
                 ]
             }),
@@ -570,10 +581,10 @@ export class Mission extends Model {
 
         const userUids = _.uniq(_.concat(_.map(registrations, 'userUid'), _.map(editorPermissions, 'userUid')));
 
-        await Promise.map(userUids, (userUid: string) => {
+        const notifications = await Promise.map(userUids, (userUid: string) => {
             return Notification.create({
                 userUid,
-                type: NOTIFICATION_TYPE_MISSION_DELETED,
+                notificationType: NOTIFICATION_TYPE_MISSION_DELETED,
                 data: {
                     missionSlug: this.slug,
                     missionTitle: this.title
@@ -581,7 +592,9 @@ export class Mission extends Model {
             });
         });
 
-        log.debug({ function: 'createMissionDeletedNotifications', missionUid: this.uid }, 'Successfully created deleted notification for mission');
+        log.debug(
+            { function: 'createMissionDeletedNotifications', missionUid: this.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created deleted notifications for mission');
     }
 
     /**
@@ -598,23 +611,36 @@ export class Mission extends Model {
                 {
                     model: MissionSlot,
                     as: 'slot',
+                    attributes: ['uid'],
                     include: [
                         {
-                            model: Mission,
-                            as: 'mission',
-                            where: {
-                                uid: this.uid
-                            }
+                            model: MissionSlotGroup,
+                            as: 'slotGroup',
+                            attributes: ['uid'],
+                            include: [
+                                {
+                                    model: Mission,
+                                    as: 'mission',
+                                    attributes: ['uid'],
+                                    where: {
+                                        uid: this.uid
+                                    }
+                                }
+                            ],
+                            required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
                         }
-                    ]
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
                 }
             ]
         });
 
-        await Promise.map(registrations, (registration: MissionSlotRegistration) => {
+        const userUids = _.uniq(_.map(registrations, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
             return Notification.create({
-                userUid: registration.userUid,
-                type: NOTIFICATION_TYPE_MISSION_UPDATED,
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_UPDATED,
                 data: {
                     missionSlug: this.slug,
                     missionTitle: this.title
@@ -622,7 +648,9 @@ export class Mission extends Model {
             });
         });
 
-        log.debug({ function: 'createMissionUpdatedNotifications', missionUid: this.uid }, 'Successfully created updated notifications for mission');
+        log.debug(
+            { function: 'createMissionUpdatedNotifications', missionUid: this.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created updated notifications for mission');
     }
 
     /**
@@ -652,9 +680,9 @@ export class Mission extends Model {
 
         log.debug({ function: 'createPermissionNotification', missionUid: this.uid, userUid: user.uid }, 'Creating permission notification for mission');
 
-        await Notification.create({
+        const notification = await Notification.create({
             userUid: user.uid,
-            type: granted ? NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED : NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
+            notificationType: granted ? NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED : NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
             data: {
                 permission,
                 missionSlug: this.slug,
@@ -663,7 +691,7 @@ export class Mission extends Model {
         });
 
         log.debug(
-            { function: 'createPermissionNotification', missionUid: this.uid, userUid: user.uid },
+            { function: 'createPermissionNotification', missionUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
             'Successfully created permission notification for mission');
     }
 
@@ -692,14 +720,24 @@ export class Mission extends Model {
             user = userOrUserUid;
         }
 
+        let userCommunityTag: string | null = null;
+        if (!_.isNil(user.communityUid)) {
+            if (_.isNil(user.community)) {
+                user.community = await user.getCommunity();
+            }
+
+            userCommunityTag = user.community.tag;
+        }
+
         log.debug({ function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid }, 'Creating slot assignment notification for mission');
 
-        await Notification.create({
+        const notification = await Notification.create({
             userUid: user.uid,
-            type: assigned ? NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED : NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
+            notificationType: assigned ? NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED : NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
             data: {
                 userUid: user.uid,
                 userNickname: user.nickname,
+                userCommunityTag,
                 missionSlug: this.slug,
                 missionTitle: this.title,
                 slotTitle: slotTitle
@@ -707,7 +745,7 @@ export class Mission extends Model {
         });
 
         log.debug(
-            { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid },
+            { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
             'Successfully created slot assignment notification for mission');
     }
 
@@ -736,6 +774,7 @@ export class Mission extends Model {
         }
 
         let queryOptions: any;
+        let userCommunityTag: string | null = null;
         if (_.isNil(user.communityUid)) {
             queryOptions = {
                 where: {
@@ -748,6 +787,8 @@ export class Mission extends Model {
             if (_.isNil(user.community)) {
                 user.community = await user.getCommunity();
             }
+
+            userCommunityTag = user.community.tag;
 
             queryOptions = {
                 where: {
@@ -771,13 +812,16 @@ export class Mission extends Model {
 
         const editorPermissions = await Permission.findAll(queryOptions);
 
-        await Promise.map(editorPermissions, (editorPermission: Permission) => {
+        const userUids = _.uniq(_.map(editorPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
             return Notification.create({
-                userUid: editorPermission.userUid,
-                type: NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
                 data: {
                     userUid: user.uid,
                     userNickname: user.nickname,
+                    userCommunityTag,
                     missionSlug: this.slug,
                     missionTitle: this.title,
                     slotTitle: slotTitle
@@ -786,7 +830,7 @@ export class Mission extends Model {
         });
 
         log.debug(
-            { function: 'createSlotRegistrationRemovedNotifications', missionUid: this.uid, userUid: user.uid },
+            { function: 'createSlotRegistrationRemovedNotifications', missionUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
             'Successfully created slot registration removed notifications for mission');
     }
 
@@ -815,6 +859,7 @@ export class Mission extends Model {
         }
 
         let queryOptions: any;
+        let userCommunityTag: string | null = null;
         if (_.isNil(user.communityUid)) {
             queryOptions = {
                 where: {
@@ -827,6 +872,8 @@ export class Mission extends Model {
             if (_.isNil(user.community)) {
                 user.community = await user.getCommunity();
             }
+
+            userCommunityTag = user.community.tag;
 
             queryOptions = {
                 where: {
@@ -850,13 +897,16 @@ export class Mission extends Model {
 
         const editorPermissions = await Permission.findAll(queryOptions);
 
-        await Promise.map(editorPermissions, (editorPermission: Permission) => {
+        const userUids = _.uniq(_.map(editorPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
             return Notification.create({
-                userUid: editorPermission.userUid,
-                type: NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
                 data: {
                     userUid: user.uid,
                     userNickname: user.nickname,
+                    userCommunityTag,
                     missionSlug: this.slug,
                     missionTitle: this.title,
                     slotTitle: slotTitle
@@ -865,7 +915,7 @@ export class Mission extends Model {
         });
 
         log.debug(
-            { function: 'createSlotRegistrationSubmittedNotifications', missionUid: this.uid, userUid: user.uid },
+            { function: 'createSlotRegistrationSubmittedNotifications', missionUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
             'Successfully created slot registration submitted notifications for mission');
     }
 

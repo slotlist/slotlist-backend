@@ -355,6 +355,7 @@ export interface INotificationDataMissionSlot {
     slotTitle: string;
     userUid: string;
     userNickname: string;
+    userCommunityTag: string | null;
 }
 
 /**
