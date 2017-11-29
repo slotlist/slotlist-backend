@@ -13,11 +13,14 @@ export function getNotificationList(request: Hapi.Request, reply: Hapi.ReplyWith
 
         const queryOptions: any = {
             where: {
-                userUid,
-                seenAt: request.query.includeSeen ? undefined : null
+                userUid
             },
             order: [['createdAt', 'DESC']]
         };
+
+        if (!request.query.includeSeen) {
+            queryOptions.where.seenAt = null;
+        }
 
         const notifications = await Notification.findAll(queryOptions);
 
