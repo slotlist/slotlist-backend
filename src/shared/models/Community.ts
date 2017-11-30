@@ -18,9 +18,20 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import {
+    NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED,
+    NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
+    NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
+    NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
+    NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
+    NOTIFICATION_TYPE_COMMUNITY_DELETED,
+    NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED,
+    NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED
+} from '../types/notification';
 import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
 import { MissionAccess } from './MissionAccess';
+import { Notification } from './Notification';
 import { Permission } from './Permission';
 import { IPublicUser, User } from './User';
 
@@ -372,6 +383,266 @@ export class Community extends Model {
         const permission = await user.createPermission({ permission: `community.${this.slug}.${founder ? 'founder' : 'leader'}` });
 
         log.debug({ function: 'addLeader', communityUid: this.uid, userUid: user.uid, founder, permissionUid: permission.uid }, 'Successfully added leader to community');
+    }
+
+    /**
+     * Creates a notification for a community application deleted by the provided user for all users with recruitment permissions in the community
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that deleted the application´
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Community
+     */
+    public async createApplicationDeletedNotifications(userOrUserUid: User | string): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createApplicationDeletedNotification', communityUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create application submitted notifications for community, user not found');
+                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createApplicationDeletedNotification', communityUid: this.uid, userUid: user.uid }, 'Creating application deleted notifications for community');
+
+        const recruitmentPermissions = await Permission.findAll({
+            where: {
+                permission: {
+                    $or: [`community.${this.slug}.founder`, `community.${this.slug}.leader`, `community.${this.slug}.recruitment`]
+                }
+            }
+        });
+
+        const userUids = _.uniq(_.map(recruitmentPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
+                data: {
+                    communitySlug: this.slug,
+                    communityName: this.name,
+                    userUid: user.uid,
+                    userNickname: user.nickname
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createApplicationDeletedNotification', communityUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created application submitted notifications for community');
+    }
+
+    /**
+     * Creates a notification for community application by the provided user that was either accepted or denied
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that applied to the community
+     * @param {boolean} accepted Indicates whether the application was accepted or denied
+     * @returns {Promise<void>} Promise fulfilled when notification has been created
+     * @memberof Community
+     */
+    public async createApplicationProcessedNotification(userOrUserUid: User | string, accepted: boolean): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createApplicationProcessedNotification', communityUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create application processed notification for community, user not found');
+                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createApplicationProcessedNotification', communityUid: this.uid, userUid: user.uid }, 'Creating application processed notification for community');
+
+        const notification = await Notification.create({
+            userUid: user.uid,
+            notificationType: accepted ? NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED : NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
+            data: {
+                communitySlug: this.slug,
+                communityName: this.name,
+                userUid: user.uid,
+                userNickname: user.nickname
+            }
+        });
+
+        log.debug(
+            { function: 'createApplicationProcessedNotification', communityUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
+            'Successfully created application processed notification for community');
+    }
+
+    /**
+     * Creates a notification for a user that has had their community application (and thus their member) status removed from a community
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that has been removed
+     * @returns {Promise<void>} Promise fulfilled when notification has been created
+     * @memberof Community
+     */
+    public async createApplicationRemovedNotification(userOrUserUid: User | string): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createApplicationRemovedNotification', communityUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create application removed notification for community, user not found');
+                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createApplicationRemovedNotification', communityUid: this.uid, userUid: user.uid }, 'Creating application removed notification for community');
+
+        const notification = await Notification.create({
+            userUid: user.uid,
+            notificationType: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED,
+            data: {
+                communitySlug: this.slug,
+                communityName: this.name,
+                userUid: user.uid,
+                userNickname: user.nickname
+            }
+        });
+
+        log.debug(
+            { function: 'createApplicationRemovedNotification', communityUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
+            'Successfully created application removed notification for community');
+    }
+
+    /**
+     * Creates a notification for a new community application submitted by the provided user for all users with recruitment permissions in the community
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that applied to the community
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Community
+     */
+    public async createApplicationSubmittedNotifications(userOrUserUid: User | string): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createApplicationSubmittedNotifications', communityUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create application submitted notifications for community, user not found');
+                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createApplicationSubmittedNotifications', communityUid: this.uid, userUid: user.uid }, 'Creating application submitted notifications for community');
+
+        const recruitmentPermissions = await Permission.findAll({
+            where: {
+                permission: {
+                    $or: [`community.${this.slug}.founder`, `community.${this.slug}.leader`, `community.${this.slug}.recruitment`]
+                }
+            }
+        });
+
+        const userUids = _.uniq(_.map(recruitmentPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW,
+                data: {
+                    communitySlug: this.slug,
+                    communityName: this.name,
+                    userUid: user.uid,
+                    userNickname: user.nickname
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createApplicationSubmittedNotifications', communityUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created application submitted notifications for community');
+    }
+
+    /**
+     * Creates a notification when a community has been deleted, notifying all members
+     *
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Community
+     */
+    public async createCommunityDeletedNotifications(): Promise<void> {
+        log.debug({ function: 'createCommunityDeletedNotifications', communityUid: this.uid }, 'Creating deleted notifications for community');
+
+        const members = await User.findAll({ where: { communityUid: this.uid }, attributes: ['uid'] });
+
+        const userUids = _.uniq(_.map(members, 'uid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_COMMUNITY_DELETED,
+                data: {
+                    communitySlug: this.slug,
+                    communityName: this.name
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createCommunityDeletedNotifications', communityUid: this.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created deleted notifications for community');
+    }
+
+    /**
+     * Creates a notification for a community permission that was either granted or revoked for a user
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that had the permission granted or revoked
+     * @param {string} permission Permission that was granted or revoked
+     * @param {boolean} granted Indicates whether the permission was granted or revoked
+     * @returns {Promise<void>} Promise fulfilled when notification has been created
+     * @memberof Community
+     */
+    public async createPermissionNotification(userOrUserUid: User | string, permission: string, granted: boolean): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createPermissionNotification', communityUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create permission notification for community, user not found');
+                throw Boom.notFound('User not found', { communityUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createPermissionNotification', communityUid: this.uid, userUid: user.uid }, 'Creating permission notification for community');
+
+        const notification = await Notification.create({
+            userUid: user.uid,
+            notificationType: granted ? NOTIFICATION_TYPE_COMMUNITY_PERMISSION_GRANTED : NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED,
+            data: {
+                permission,
+                communitySlug: this.slug,
+                communityName: this.name
+            }
+        });
+
+        log.debug(
+            { function: 'createPermissionNotification', communityUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
+            'Successfully created permission notification for community');
     }
 
     /**

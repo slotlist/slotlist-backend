@@ -48,17 +48,15 @@ export const missionSlotTemplate = [
             },
             response: {
                 schema: Joi.object().required().keys({
-                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotTemplateList.max).optional()
+                    limit: Joi.number().integer().positive().min(1).max(LIMITS.missionSlotTemplateList.max).required()
                         .description('Limit for number of mission slot templates to retrieve, as provided via query'),
-                    offset: Joi.number().integer().positive().allow(0).min(0).optional()
+                    offset: Joi.number().integer().positive().allow(0).min(0).required()
                         .description('Number of mission slot templates to skip before retrieving new ones from database, as provided via query. Omitted if query including ' +
                         '`startDate` was executed'),
-                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionSlotTemplateList.max).optional()
+                    count: Joi.number().integer().positive().allow(0).min(0).max(LIMITS.missionSlotTemplateList.max).required()
                         .description('Actual number of mission slot templates returned. Omitted if query including `startDate` was executed'),
-                    total: Joi.number().integer().positive().allow(0).min(0).optional().description('Total number of mission slot templates stored. Omitted if query including ' +
-                        '`startDate` was executed'),
-                    moreAvailable: Joi.bool().optional().description('Indicates whether more mission slot templates are available and can be retrieved using pagination. Omitted ' +
-                        'if query including `startDate` was executed'),
+                    total: Joi.number().integer().positive().allow(0).min(0).required().description('Total number of mission slot templates stored'),
+                    moreAvailable: Joi.bool().required().description('Indicates whether more mission slot templates are available and can be retrieved using pagination'),
                     slotTemplates: Joi.array().items(schemas.missionSlotTemplateSchema.optional()).required().description('List of mission slot templates retrieved')
                 }).label('GetMissionSlotTemplateListResponse').description('Response containing list of currently available mission slot templates')
             },

@@ -271,6 +271,12 @@ export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
         return sequelize.transaction(async (t: Transaction) => {
             log.debug({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid }, 'Deleting community');
 
+            try {
+                await community.createCommunityDeletedNotifications();
+            } catch (err) {
+                log.warn({ function: 'deleteCommunity', slug, userUid, communityUid: community.uid, err }, 'Received error during community deleted notifications creation');
+            }
+
             await Promise.all([
                 community.destroy(),
                 Permission.destroy({ where: { permission: { $iLike: `community.${slug}.%` } } })
@@ -379,8 +385,16 @@ export function createCommunityApplication(request: Hapi.Request, reply: Hapi.Re
             throw err;
         }
 
+        try {
+            await community.createApplicationSubmittedNotifications(userUid);
+        } catch (err) {
+            log.warn(
+                { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid, err },
+                'Received error during community application submitted notifications creation');
+        }
+
         log.debug(
-            { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid, applicationStatus: application.status },
+            { function: 'createCommunityApplication', slug, communityUid: community.uid, userUid, applicationUid: application.uid },
             'Successfully finished processing user application to community');
 
         return {
@@ -427,7 +441,7 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
             throw Boom.badRequest('Invalid community application status');
         }
 
-        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid', 'slug', 'name'] });
         if (_.isNil(community)) {
             log.debug({ function: 'updateCommunityApplication', slug, applicationUid, userUid, status }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -456,7 +470,10 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
                 { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
                 'Successfully updated community application');
 
+            let accepted: boolean = false;
             if (status === COMMUNITY_APPLICATION_STATUS_ACCEPTED) {
+                accepted = true;
+
                 log.debug(
                     { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
                     'Community application was accepted, adding member');
@@ -466,6 +483,14 @@ export function updateCommunityApplication(request: Hapi.Request, reply: Hapi.Re
                 log.debug(
                     { function: 'updateCommunityApplication', slug, applicationUid, userUid, status, memberUid: application.userUid },
                     'Successfully added community member');
+            }
+
+            try {
+                await community.createApplicationProcessedNotification(application.userUid, accepted);
+            } catch (err) {
+                log.warn(
+                    { function: 'updateCommunityApplication', slug, applicationUid, userUid, err },
+                    'Received error during community application processed notification creation');
             }
 
             const publicApplication = await application.toPublicObject();
@@ -483,7 +508,7 @@ export function deleteCommunityApplication(request: Hapi.Request, reply: Hapi.Re
         const applicationUid = request.params.applicationUid;
         const userUid = request.auth.credentials.user.uid;
 
-        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid', 'slug', 'name'] });
         if (_.isNil(community)) {
             log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -519,6 +544,14 @@ export function deleteCommunityApplication(request: Hapi.Request, reply: Hapi.Re
                 ]);
             }
 
+            try {
+                await community.createApplicationDeletedNotifications(application.userUid);
+            } catch (err) {
+                log.warn(
+                    { function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid, err },
+                    'Received error during community application deleted notifications creation');
+            }
+
             log.debug({ function: 'deleteCommunityApplication', slug, applicationUid, userUid, communityUid: community.uid }, 'Successfully deleted community application');
 
             return {
@@ -534,7 +567,7 @@ export function removeCommunityMember(request: Hapi.Request, reply: Hapi.ReplyWi
         const memberUid = request.params.memberUid;
         const userUid = request.auth.credentials.user.uid;
 
-        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid', 'slug', 'name'] });
         if (_.isNil(community)) {
             log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -560,6 +593,14 @@ export function removeCommunityMember(request: Hapi.Request, reply: Hapi.ReplyWi
                 Permission.destroy({ where: { userUid: memberUid, permission: { $iLike: `community.${slug}.%` } } }),
                 CommunityApplication.destroy({ where: { userUid: memberUid, communityUid: community.uid } })
             ]);
+
+            try {
+                await community.createApplicationRemovedNotification(memberUid);
+            } catch (err) {
+                log.warn(
+                    { function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid, err },
+                    'Received error during community application removed notification creation');
+            }
 
             log.debug({ function: 'removeCommunityMember', slug, memberUid, userUid, communityUid: community.uid }, 'Successfully removed community member');
 
@@ -767,7 +808,7 @@ export function createCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid', 'slug', 'name'] });
         if (_.isNil(community)) {
             log.debug({ function: 'createCommunityPermission', slug, payload, userUid }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -778,7 +819,7 @@ export function createCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
             throw Boom.badRequest('Invalid community permission');
         }
 
-        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid'] });
+        const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid', 'nickname', 'communityUid'] });
         if (_.isNil(targetUser)) {
             log.debug({ function: 'createCommunityPermission', slug, payload, userUid, communityUid: community.uid }, 'Community permission target user with given UID not found');
             throw Boom.notFound('User not found');
@@ -795,6 +836,14 @@ export function createCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
             }
 
             throw err;
+        }
+
+        try {
+            await community.createPermissionNotification(targetUser, payload.permission, true);
+        } catch (err) {
+            log.warn(
+                { function: 'createCommunityPermission', payload, userUid, communityUid: community.uid, permissionUid: permission.uid, err },
+                'Received error during community permission granted notification creation');
         }
 
         log.debug(
@@ -815,7 +864,7 @@ export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
         const permissionUid = request.params.permissionUid;
         const userUid = request.auth.credentials.user.uid;
 
-        const community = await Community.findOne({ where: { slug }, attributes: ['uid'] });
+        const community = await Community.findOne({ where: { slug }, attributes: ['uid', 'slug', 'name'] });
         if (_.isNil(community)) {
             log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid }, 'Community with given slug not found');
             throw Boom.notFound('Community not found');
@@ -836,7 +885,18 @@ export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
 
         log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Deleting community permission');
 
+        const permissionUserUid = permission.userUid;
+        const permissionPermission = permission.permission;
+
         await permission.destroy();
+
+        try {
+            await community.createPermissionNotification(permissionUserUid, permissionPermission, false);
+        } catch (err) {
+            log.warn(
+                { function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid, err },
+                'Received error during community permission removed notification creation');
+        }
 
         log.debug({ function: 'deleteCommunityPermission', slug, permissionUid, userUid, communityUid: community.uid }, 'Successfully deleted community permission');
 

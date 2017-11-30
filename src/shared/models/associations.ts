@@ -6,6 +6,7 @@ import { MissionSlot } from './MissionSlot';
 import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { MissionSlotTemplate } from './MissionSlotTemplate';
+import { Notification } from './Notification';
 import { Permission } from './Permission';
 import { User } from './User';
 
@@ -48,6 +49,8 @@ export function createAssociations(): void {
 
     MissionSlotTemplate.associations.creator = MissionSlotTemplate.belongsTo(User, { as: 'creator', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
+    Notification.associations.user = Notification.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
     Permission.associations.user = Permission.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
     User.associations.applications = User.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
@@ -57,6 +60,7 @@ export function createAssociations(): void {
     User.associations.missionSlots = User.hasMany(MissionSlot, { as: 'missionSlots', foreignKey: 'assigneeUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.missionSlotRegistrations = User.hasMany(MissionSlotRegistration, { as: 'missionSlotRegistrations', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.missionSlotTemplates = User.hasMany(MissionSlotTemplate, { as: 'missionSlotTemplates', foreignKey: 'creatorUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+    User.associations.notifications = User.hasMany(Notification, { as: 'notifications', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.permissions = User.hasMany(Permission, { as: 'permissions', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 }
 // tslint:enable:max-line-length

@@ -19,7 +19,7 @@ const missionSlotTemplateSlotGroupsSchema = Joi.array().items(missionSlotTemplat
 
 /**
  * Represents a mission slot template in database.
- * Provides database access and utility functionality for mission slot instances
+ * Provides database access and utility functionality for mission slot template instances
  *
  * @export
  * @class MissionSlotTemplate
@@ -136,7 +136,7 @@ export class MissionSlotTemplate extends Model {
     public creator?: User;
 
     /**
-     * Time (and date) the mission slot instance was created
+     * Time (and date) the mission slot template instance was created
      *
      * @type {Date}
      * @memberof MissionSlotTemplate
@@ -149,7 +149,7 @@ export class MissionSlotTemplate extends Model {
     public createdAt: Date;
 
     /**
-     * Time (and date) the mission slot instance was last updated
+     * Time (and date) the mission slot template instance was last updated
      *
      * @type {Date}
      * @memberof MissionSlotTemplate
@@ -167,7 +167,6 @@ export class MissionSlotTemplate extends Model {
 
     /**
      * Retrieves the slot template's creator user instance.
-     * Only returns a result if the slot template has been created by a user
      *
      * @type {BelongsToGetAssociationMixin<User>}
      * @returns {Promise<User>} User instance
@@ -186,7 +185,7 @@ export class MissionSlotTemplate extends Model {
     /**
      * Returns a public representation of the mission slot template instance, as transmitted via API
      *
-     * @returns {Promise<IPublicMissionSlotTemplate>} Object containing public mission slot information
+     * @returns {Promise<IPublicMissionSlotTemplate>} Object containing public mission slot template information
      * @memberof MissionSlotTemplate
      */
     public async toPublicObject(): Promise<IPublicMissionSlotTemplate> {

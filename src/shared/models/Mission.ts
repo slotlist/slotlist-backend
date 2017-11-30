@@ -8,6 +8,7 @@ import {
     HasManyCreateAssociationMixin,
     HasManyGetAssociationsMixin,
     HasManyRemoveAssociationMixin,
+    literal,
     Model
 } from 'sequelize';
 import { Attribute, Options } from 'sequelize-decorators';
@@ -17,11 +18,23 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import {
+    NOTIFICATION_TYPE_MISSION_DELETED,
+    NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
+    NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
+    NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED,
+    NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
+    NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
+    NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
+    NOTIFICATION_TYPE_MISSION_UPDATED
+} from '../types/notification';
 import { Community, IPublicCommunity } from './Community';
 import { MissionAccess } from './MissionAccess';
 import { IMissionSlotCreatePayload, MissionSlot } from './MissionSlot';
 import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
+import { Notification } from './Notification';
+import { Permission } from './Permission';
 import { IPublicUser, User } from './User';
 
 /**
@@ -518,6 +531,393 @@ export class Mission extends Model {
     ////////////////////////////
     // Model instance methods //
     ////////////////////////////
+
+    /**
+     * Creates a notification when a mission has been deleted, notifying all registered users and mission editors
+     *
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Mission
+     */
+    public async createMissionDeletedNotifications(): Promise<void> {
+        log.debug({ function: 'createMissionDeletedNotifications', missionUid: this.uid }, 'Creating deleted notifications for mission');
+
+        const [registrations, editorPermissions] = await Promise.all([
+            MissionSlotRegistration.findAll({
+                include: [
+                    {
+                        model: MissionSlot,
+                        as: 'slot',
+                        attributes: ['uid'],
+                        include: [
+                            {
+                                model: MissionSlotGroup,
+                                as: 'slotGroup',
+                                attributes: ['uid'],
+                                include: [
+                                    {
+                                        model: Mission,
+                                        as: 'mission',
+                                        attributes: ['uid'],
+                                        where: {
+                                            uid: this.uid
+                                        }
+                                    }
+                                ],
+                                required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                            }
+                        ],
+                        required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                    }
+                ]
+            }),
+            Permission.findAll({
+                where: {
+                    permission: {
+                        $or: [`mission.${this.slug}.editor`, `mission.${this.slug}.slotlist.community`]
+                    }
+                }
+            })
+        ]);
+
+        const userUids = _.uniq(_.concat(_.map(registrations, 'userUid'), _.map(editorPermissions, 'userUid')));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_DELETED,
+                data: {
+                    missionSlug: this.slug,
+                    missionTitle: this.title
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createMissionDeletedNotifications', missionUid: this.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created deleted notifications for mission');
+    }
+
+    /**
+     * Creates a notification when a mission has been updated, notifying all registered users
+     *
+     * @returns {Promise<void>} Promise fulfilled when notifications have been created
+     * @memberof Mission
+     */
+    public async createMissionUpdatedNotifications(): Promise<void> {
+        log.debug({ function: 'createMissionUpdatedNotifications', missionUid: this.uid }, 'Creating updated notifications for mission');
+
+        const registrations = await MissionSlotRegistration.findAll({
+            include: [
+                {
+                    model: MissionSlot,
+                    as: 'slot',
+                    attributes: ['uid'],
+                    include: [
+                        {
+                            model: MissionSlotGroup,
+                            as: 'slotGroup',
+                            attributes: ['uid'],
+                            include: [
+                                {
+                                    model: Mission,
+                                    as: 'mission',
+                                    attributes: ['uid'],
+                                    where: {
+                                        uid: this.uid
+                                    }
+                                }
+                            ],
+                            required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                        }
+                    ],
+                    required: true // have to force INNER JOIN instead of LEFT INNER JOIN here
+                }
+            ]
+        });
+
+        const userUids = _.uniq(_.map(registrations, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_UPDATED,
+                data: {
+                    missionSlug: this.slug,
+                    missionTitle: this.title
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createMissionUpdatedNotifications', missionUid: this.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created updated notifications for mission');
+    }
+
+    /**
+     * Creates a notification for a mission permission that was either granted or revoked for a user
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that had the permission granted or revoked
+     * @param {string} permission Permission that was granted or revoked
+     * @param {boolean} granted Indicates whether the permission was granted or revoked
+     * @returns {Promise<void>} Promise fulfilled when notification has been created
+     * @memberof Mission
+     */
+    public async createPermissionNotification(userOrUserUid: User | string, permission: string, granted: boolean): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createPermissionNotification', missionUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create permission notification for mission, user not found');
+                throw Boom.notFound('User not found', { missionUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        log.debug({ function: 'createPermissionNotification', missionUid: this.uid, userUid: user.uid }, 'Creating permission notification for mission');
+
+        const notification = await Notification.create({
+            userUid: user.uid,
+            notificationType: granted ? NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED : NOTIFICATION_TYPE_MISSION_PERMISSION_REVOKED,
+            data: {
+                permission,
+                missionSlug: this.slug,
+                missionTitle: this.title
+            }
+        });
+
+        log.debug(
+            { function: 'createPermissionNotification', missionUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
+            'Successfully created permission notification for mission');
+    }
+
+    /**
+     * Creates a notification for a slot assignment change for the given user
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that had the slot assigned or unassigned
+     * @param {string} slotTitle Title of the slot that was assigned or unassigned
+     * @param {boolean} assigned Indicates whether the slot was assigned or unassigned
+     * @returns {Promise<void>} Promise fulfilled when notification was created
+     * @memberof Mission
+     */
+    public async createSlotAssignmentChangedNotification(userOrUserUid: User | string, slotTitle: string, assigned: boolean): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid);
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create slot assignment notification for mission, user not found');
+                throw Boom.notFound('User not found', { missionUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        let userCommunityTag: string | null = null;
+        if (!_.isNil(user.communityUid)) {
+            if (_.isNil(user.community)) {
+                user.community = await user.getCommunity();
+            }
+
+            userCommunityTag = user.community.tag;
+        }
+
+        log.debug({ function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid }, 'Creating slot assignment notification for mission');
+
+        const notification = await Notification.create({
+            userUid: user.uid,
+            notificationType: assigned ? NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED : NOTIFICATION_TYPE_MISSION_SLOT_UNASSIGNED,
+            data: {
+                userUid: user.uid,
+                userNickname: user.nickname,
+                userCommunityTag,
+                missionSlug: this.slug,
+                missionTitle: this.title,
+                slotTitle: slotTitle
+            }
+        });
+
+        log.debug(
+            { function: 'createSlotAssignmentChangedNotification', missionUid: this.uid, userUid: user.uid, notificationUid: notification.uid },
+            'Successfully created slot assignment notification for mission');
+    }
+
+    /**
+     * Creates a notification for a new slot registration that was removed by the provided user for all users with mission editor permissions
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that unregistered from the slot
+     * @param {string} slotTitle Title of the slot
+     * @returns {Promise<void>} Promise fulfilled when notifications were created
+     * @memberof Mission
+     */
+    public async createSlotRegistrationRemovedNotifications(userOrUserUid: User | string, slotTitle: string): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid, { include: [{ model: Community, as: 'community' }] });
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createSlotRegistrationRemovedNotifications', missionUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create slot registration removed notifications for mission, user not found');
+                throw Boom.notFound('User not found', { missionUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        let queryOptions: any;
+        let userCommunityTag: string | null = null;
+        if (_.isNil(user.communityUid)) {
+            queryOptions = {
+                where: {
+                    permission: {
+                        $or: [`mission.${this.slug}.creator`, `mission.${this.slug}.editor`]
+                    }
+                }
+            };
+        } else {
+            if (_.isNil(user.community)) {
+                user.community = await user.getCommunity();
+            }
+
+            userCommunityTag = user.community.tag;
+
+            queryOptions = {
+                where: {
+                    $or: [
+                        {
+                            permission: {
+                                $or: [`mission.${this.slug}.creator`, `mission.${this.slug}.editor`]
+                            }
+                        },
+                        {
+                            permission: `mission.${this.slug}.slotlist.community`,
+                            $or: [
+                                // tslint:disable-next-line:max-line-length
+                                literal(`${sequelize.escape(user.uid)} IN (SELECT "userUid" FROM "users" WHERE "communityUid" = ${sequelize.escape(user.communityUid)})`)
+                            ]
+                        }
+                    ]
+                }
+            };
+        }
+
+        const editorPermissions = await Permission.findAll(queryOptions);
+
+        const userUids = _.uniq(_.map(editorPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_SLOT_UNREGISTERED,
+                data: {
+                    userUid: user.uid,
+                    userNickname: user.nickname,
+                    userCommunityTag,
+                    missionSlug: this.slug,
+                    missionTitle: this.title,
+                    slotTitle: slotTitle
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createSlotRegistrationRemovedNotifications', missionUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created slot registration removed notifications for mission');
+    }
+
+    /**
+     * Creates a notification for a new slot registration created by the provided user for all users with mission editor permissions
+     *
+     * @param {(User | string)} userOrUserUid User or user UID that registered for the slot
+     * @param {string} slotTitle Title of the slot
+     * @returns {Promise<void>} Promise fulfilled when notifications were created
+     * @memberof Mission
+     */
+    public async createSlotRegistrationSubmittedNotifications(userOrUserUid: User | string, slotTitle: string): Promise<void> {
+        let user: User;
+        if (_.isString(userOrUserUid)) {
+            const u = await User.findById(userOrUserUid, { include: [{ model: Community, as: 'community' }] });
+            if (_.isNil(u)) {
+                log.warn(
+                    { function: 'createSlotRegistrationSubmittedNotifications', missionUid: this.uid, userUid: userOrUserUid },
+                    'Cannot create slot registration submitted notifications for mission, user not found');
+                throw Boom.notFound('User not found', { missionUid: this.uid, userUid: userOrUserUid });
+            }
+
+            user = u;
+        } else {
+            user = userOrUserUid;
+        }
+
+        let queryOptions: any;
+        let userCommunityTag: string | null = null;
+        if (_.isNil(user.communityUid)) {
+            queryOptions = {
+                where: {
+                    permission: {
+                        $or: [`mission.${this.slug}.creator`, `mission.${this.slug}.editor`]
+                    }
+                }
+            };
+        } else {
+            if (_.isNil(user.community)) {
+                user.community = await user.getCommunity();
+            }
+
+            userCommunityTag = user.community.tag;
+
+            queryOptions = {
+                where: {
+                    $or: [
+                        {
+                            permission: {
+                                $or: [`mission.${this.slug}.creator`, `mission.${this.slug}.editor`]
+                            }
+                        },
+                        {
+                            permission: `mission.${this.slug}.slotlist.community`,
+                            $or: [
+                                // tslint:disable-next-line:max-line-length
+                                literal(`${sequelize.escape(user.uid)} IN (SELECT "userUid" FROM "users" WHERE "communityUid" = ${sequelize.escape(user.communityUid)})`)
+                            ]
+                        }
+                    ]
+                }
+            };
+        }
+
+        const editorPermissions = await Permission.findAll(queryOptions);
+
+        const userUids = _.uniq(_.map(editorPermissions, 'userUid'));
+
+        const notifications = await Promise.map(userUids, (userUid: string) => {
+            return Notification.create({
+                userUid,
+                notificationType: NOTIFICATION_TYPE_MISSION_SLOT_REGISTRATION_NEW,
+                data: {
+                    userUid: user.uid,
+                    userNickname: user.nickname,
+                    userCommunityTag,
+                    missionSlug: this.slug,
+                    missionTitle: this.title,
+                    slotTitle: slotTitle
+                }
+            });
+        });
+
+        log.debug(
+            { function: 'createSlotRegistrationSubmittedNotifications', missionUid: this.uid, userUid: user.uid, notificationUids: _.map(notifications, 'uid') },
+            'Successfully created slot registration submitted notifications for mission');
+    }
 
     /**
      * Creates a new slot in the mission, automatically associating it with the provided slot group.
