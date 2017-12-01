@@ -994,7 +994,7 @@ export class Mission extends Model {
                 {
                     model: MissionSlotRegistration,
                     as: 'registrations',
-                    attributes: ['uid']
+                    attributes: ['uid', 'userUid']
                 }
             ]
         });
@@ -1010,6 +1010,8 @@ export class Mission extends Model {
             unassigned: 0
         };
 
+        const registeredUserUidsCounted: string[] = <string[]>_.map(_.filter(slots, (slot: MissionSlot) => !_.isNil(slot.assigneeUid)), 'assigneeUid');
+
         _.each(slots, (slot: MissionSlot) => {
             if (!_.isNil(slot.assigneeUid)) {
                 counts.assigned += 1;
@@ -1022,7 +1024,23 @@ export class Mission extends Model {
             } else if (!_.isNil(slot.restrictedCommunityUid) && slot.restrictedCommunityUid !== requestingUserCommunityUid && _.isEmpty(slot.registrations)) {
                 counts.restricted += 1;
             } else if (!_.isEmpty(slot.registrations)) {
-                counts.unassigned += 1;
+                let hasUniqueUserRegistration: boolean = false;
+                _.each(slot.registrations, (registration: MissionSlotRegistration) => {
+                    if (_.indexOf(registeredUserUidsCounted, registration.userUid) === -1) {
+                        hasUniqueUserRegistration = true;
+                        registeredUserUidsCounted.push(registration.userUid);
+                    }
+                });
+
+                if (hasUniqueUserRegistration) {
+                    counts.unassigned += 1;
+                } else {
+                    if (slot.reserve) {
+                        counts.reserve += 1;
+                    } else {
+                        counts.open += 1;
+                    }
+                }
             } else if (slot.reserve) {
                 counts.reserve += 1;
             } else {
