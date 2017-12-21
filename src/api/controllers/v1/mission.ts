@@ -2372,6 +2372,119 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
     })());
 }
 
+export function unassignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+
+        if (_.isNil(slot.assigneeUid) && _.isNil(slot.externalAssignee)) {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Mission slot has no regular or external assignee');
+            throw Boom.conflict('Mission slot not assigned');
+        }
+
+        if (!hasPermission(request.auth.credentials.permissions, [`mission.${slug}.creator`, `mission.${slug}.editor`])) {
+            if (_.isNil(userCommunityUid)) {
+                log.debug(
+                    { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid },
+                    'User has mission slotlist community permission, but is not associated with any community. Rejecting slot unassignment');
+                throw Boom.forbidden();
+            }
+
+            if (userCommunityUid !== slot.restrictedCommunityUid) {
+                log.debug(
+                    {
+                        function: 'unassignMissionSlot',
+                        slug,
+                        slotUid,
+                        userUid,
+                        userCommunityUid,
+                        missionUid: mission.uid,
+                        restrictedCommunityUid: slot.restrictedCommunityUid
+                    },
+                    'User has mission slotlist community permission, but tried to unassign slot restricted to different community. Rejecting slot unassignment');
+                throw Boom.forbidden();
+            }
+
+            log.debug(
+                {
+                    function: 'unassignMissionSlot',
+                    slug,
+                    slotUid,
+                    userUid,
+                    userCommunityUid,
+                    missionUid: mission.uid,
+                    restrictedCommunityUid: slot.restrictedCommunityUid
+                },
+                'User has mission slotlist community permission and is member of community the slot is restricted to. Allowing slot unassignment');
+        }
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Unassigning mission slot');
+
+            if (!_.isNil(slot.assigneeUid)) {
+                const targetUserUid = slot.assigneeUid;
+
+                log.debug(
+                    { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                    'Unassigning user from mission slot and updating registration');
+
+                const slotRegistration = await MissionSlotRegistration.findOne({ where: { userUid: slot.assigneeUid, slotUid: slot.uid } });
+                if (_.isNil(slotRegistration)) {
+                    log.debug(
+                        { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        'Mission slot registration for assignee was not found');
+                    throw Boom.notFound('Mission slot registration not found');
+                }
+
+                await Promise.all([
+                    slot.update({ assigneeUid: null }),
+                    slotRegistration.update({ confirmed: false })
+                ]);
+
+                try {
+                    await mission.createSlotAssignmentChangedNotification(targetUserUid, slot.title, false);
+                } catch (err) {
+                    log.warn(
+                        { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, targetUserUid, err },
+                        'Received error during mission slot unassignment notification creation');
+                }
+            } else {
+                log.debug(
+                    { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, externalAssignee: slot.externalAssignee },
+                    'Unassigning external user from mission slot');
+
+                await slot.update({ externalAssignee: null });
+            }
+
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Successfully unassigned mission slot');
+
+            const publicMissionSlot = await slot.toPublicObject();
+
+            return {
+                slot: publicMissionSlot
+            };
+        });
+    })());
+}
+
 export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     // tslint:disable-next-line:max-func-body-length
     return reply((async () => {

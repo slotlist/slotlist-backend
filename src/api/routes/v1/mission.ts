@@ -1887,6 +1887,77 @@ export const mission = [
     },
     {
         method: 'POST',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}/unassign',
+        handler: controller.unassignMissionSlot,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Removes an existing assignment from a mission slot',
+            notes: 'Removes an existing assignment from a mission slot, removing any regular or external assignee. This endpoint can only be used by mission creators and users ' +
+            'with the `mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'slot', 'unassign', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to unassign slot')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to unassign').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slot: missionSlotSchema
+                }).label('UnassignMissionSlotResponse').description('Response containing the unassigned mission slot')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor', 'mission.{{missionSlug}}.slotlist.community']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(403).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Forbidden').required().description('Message further describing the error')
+                            })
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found', 'User not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The slot did not have any regular or external assignee',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission slot not assigned').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
         path: '/v1/missions/{missionSlug}/slotTemplates/{slotTemplateUid}',
         handler: controller.applyMissionSlotTemplate,
         config: {
