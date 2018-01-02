@@ -802,7 +802,7 @@ export class Mission extends Model {
                             permission: `mission.${this.slug}.slotlist.community`,
                             $or: [
                                 // tslint:disable-next-line:max-line-length
-                                literal(`${sequelize.escape(user.uid)} IN (SELECT "userUid" FROM "users" WHERE "communityUid" = ${sequelize.escape(user.communityUid)})`)
+                                literal(`${sequelize.escape(user.uid)} IN (SELECT "uid" FROM "users" WHERE "communityUid" = ${sequelize.escape(user.communityUid)})`)
                             ]
                         }
                     ]
@@ -887,7 +887,7 @@ export class Mission extends Model {
                             permission: `mission.${this.slug}.slotlist.community`,
                             $or: [
                                 // tslint:disable-next-line:max-line-length
-                                literal(`${sequelize.escape(user.uid)} IN (SELECT "userUid" FROM "users" WHERE "communityUid" = ${sequelize.escape(user.communityUid)})`)
+                                literal(`${sequelize.escape(user.uid)} IN (SELECT "uid" FROM "users" WHERE "communityUid" = ${sequelize.escape(user.communityUid)})`)
                             ]
                         }
                     ]

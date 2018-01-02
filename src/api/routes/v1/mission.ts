@@ -63,7 +63,7 @@ export const mission = [
                         .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().default(false).optional().description('Include ended missions in retrieved list, defaults to false').optional(),
+                    includeEnded: Joi.boolean().default(false).optional().description('Include ended missions in retrieved list, defaults to false'),
                     startDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to start retrieving missions from. Used for mission ' +
                         'calendar, to be used in conjunction with `endDate`. Endpoint ignores all other query parameters provided if a `startDate` has been provided'),
                     endDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to end retrieving missions, inclusive. Used for mission ' +
@@ -346,7 +346,9 @@ export const mission = [
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
                         'creator\'s community. The `private` visibility setting restricts access to selected users, although this functionality is currently not implemented yet ' +
                         '(as of 2017-08-23)')
-                        .example(MISSION_VISIBILITY_PUBLIC)
+                        .example(MISSION_VISIBILITY_PUBLIC),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
             },
             response: {
@@ -979,7 +981,9 @@ export const mission = [
                 }),
                 payload: Joi.object().keys({
                     userUid: Joi.string().guid().length(36).required().description('UID of the user to grant permission to').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
-                    permission: Joi.string().min(1).max(255).required().description('Permission to grant').example('mission.all-of-altis.editor')
+                    permission: Joi.string().min(1).max(255).required().description('Permission to grant').example('mission.all-of-altis.editor'),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 }).required()
             },
             response: {
@@ -1560,7 +1564,9 @@ export const mission = [
                 payload: Joi.object().required().keys({
                     userUid: Joi.string().guid().length(36).required().description('UID of the user to assign to the slot').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     force: Joi.bool().required().description('Forcing a slot assignment removes the currently assigned user - if any - as well as the select user\'s current ' +
-                        'assignment')
+                        'assignment'),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
             },
             response: {
@@ -1779,7 +1785,9 @@ export const mission = [
                         .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 }),
                 payload: Joi.object().required().keys({
-                    confirmed: Joi.bool().required().description('Indicates whether the mission slot registration is confirmed by the mission creator').example(true)
+                    confirmed: Joi.bool().required().description('Indicates whether the mission slot registration is confirmed by the mission creator').example(true),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
             },
             response: {
@@ -1874,6 +1882,77 @@ export const mission = [
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found', 'Mission slot not found', 'Mission slot registration not found').required()
                                     .description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions/{missionSlug}/slots/{slotUid}/unassign',
+        handler: controller.unassignMissionSlot,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Removes an existing assignment from a mission slot',
+            notes: 'Removes an existing assignment from a mission slot, removing any regular or external assignee. This endpoint can only be used by mission creators and users ' +
+            'with the `mission.SLUG.editor` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'slot', 'unassign', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to unassign slot')
+                        .example('all-of-altis'),
+                    slotUid: Joi.string().guid().length(36).required().description('UID of the mission slot to unassign').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    slot: missionSlotSchema
+                }).label('UnassignMissionSlotResponse').description('Response containing the unassigned mission slot')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor', 'mission.{{missionSlug}}.slotlist.community']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(403).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Forbidden').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Forbidden').required().description('Message further describing the error')
+                            })
+                        },
+                        404: {
+                            description: 'No mission with given slug or no slot with the given UID was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found', 'Mission slot not found', 'User not found').required()
+                                    .description('Message further describing the error')
+                            })
+                        },
+                        409: {
+                            description: 'The slot did not have any regular or external assignee',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(409).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Conflict').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission slot not assigned').required().description('Message further describing the error')
                             })
                         },
                         500: {

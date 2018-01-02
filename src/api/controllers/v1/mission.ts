@@ -350,6 +350,7 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
     return reply((async () => {
         const slug = request.params.missionSlug;
         const payload = request.payload;
+        const suppressNotifications = request.payload.suppressNotifications === true;
         const userUid = request.auth.credentials.user.uid;
 
         const mission = await Mission.findOne({
@@ -366,11 +367,11 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             ]
         });
         if (_.isNil(mission)) {
-            log.debug({ function: 'updateMission', slug, payload, userUid }, 'Mission with given slug not found');
+            log.debug({ function: 'updateMission', slug, payload, suppressNotifications, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
-        log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Updating mission');
+        log.debug({ function: 'updateMission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid }, 'Updating mission');
 
         if (_.isString(payload.detailedDescription) && !_.isEmpty(payload.detailedDescription)) {
             payload.detailedDescription = await ImageService.parseMissionDescription(slug, payload.detailedDescription);
@@ -388,17 +389,17 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']
         });
 
-        if (notifyUpdate) {
+        if (notifyUpdate && !suppressNotifications) {
             try {
                 await mission.createMissionUpdatedNotifications();
             } catch (err) {
                 log.warn(
-                    { function: 'updateMission', slug, payload, userUid, missionUid: mission.uid, err },
+                    { function: 'updateMission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid, err },
                     'Received error during mission updated notifications creation');
             }
         }
 
-        log.debug({ function: 'updateMission', slug, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission');
+        log.debug({ function: 'updateMission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid }, 'Successfully updated mission');
 
         const detailedPublicMission = await mission.toDetailedPublicObject();
 
@@ -984,26 +985,31 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
     return reply((async () => {
         const slug = request.params.missionSlug;
         const payload = request.payload;
+        const suppressNotifications = request.payload.suppressNotifications === true;
         const userUid = request.auth.credentials.user.uid;
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
-            log.debug({ function: 'createMissionPermission', slug, payload, userUid }, 'Mission with given slug not found');
+            log.debug({ function: 'createMissionPermission', slug, payload, suppressNotifications, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
         if (!Permission.isValidMissionPermission(slug, payload.permission)) {
-            log.warn({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Tried to create invalid mission permission, rejecting');
+            log.warn(
+                { function: 'createMissionPermission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid },
+                'Tried to create invalid mission permission, rejecting');
             throw Boom.badRequest('Invalid mission permission');
         }
 
         const targetUser = await User.findOne({ where: { uid: payload.userUid }, attributes: ['uid', 'nickname', 'communityUid'] });
         if (_.isNil(targetUser)) {
-            log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Mission permission target user with given UID not found');
+            log.debug(
+                { function: 'createMissionPermission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid },
+                'Mission permission target user with given UID not found');
             throw Boom.notFound('User not found');
         }
 
-        log.debug({ function: 'createMissionPermission', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission permission');
+        log.debug({ function: 'createMissionPermission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid }, 'Creating new mission permission');
 
         let permission: Permission;
         try {
@@ -1016,16 +1022,18 @@ export function createMissionPermission(request: Hapi.Request, reply: Hapi.Reply
             throw err;
         }
 
-        try {
-            await mission.createPermissionNotification(targetUser, payload.permission, true);
-        } catch (err) {
-            log.warn(
-                { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid, err },
-                'Received error during mission permission granted notification creation');
+        if (!suppressNotifications) {
+            try {
+                await mission.createPermissionNotification(targetUser, payload.permission, true);
+            } catch (err) {
+                log.warn(
+                    { function: 'createMissionPermission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid, permissionUid: permission.uid, err },
+                    'Received error during mission permission granted notification creation');
+            }
         }
 
         log.debug(
-            { function: 'createMissionPermission', payload, userUid, missionUid: mission.uid, permissionUid: permission.uid },
+            { function: 'createMissionPermission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid, permissionUid: permission.uid },
             'Successfully created new mission permission');
 
         const publicPermission = await permission.toPublicObject();
@@ -1619,29 +1627,34 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const userNickname = request.auth.credentials.user.nickname;
         const targetUserUid = request.payload.userUid;
         const forceAssignment = request.payload.force;
+        const suppressNotifications = request.payload.suppressNotifications === true;
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
-            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment }, 'Mission with given slug not found');
+            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
         const slot = await mission.findSlot(slotUid);
         if (_.isNil(slot)) {
-            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            log.debug(
+                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
+                'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
 
         if (slot.blocked) {
             log.debug(
-                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
                 'User tried to assign to a blocked slot, rejecting');
             throw Boom.notFound('Mission slot is blocked');
         }
 
         const targetUser = await User.findById(targetUserUid);
         if (_.isNil(targetUser)) {
-            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'User with given UID not found');
+            log.debug(
+                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
+                'User with given UID not found');
             throw Boom.notFound('User not found');
         }
 
@@ -1674,21 +1687,29 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 if (!_.isNil(slot.assigneeUid)) {
                     log.debug(
                         {
-                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid, previousAssigneeUid: slot.assigneeUid
+                            function: 'assignMissionSlot',
+                            slug,
+                            slotUid,
+                            userUid,
+                            targetUserUid,
+                            forceAssignment,
+                            suppressNotifications,
+                            missionUid: mission.uid,
+                            previousAssigneeUid: slot.assigneeUid
                         },
                         'Slot has previous assignee and force assignment is disabled, rejecting');
                     throw Boom.conflict('Mission slot already assigned');
                 } else if (!_.isNil(targetUserAssignedSlot)) {
                     log.debug(
                         {
-                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid,
+                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid,
                             assignedSlotUid: targetUserAssignedSlot.uid
                         },
                         'Target user is already assigned and force assignment is disabled, rejecting');
                     throw Boom.conflict('User already assigned to another slot');
                 } else if (!_.isNil(slot.externalAssignee)) {
                     log.debug(
-                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
                         'Slot already has external assignee and force assignment is disabled, rejecting');
                     throw Boom.conflict('Mission slot can only either have assignee or external assignee');
                 }
@@ -1696,7 +1717,15 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 if (!_.isNil(slot.assigneeUid)) {
                     log.debug(
                         {
-                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid, previousAssigneeUid: slot.assigneeUid
+                            function: 'assignMissionSlot',
+                            slug,
+                            slotUid,
+                            userUid,
+                            targetUserUid,
+                            forceAssignment,
+                            suppressNotifications,
+                            missionUid: mission.uid,
+                            previousAssigneeUid: slot.assigneeUid
                         },
                         'Slot has previous assignee, removing association and updating registration');
 
@@ -1706,7 +1735,7 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                     ]);
                 } else if (!_.isNil(slot.externalAssignee)) {
                     log.debug(
-                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid },
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
                         'Slot already has external assignee, removing before assignment');
                     await slot.update({ externalAssignee: null });
                 }
@@ -1714,7 +1743,7 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 if (!_.isNil(targetUserAssignedSlot)) {
                     log.debug(
                         {
-                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid,
+                            function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid,
                             assignedSlotUid: targetUserAssignedSlot.uid
                         },
                         'Target user is already assigned, removing association and updating registration');
@@ -1726,7 +1755,9 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 }
             }
 
-            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Assigning mission slot');
+            log.debug(
+                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
+                'Assigning mission slot');
 
             await Promise.all([
                 MissionSlotRegistration.upsert({
@@ -1738,15 +1769,19 @@ export function assignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 slot.update({ assigneeUid: targetUserUid })
             ]);
 
-            try {
-                await mission.createSlotAssignmentChangedNotification(targetUserUid, slot.title, true);
-            } catch (err) {
-                log.warn(
-                    { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid, err },
-                    'Received error during mission slot assignment notification creation');
+            if (!suppressNotifications) {
+                try {
+                    await mission.createSlotAssignmentChangedNotification(targetUserUid, slot.title, true);
+                } catch (err) {
+                    log.warn(
+                        { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid, err },
+                        'Received error during mission slot assignment notification creation');
+                }
             }
 
-            log.debug({ function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, missionUid: mission.uid }, 'Successfully assigned mission slot');
+            log.debug(
+                { function: 'assignMissionSlot', slug, slotUid, userUid, targetUserUid, forceAssignment, suppressNotifications, missionUid: mission.uid },
+                'Successfully assigned mission slot');
 
             const publicMissionSlot = await slot.toPublicObject();
 
@@ -2029,6 +2064,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         const slotUid = request.params.slotUid;
         const registrationUid = request.params.registrationUid;
         const confirmed = request.payload.confirmed === true;
+        const suppressNotifications = request.payload.suppressNotifications === true;
         const userUid = request.auth.credentials.user.uid;
         let userCommunityUid: string | null = null;
         if (!_.isNil(request.auth.credentials.user.community)) {
@@ -2037,21 +2073,23 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 
         const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
         if (_.isNil(mission)) {
-            log.debug({ function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid }, 'Mission with given slug not found');
+            log.debug(
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid },
+                'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
 
         const slot = await mission.findSlot(slotUid);
         if (_.isNil(slot)) {
             log.debug(
-                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                 'Mission slot with given UID not found');
             throw Boom.notFound('Mission slot not found');
         }
 
         if (!_.isNil(slot.externalAssignee)) {
             log.debug(
-                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                 'Mission slot already has external assignee, rejecting registration update');
             throw Boom.conflict('Mission slot can only either have assignee or external assignee');
         }
@@ -2059,7 +2097,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         const registrations = await slot.getRegistrations({ where: { uid: registrationUid } });
         if (_.isNil(registrations) || _.isEmpty(registrations)) {
             log.debug(
-                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                 'Mission slot registration with given UID not found');
             throw Boom.notFound('Mission slot registration not found');
         }
@@ -2068,7 +2106,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
         if (!hasPermission(request.auth.credentials.permissions, [`mission.${slug}.creator`, `mission.${slug}.editor`])) {
             if (_.isNil(userCommunityUid)) {
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                     'User has mission slotlist community permission, but is not associated with any community. Rejecting slot registration update');
                 throw Boom.forbidden();
             }
@@ -2081,6 +2119,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                         slotUid,
                         registrationUid,
                         confirmed,
+                        suppressNotifications,
                         userUid,
                         missionUid: mission.uid,
                         userCommunityUid,
@@ -2097,6 +2136,7 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     slotUid,
                     registrationUid,
                     confirmed,
+                    suppressNotifications,
                     userUid,
                     missionUid: mission.uid,
                     userCommunityUid,
@@ -2105,30 +2145,41 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 'User has mission slotlist community permission and is member of community the slot is restricted to. Allowing slot registration update');
         }
 
+        // tslint:disable-next-line:max-func-body-length
         return sequelize.transaction(async (t: Transaction) => {
             log.debug(
-                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                 'Updating mission slot registration');
 
             if (confirmed && registration.confirmed) {
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                     'Mission slot registration is already confirmed, silently ignoring update');
             } else if (confirmed && !registration.confirmed && !_.isNil(slot.assigneeUid)) {
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                    {
+                        function: 'updateMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        registrationUid,
+                        confirmed,
+                        suppressNotifications,
+                        userUid,
+                        missionUid: mission.uid,
+                        assigneeUid: slot.assigneeUid
+                    },
                     'Mission slot already has assignee, rejecting confirmation');
                 throw Boom.conflict('Mission slot already assigned');
             } else if (confirmed && !registration.confirmed && _.isNil(slot.assigneeUid)) {
                 if (await mission.isUserAssignedToAnySlot(registration.userUid)) {
                     log.debug(
-                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                         'User is already assigned to another slot, rejecting confirmation');
                     throw Boom.conflict('User already assigned to another slot');
                 }
 
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                     'Confirming mission slot registration');
 
                 await Promise.all([
@@ -2136,20 +2187,32 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     registration.update({ confirmed })
                 ]);
 
-                try {
-                    await mission.createSlotAssignmentChangedNotification(registration.userUid, slot.title, true);
-                } catch (err) {
-                    log.warn(
-                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, err },
-                        'Received error during mission slot assignment notification creation');
+                if (!suppressNotifications) {
+                    try {
+                        await mission.createSlotAssignmentChangedNotification(registration.userUid, slot.title, true);
+                    } catch (err) {
+                        log.warn(
+                            { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid, err },
+                            'Received error during mission slot assignment notification creation');
+                    }
                 }
 
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                     'Successfully confirmed mission slot registration');
             } else if (!confirmed && registration.confirmed) {
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                    {
+                        function: 'updateMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        registrationUid,
+                        confirmed,
+                        suppressNotifications,
+                        userUid,
+                        missionUid: mission.uid,
+                        assigneeUid: slot.assigneeUid
+                    },
                     'Revoking mission slot registration confirmation');
 
                 if (slot.assigneeUid === registration.userUid) {
@@ -2159,11 +2222,31 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                     ]);
 
                     log.debug(
-                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        {
+                            function: 'updateMissionSlotRegistration',
+                            slug,
+                            slotUid,
+                            registrationUid,
+                            confirmed,
+                            suppressNotifications,
+                            userUid,
+                            missionUid: mission.uid,
+                            assigneeUid: slot.assigneeUid
+                        },
                         'Successfully revoked mission slot registration confirmation');
                 } else {
                     log.debug(
-                        { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        {
+                            function: 'updateMissionSlotRegistration',
+                            slug,
+                            slotUid,
+                            registrationUid,
+                            confirmed,
+                            suppressNotifications,
+                            userUid,
+                            missionUid: mission.uid,
+                            assigneeUid: slot.assigneeUid
+                        },
                         'Mission slot assignee does not match registration user, only updating registration');
 
                     await registration.update({ confirmed });
@@ -2188,12 +2271,12 @@ export function updateMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 }
             } else {
                 log.debug(
-                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                    { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, suppressNotifications, userUid, missionUid: mission.uid },
                     'Mission slot registration already is not confirmed, silently ignoring update');
             }
 
             log.debug(
-                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, confirmed, userUid, missionUid: mission.uid },
+                { function: 'updateMissionSlotRegistration', slug, slotUid, registrationUid, suppressNotifications, confirmed, userUid, missionUid: mission.uid },
                 'Successfully updated mission slot registration');
 
             const publicMissionSlotRegistration = await registration.toPublicObject();
@@ -2367,6 +2450,119 @@ export function deleteMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 
             return {
                 success: true
+            };
+        });
+    })());
+}
+
+export function unassignMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const slotUid = request.params.slotUid;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
+
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'slug', 'title'] });
+        if (_.isNil(mission)) {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        const slot = await mission.findSlot(slotUid);
+        if (_.isNil(slot)) {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Mission slot with given UID not found');
+            throw Boom.notFound('Mission slot not found');
+        }
+
+        if (_.isNil(slot.assigneeUid) && _.isNil(slot.externalAssignee)) {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Mission slot has no regular or external assignee');
+            throw Boom.conflict('Mission slot not assigned');
+        }
+
+        if (!hasPermission(request.auth.credentials.permissions, [`mission.${slug}.creator`, `mission.${slug}.editor`])) {
+            if (_.isNil(userCommunityUid)) {
+                log.debug(
+                    { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid },
+                    'User has mission slotlist community permission, but is not associated with any community. Rejecting slot unassignment');
+                throw Boom.forbidden();
+            }
+
+            if (userCommunityUid !== slot.restrictedCommunityUid) {
+                log.debug(
+                    {
+                        function: 'unassignMissionSlot',
+                        slug,
+                        slotUid,
+                        userUid,
+                        userCommunityUid,
+                        missionUid: mission.uid,
+                        restrictedCommunityUid: slot.restrictedCommunityUid
+                    },
+                    'User has mission slotlist community permission, but tried to unassign slot restricted to different community. Rejecting slot unassignment');
+                throw Boom.forbidden();
+            }
+
+            log.debug(
+                {
+                    function: 'unassignMissionSlot',
+                    slug,
+                    slotUid,
+                    userUid,
+                    userCommunityUid,
+                    missionUid: mission.uid,
+                    restrictedCommunityUid: slot.restrictedCommunityUid
+                },
+                'User has mission slotlist community permission and is member of community the slot is restricted to. Allowing slot unassignment');
+        }
+
+        return sequelize.transaction(async (t: Transaction) => {
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Unassigning mission slot');
+
+            if (!_.isNil(slot.assigneeUid)) {
+                const targetUserUid = slot.assigneeUid;
+
+                log.debug(
+                    { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                    'Unassigning user from mission slot and updating registration');
+
+                const slotRegistration = await MissionSlotRegistration.findOne({ where: { userUid: slot.assigneeUid, slotUid: slot.uid } });
+                if (_.isNil(slotRegistration)) {
+                    log.debug(
+                        { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, assigneeUid: slot.assigneeUid },
+                        'Mission slot registration for assignee was not found');
+                    throw Boom.notFound('Mission slot registration not found');
+                }
+
+                await Promise.all([
+                    slot.update({ assigneeUid: null }),
+                    slotRegistration.update({ confirmed: false })
+                ]);
+
+                try {
+                    await mission.createSlotAssignmentChangedNotification(targetUserUid, slot.title, false);
+                } catch (err) {
+                    log.warn(
+                        { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, targetUserUid, err },
+                        'Received error during mission slot unassignment notification creation');
+                }
+            } else {
+                log.debug(
+                    { function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid, externalAssignee: slot.externalAssignee },
+                    'Unassigning external user from mission slot');
+
+                await slot.update({ externalAssignee: null });
+            }
+
+            log.debug({ function: 'unassignMissionSlot', slug, slotUid, userUid, userCommunityUid, missionUid: mission.uid }, 'Successfully unassigned mission slot');
+
+            const publicMissionSlot = await slot.toPublicObject();
+
+            return {
+                slot: publicMissionSlot
             };
         });
     })());
