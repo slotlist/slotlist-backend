@@ -836,7 +836,7 @@ export const community = [
                         .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().required().default(false).description('Include ended missions in retrieved list, defaults to false').optional()
+                    includeEnded: Joi.boolean().default(false).optional().description('Include ended missions in retrieved list, defaults to false')
                 })
             },
             response: {

@@ -63,7 +63,7 @@ export const mission = [
                         .description('Limit for number of missions to retrieve, defaults to 25 (used for pagination in combination with offset)'),
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of missions to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
-                    includeEnded: Joi.boolean().default(false).optional().description('Include ended missions in retrieved list, defaults to false').optional(),
+                    includeEnded: Joi.boolean().default(false).optional().description('Include ended missions in retrieved list, defaults to false'),
                     startDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to start retrieving missions from. Used for mission ' +
                         'calendar, to be used in conjunction with `endDate`. Endpoint ignores all other query parameters provided if a `startDate` has been provided'),
                     endDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to end retrieving missions, inclusive. Used for mission ' +
@@ -346,7 +346,9 @@ export const mission = [
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
                         'creator\'s community. The `private` visibility setting restricts access to selected users, although this functionality is currently not implemented yet ' +
                         '(as of 2017-08-23)')
-                        .example(MISSION_VISIBILITY_PUBLIC)
+                        .example(MISSION_VISIBILITY_PUBLIC),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
             },
             response: {
@@ -979,7 +981,9 @@ export const mission = [
                 }),
                 payload: Joi.object().keys({
                     userUid: Joi.string().guid().length(36).required().description('UID of the user to grant permission to').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
-                    permission: Joi.string().min(1).max(255).required().description('Permission to grant').example('mission.all-of-altis.editor')
+                    permission: Joi.string().min(1).max(255).required().description('Permission to grant').example('mission.all-of-altis.editor'),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 }).required()
             },
             response: {
@@ -1560,7 +1564,9 @@ export const mission = [
                 payload: Joi.object().required().keys({
                     userUid: Joi.string().guid().length(36).required().description('UID of the user to assign to the slot').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
                     force: Joi.bool().required().description('Forcing a slot assignment removes the currently assigned user - if any - as well as the select user\'s current ' +
-                        'assignment')
+                        'assignment'),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
             },
             response: {
@@ -1779,7 +1785,9 @@ export const mission = [
                         .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 }),
                 payload: Joi.object().required().keys({
-                    confirmed: Joi.bool().required().description('Indicates whether the mission slot registration is confirmed by the mission creator').example(true)
+                    confirmed: Joi.bool().required().description('Indicates whether the mission slot registration is confirmed by the mission creator').example(true),
+                    suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
+                        '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
             },
             response: {
