@@ -1,6 +1,6 @@
 {
   "name": "slotlist-backend",
-  "version": "1.0.0-beta26",
+  "version": "1.0.0-beta27",
   "description": "Backend of slotlist.info, an ArmA 3 mission planning and slotlist management tool",
   "main": "dist/src/index.js",
   "repository": {
