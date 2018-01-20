@@ -12,9 +12,6 @@ const log = logger.child({ umzug: true });
  */
 
 export const umzug = new Umzug({
-    logging: (message: any) => {
-        log.info(message);
-    },
     migrations: {
         params: [
             sequelize.getQueryInterface()
@@ -27,6 +24,11 @@ export const umzug = new Umzug({
         sequelize: sequelize
     }
 });
+
+umzug.on('migrating', (name: string, migration: any) => log.info({ migrationName: name }, 'Started migration'));
+umzug.on('migrated', (name: string, migration: any) => log.info({ migrationName: name }, 'Finished migration'));
+umzug.on('reverting', (name: string, migration: any) => log.info({ migrationName: name }, 'Started reverting migration'));
+umzug.on('reverted', (name: string, migration: any) => log.info({ migrationName: name }, 'Finished reverting migration'));
 
 export async function migrateUp(all: boolean = true): Promise<void> {
     await sequelize.transaction(async (transaction: Transaction) => {

@@ -29,7 +29,7 @@ export class API {
                 routes: {
                     cors: true,
                     security: {
-                        hsts: { maxAge: 31536000, includeSubdomains: true },
+                        hsts: { maxAge: 31536000, includeSubdomains: true, preload: true },
                         noOpen: true,
                         noSniff: true,
                         xframe: true,
