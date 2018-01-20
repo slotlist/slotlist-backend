@@ -274,6 +274,7 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 userCommunityUid = request.auth.credentials.user.community.uid;
             }
         }
+        const missionToken: string | null = request.query.missionToken;
 
         const queryOptions: any = {
             where: { slug },
@@ -289,10 +290,14 @@ export function getMissionDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
             ]
         };
 
-        if (_.isNil(userUid)) {
+        if (!_.isNil(missionToken)) {
+            log.debug({ function: 'getMissionDetails', slug, userUid }, 'Mission token provided, using for mission visibility check');
+
+            queryOptions.where.missionToken = missionToken;
+        } else if (_.isNil(userUid)) {
             queryOptions.where.visibility = 'public';
         } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
-            log.info({ function: 'getMissionDetails', userUid, hasPermission: true }, 'User has mission admin permissions, returning mission details');
+            log.info({ function: 'getMissionDetails', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning mission details');
         } else {
             queryOptions.where.$or = [
                 {
@@ -1105,13 +1110,18 @@ export function getMissionSlotList(request: Hapi.Request, reply: Hapi.ReplyWithC
                 userCommunityUid = request.auth.credentials.user.community.uid;
             }
         }
+        const missionToken: string | null = request.query.missionToken;
 
         const queryOptionsMission: any = {
             where: { slug },
             attributes: ['uid']
         };
 
-        if (_.isNil(userUid)) {
+        if (!_.isNil(missionToken)) {
+            log.debug({ function: 'getMissionSlotList', slug, userUid }, 'Mission token provided, using for mission visibility check');
+
+            queryOptionsMission.where.missionToken = missionToken;
+        } else if (_.isNil(userUid)) {
             queryOptionsMission.where.visibility = 'public';
         } else if (hasPermission(request.auth.credentials.permissions, 'admin.mission')) {
             log.info({ function: 'getMissionSlotList', slug, userUid, hasPermission: true }, 'User has mission admin permissions, returning full mission list');
@@ -2768,5 +2778,79 @@ export function applyMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Repl
                 slotGroups: publicMissionSlotGroups
             };
         });
+    })());
+}
+
+export function getMissionToken(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid: string = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            where: { slug },
+            attributes: ['uid', 'missionToken']
+        };
+
+        const mission = await Mission.findOne(queryOptions);
+        if (_.isNil(mission)) {
+            log.debug({ function: 'getMissionToken', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        return {
+            missionToken: mission.missionToken
+        };
+    })());
+}
+
+export function generateMissionToken(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid: string = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            where: { slug },
+            attributes: ['uid', 'missionToken']
+        };
+
+        let mission = await Mission.findOne(queryOptions);
+        if (_.isNil(mission)) {
+            log.debug({ function: 'generateMissionToken', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        log.info({ function: 'generateMissionToken', slug, userUid }, 'Generating new mission token');
+
+        mission = await mission.generateMissionToken();
+
+        return {
+            missionToken: mission.missionToken
+        };
+    })());
+}
+
+export function deleteMissionToken(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.missionSlug;
+        const userUid: string = request.auth.credentials.user.uid;
+
+        const queryOptions: any = {
+            where: { slug },
+            attributes: ['uid', 'missionToken']
+        };
+
+        const mission = await Mission.findOne(queryOptions);
+        if (_.isNil(mission)) {
+            log.debug({ function: 'deleteMissionToken', slug, userUid }, 'Mission with given slug not found');
+            throw Boom.notFound('Mission not found');
+        }
+
+        log.info({ function: 'deleteMissionToken', slug, userUid }, 'Deleting mission token');
+
+        await mission.update({ missionToken: null });
+
+        return {
+            success: true
+        };
     })());
 }

@@ -12,6 +12,7 @@ import {
     Model
 } from 'sequelize';
 import { Attribute, Options } from 'sequelize-decorators';
+import * as uuid from 'uuid';
 
 import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
@@ -338,6 +339,20 @@ export class Mission extends Model {
         defaultValue: MISSION_VISIBILITY_HIDDEN
     })
     public visibility: string;
+
+    /**
+     * API token to grant regular user access to the mission, regardless of its visibility setting.
+     * Can be used for static authentication without having to provide regular auth credentials, such as embedding in a website.
+     *
+     * @type {(string | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.UUID,
+        allowNull: true,
+        defaultValue: null
+    })
+    public missionToken: string | null;
 
     /**
      * UID of the community the mission is associated with.
@@ -958,6 +973,19 @@ export class Mission extends Model {
      */
     public async findSlot(slotUid: string): Promise<MissionSlot | null> {
         return MissionSlot.findById(slotUid);
+    }
+
+    /**
+     * Generates a new mission access token, updates the current instance in the database and returns the updated mission.
+     * Overwrites any mission token previously set, thus invalidating it.
+     *
+     * @returns {Promise<Mission>} Updated mission with newly generated mission token set
+     * @memberof Mission
+     */
+    public async generateMissionToken(): Promise<Mission> {
+        return this.update({
+            missionToken: uuid.v4()
+        });
     }
 
     // tslint:disable:max-line-length

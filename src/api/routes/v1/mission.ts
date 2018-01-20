@@ -266,6 +266,11 @@ export const mission = [
                 }).unknown(true),
                 params: Joi.object().required().keys({
                     missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve').example('all-of-altis')
+                }),
+                query: Joi.object().required().keys({
+                    missionToken: Joi.string().min(1).allow(null).default(null).optional().description('Optional (mission) API token used for static authentication, only valid ' +
+                        'for this mission. If provided, grants regular user access to the mission, even if its visibility is not public and no regular authentication was provided')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 })
             },
             response: {
@@ -1297,6 +1302,11 @@ export const mission = [
                 }).unknown(true),
                 params: Joi.object().required().keys({
                     missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve slots for').example('all-of-altis')
+                }),
+                query: Joi.object().required().keys({
+                    missionToken: Joi.string().min(1).allow(null).default(null).optional().description('Optional (mission) API token used for static authentication, only valid ' +
+                        'for this mission. If provided, grants regular user access to the mission, even if its visibility is not public and no regular authentication was provided')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 })
             },
             response: {
@@ -2016,6 +2026,176 @@ export const mission = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Mission not found', 'Mission slot template not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/missions/{missionSlug}/token',
+        handler: controller.getMissionToken,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns the mission API token used for static authentication',
+            notes: 'Returns the mission API token used for static authentication, granting user access to this mission without requiring regular auth. This endpoint can only be ' +
+            'used by mission creators. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'missions', 'token', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to retrieve mission token for')
+                        .example('all-of-altis')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    missionToken: Joi.string().min(1).allow(null).required().description('Mission token defined for this mission. Can be `null` if no token was generated yet')
+                }).label('GetMissionTokenResponse').description('Response containing the current mission token for this mission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'POST',
+        path: '/v1/missions/{missionSlug}/token',
+        handler: controller.generateMissionToken,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Generates a new mission token',
+            notes: 'Generates a new mission token for the current mission, overwriting and thus invalidating the current one. This endpoint can only be ' +
+            'used by mission creators. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'post', 'v1', 'missions', 'token', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to generate mission token for')
+                        .example('all-of-altis')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    missionToken: Joi.string().min(1).allow(null).required().description('Mission token generated for this mission')
+                }).label('GenerateMissionTokenResponse').description('Response containing the newly generated mission token for this mission')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/missions/{missionSlug}/token',
+        handler: controller.deleteMissionToken,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes the mission token',
+            notes: 'Deletes the mission token, performing no operation if no token was generated before. This endpoint can only be used by mission creators. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'missions', 'token', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    missionSlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of mission to delete token for').example('all-of-altis')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteMissionTokenResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['mission.{{missionSlug}}.creator']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No mission with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Mission not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
