@@ -47,7 +47,9 @@ export const user = [
                     offset: Joi.number().integer().min(0).default(0).optional()
                         .description('Number of users to skip before retrieving new ones from database, defaults to 0 (used for pagination in combination with limit)'),
                     search: Joi.string().min(1).allow(null).default(null).optional().description('Value used for searching users, retrieving only those that ' +
-                        'have a nickname containing the provided value').example('morpheus')
+                        'have a nickname containing the provided value').example('morpheus'),
+                    communityUid: Joi.string().min(1).allow(null).default(null).optional().description('Optional filter for user search, restricting matches to only members ' +
+                        'of the community with the given UID. Only effective if a `search` value has been provided').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 })
             },
             response: {

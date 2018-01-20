@@ -37,6 +37,12 @@ export function getUserList(request: Hapi.Request, reply: Hapi.ReplyWithContinue
                 }
             };
 
+            if (!_.isNil(request.query.communityUid)) {
+                queryOptions.where = {
+                    communityUid: request.query.communityUid
+                };
+            }
+
             log.debug({ function: 'getUserList', queryOptions, userUid }, 'Including search parameter in query options');
         }
 
