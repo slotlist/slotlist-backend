@@ -93,7 +93,19 @@ export function getMissionList(request: Hapi.Request, reply: Hapi.ReplyWithConti
         }
 
         if (_.isNil(request.query.startDate)) {
-            if (request.query.includeEnded === false) {
+            if (!_.isNil(request.query.search)) {
+                queryOptions.where.title = {
+                    $iLike: `%${request.query.search}%`
+                };
+
+                if (!_.isNil(request.query.communityUid)) {
+                    queryOptions.where.communityUid = request.query.communityUid;
+                } else if (!_.isNil(request.query.creatorUid)) {
+                    queryOptions.where.creatorUid = request.query.creatorUid;
+                }
+
+                log.debug({ function: 'getMissionList', queryOptions, userUid }, 'Including search parameter in query options');
+            } else if (request.query.includeEnded === false) {
                 queryOptions.where.endTime = {
                     $gt: moment.utc()
                 };

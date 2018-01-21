@@ -67,7 +67,15 @@ export const mission = [
                     startDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to start retrieving missions from. Used for mission ' +
                         'calendar, to be used in conjunction with `endDate`. Endpoint ignores all other query parameters provided if a `startDate` has been provided'),
                     endDate: Joi.date().allow(null).default(null).optional().description('Date and time (in UTC) to end retrieving missions, inclusive. Used for mission ' +
-                        'calendar, to be used in conjunction with `startDate`. Must be provided if `startDate` has been set')
+                        'calendar, to be used in conjunction with `startDate`. Must be provided if `startDate` has been set'),
+                    search: Joi.string().min(1).allow(null).default(null).optional().description('Value used for searching missions, retrieving only those that ' +
+                        'have a title containing the provided value').example('altis'),
+                    communityUid: Joi.string().min(1).allow(null).default(null).optional().description('Optional filter for mission search, restricting matches to only missions ' +
+                        'associated with the community with the given UID. Only effective if a `search` value has been provided, mutually exclusive with the `creatorUid` ' +
+                        'parameter').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+                    creatorUid: Joi.string().min(1).allow(null).default(null).optional().description('Optional filter for mission search, restricting matches to only missions ' +
+                        'created by the user with the given UID. Only effective if a `search` value has been provided, mutually exclusive with the `communityUid` parameter')
+                        .example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8')
                 })
             },
             response: {
