@@ -7,7 +7,7 @@ import * as urlJoin from 'url-join';
 import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
-import { Mission } from '../../../shared/models/Mission';
+import { Mission, MISSION_VISIBILITY_PRIVATE } from '../../../shared/models/Mission';
 import { MissionAccess } from '../../../shared/models/MissionAccess';
 import { IMissionSlotCreatePayload, IPublicMissionSlot, MissionSlot } from '../../../shared/models/MissionSlot';
 import { IPublicMissionSlotGroup, MissionSlotGroup } from '../../../shared/models/MissionSlotGroup';
@@ -1421,7 +1421,7 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'visibility'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1446,6 +1446,27 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
             await mission.recalculateSlotOrderNumbers();
 
+            const restrictedCommunityUids = _.filter(_.map(slots, 'restrictedCommunityUid'), (uid: string | null) => !_.isNil(uid));
+            if (!_.isEmpty(restrictedCommunityUids) && mission.visibility === MISSION_VISIBILITY_PRIVATE) {
+                await Promise.map(restrictedCommunityUids, async (restrictedCommunityUid: string) => {
+                    log.debug(
+                        { function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid, communityUid: restrictedCommunityUid },
+                        'Mission slot payload contained restricted community UID and mission is private, checking if mission access already exists for community');
+
+                    const missionAccessCount = await MissionAccess.count({ where: { missionUid: mission.uid, communityUid: restrictedCommunityUid } });
+                    if (missionAccessCount === 0) {
+                        log.debug(
+                            { function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid, communityUid: payload.restrictedCommunityUid },
+                            'Mission access does not exist for community provided in mission slot payload, creating');
+
+                        await MissionAccess.create({
+                            missionUid: mission.uid,
+                            communityUid: restrictedCommunityUid
+                        });
+                    }
+                });
+            }
+
             log.debug({ function: 'createMissionSlot', payload, userUid, missionUid: mission.uid, missionSlotCount: slots.length }, 'Successfully created new mission slots');
 
             const publicMissionSlots = await Promise.map(slots, (slot: MissionSlot) => {
@@ -1466,7 +1487,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'visibility'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
@@ -1488,9 +1509,10 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         return sequelize.transaction(async (t: Transaction) => {
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
+
                 await slot.update(payload, { allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked'] });
             } else {
-                log.debug({ function: 'updateMissionSlotGroup', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot');
+                log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot');
 
                 const slotGroups = await mission.getSlotGroups({ where: { uid: slot.slotGroupUid } });
                 if (_.isNil(slotGroups) || _.isEmpty(slotGroups)) {
@@ -1529,10 +1551,28 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 });
 
                 log.debug(
-                    { function: 'updateMissionSlotGroup', slug, slotUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
+                    { function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
                     'Successfully reordered mission slot, recalculating mission slot order numbers');
 
                 await mission.recalculateSlotOrderNumbers();
+            }
+
+            if (!_.isNil(payload.restrictedCommunityUid) && mission.visibility === MISSION_VISIBILITY_PRIVATE) {
+                log.debug(
+                    { function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid, communityUid: payload.restrictedCommunityUid },
+                    'Mission slot payload contained restricted community UID and mission is private, checking if mission access already exists for community');
+
+                const missionAccessCount = await MissionAccess.count({ where: { missionUid: mission.uid, communityUid: payload.restrictedCommunityUid } });
+                if (missionAccessCount === 0) {
+                    log.debug(
+                        { function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid, communityUid: payload.restrictedCommunityUid },
+                        'Mission access does not exist for community provided in mission slot payload, creating');
+
+                    await MissionAccess.create({
+                        missionUid: mission.uid,
+                        communityUid: payload.restrictedCommunityUid
+                    });
+                }
             }
 
             log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Successfully updated mission slot');
