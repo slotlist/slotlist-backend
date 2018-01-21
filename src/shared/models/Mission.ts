@@ -188,7 +188,7 @@ export class Mission extends Model {
     public description: string;
 
     /**
-     * Optional URL of banner iamge to display on mission details.
+     * Optional URL of banner image to display on mission details.
      * Can be `null` if not defined by mission creator/editor
      *
      * @type {(string | null)}

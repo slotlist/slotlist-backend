@@ -13,6 +13,8 @@ const log = logger.child({ service: 'ImageService' });
 
 export const MISSION_IMAGE_PATH: string = '/images/uploads/missions';
 
+export const COMMUNITY_LOGO_PATH: string = '/images/uploads/communities';
+
 /**
  * Service for parsing, processing and storing images
  *

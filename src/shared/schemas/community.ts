@@ -10,7 +10,9 @@ export const communitySchema = Joi.object().keys({
     website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be null if none exists')
         .example('http://spezialeinheit-luchs.de'),
     slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
-        .description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID').example('spezialeinheit-luchs')
+        .description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID').example('spezialeinheit-luchs'),
+    logoUrl: Joi.string().allow(null).uri().min(1).default(null).description('Optional URL of logo to be displayed on community details')
+        .example('https://example.org/logo.png')
 }).required().label('Community').description('Public community information, as displayed in overview lists');
 
 // Imported below public communitySchema so circular dependencies work

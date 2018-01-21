@@ -3,6 +3,8 @@ import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
 import { col, fn, literal, Transaction } from 'sequelize';
+import * as urlJoin from 'url-join';
+import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import {
@@ -15,6 +17,7 @@ import {
 import { Mission } from '../../../shared/models/Mission';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
+import { COMMUNITY_LOGO_PATH, instance as ImageService } from '../../../shared/services/ImageService';
 import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
@@ -292,6 +295,115 @@ export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
                 token: token
             };
         });
+    })());
+}
+
+export function setCommunityLogo(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const imageType = request.payload.imageType;
+        const image = request.payload.image;
+
+        if (_.isNil(imageType) || _.isNil(image)) {
+            log.debug({ function: 'setCommunityLogo', slug, userUid }, 'Missing community logo data, aborting');
+            throw Boom.badRequest('Missing community logo data');
+        }
+
+        const community = await Community.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: User,
+                    as: 'members'
+                },
+                {
+                    model: Mission,
+                    as: 'missions',
+                    include: [
+                        {
+                            model: User,
+                            as: 'creator'
+                        }
+                    ],
+                    required: false
+                }
+            ]
+        });
+        if (_.isNil(community)) {
+            log.debug({ function: 'setCommunityLogo', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const imageFolder = urlJoin(COMMUNITY_LOGO_PATH, slug);
+        const imageName = uuid.v4();
+
+        const matches = ImageService.parseDataUrl(image);
+        if (_.isNil(matches)) {
+            log.debug({ function: 'setCommunityLogo', slug, userUid }, 'Community logo data did not match data URL regex, aborting');
+            throw Boom.badRequest('Missing community logo data');
+        }
+
+        const imageData = Buffer.from(matches[4], 'base64');
+
+        log.debug({ function: 'setCommunityLogo', slug, userUid, communityUid: community.uid, imageFolder, imageName }, 'Uploading community logo');
+
+        const imageUrl = await ImageService.uploadImage(imageData, imageName, imageFolder, imageType);
+
+        log.debug({ function: 'setCommunityLogo', slug, userUid, communityUid: community.uid, imageUrl }, 'Finished uploading community logo, updating community');
+
+        await community.update({ logoUrl: imageUrl });
+
+        log.debug({ function: 'setCommunityLogo', slug, userUid, communityUid: community.uid, imageUrl }, 'Successfully updated community');
+
+        const detailedPublicCommunity = await community.toDetailedPublicObject();
+
+        return {
+            community: detailedPublicCommunity
+        };
+    })());
+}
+
+export function deleteCommunityLogo(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug } });
+        if (_.isNil(community)) {
+            log.debug({ function: 'deleteCommunityLogo', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const logoUrl = community.logoUrl;
+        if (_.isNil(logoUrl)) {
+            log.debug({ function: 'deleteCommunityLogo', slug, userUid }, 'Community does not have logo URL set, aborting');
+            throw Boom.notFound('No community logo set');
+        }
+
+        const matches = ImageService.getImageUidFromUrl(logoUrl);
+        if (_.isNil(matches) || _.isEmpty(matches)) {
+            log.debug({ function: 'deleteCommunityLogo', slug, userUid }, 'Failed to parse image UID from logo URL, aborting');
+            throw Boom.notFound('No community logo set');
+        }
+        const logoUid = matches[0];
+
+        const imagePath = urlJoin(COMMUNITY_LOGO_PATH, slug, logoUid);
+
+        log.debug({ function: 'deleteCommunityLogo', slug, userUid, communityUid: community.uid, imagePath }, 'Deleting community logo');
+
+        await ImageService.deleteImage(imagePath);
+
+        log.debug({ function: 'deleteCommunityLogo', slug, userUid, communityUid: community.uid, imagePath }, 'Removing community logo URL from community');
+
+        await community.update({ logoUrl: null });
+
+        log.debug({ function: 'deleteCommunityLogo', slug, userUid, communityUid: community.uid, imagePath }, 'Successfully updated community');
+
+        return {
+            success: true
+        };
     })());
 }
 

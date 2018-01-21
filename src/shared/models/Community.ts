@@ -163,6 +163,24 @@ export class Community extends Model {
     }
 
     /**
+     * Optional URL of logo to display on community details.
+     * Can be `null` if not defined by community founder/leader
+     *
+     * @type {(string | null)}
+     * @memberof Community
+     */
+    @Attribute({
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            notEmpty: true,
+            isUrl: true
+        }
+    })
+    public logoUrl: string | null;
+
+    /**
      * Eager-loaded list of member applications associated with the community.
      * Only included if the community has applications associated and it has been eager-loaded via sequelize
      *
@@ -756,7 +774,8 @@ export class Community extends Model {
             name: this.name,
             tag: this.tag,
             website: _.isNil(this.website) ? null : this.website,
-            slug: this.slug
+            slug: this.slug,
+            logoUrl: this.logoUrl
         };
     }
 
@@ -802,6 +821,7 @@ export class Community extends Model {
             tag: this.tag,
             website: _.isNil(this.website) ? null : this.website,
             slug: this.slug,
+            logoUrl: this.logoUrl,
             leaders: publicLeaders,
             members: _.pullAllBy(publicMembers, publicLeaders, 'uid'),
             missions: publicMissions
@@ -825,6 +845,7 @@ export interface IPublicCommunity {
     tag: string;
     website: string | null;
     slug: string;
+    logoUrl: string | null;
 }
 
 /**
