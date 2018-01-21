@@ -464,8 +464,8 @@ export const mission = [
                 mode: 'required'
             },
             description: 'Returns a list of all accesses granted for the given mission',
-            notes: 'Returns a list of all accesses granted for the given mission. This endpoint can only be used by mission creators. Regular user authentication with ' +
-            'appropriate permissions is required to access this endpoint',
+            notes: 'Returns a list of all accesses granted for the given mission. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` ' +
+            'permission. Regular user authentication with appropriate permissions is required to access this endpoint',
             tags: ['api', 'get', 'v1', 'missions', 'access', 'list', 'authenticated', 'restricted'],
             validate: {
                 options: {
@@ -500,7 +500,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{missionSlug}}.creator']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -544,8 +544,8 @@ export const mission = [
                 mode: 'required'
             },
             description: 'Creates a new mission access for the given mission',
-            notes: 'Creates a new mission access for the given mission. This endpoint can only be used by mission creators. Regular user authentication with ' +
-            'appropriate permissions is required to access this endpoint',
+            notes: 'Creates a new mission access for the given mission. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. ' +
+            'Regular user authentication with appropriate permissions is required to access this endpoint',
             tags: ['api', 'post', 'v1', 'missions', 'access', 'create', 'authenticated', 'restricted'],
             validate: {
                 options: {
@@ -571,7 +571,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{missionSlug}}.creator']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {
@@ -615,8 +615,8 @@ export const mission = [
                 mode: 'required'
             },
             description: 'Deletes an existing mission access',
-            notes: 'Deletes an existing mission access. This endpoint can only be used by mission creators. Regular user authentication with appropriate permissions is ' +
-            'required to access this endpoint',
+            notes: 'Deletes an existing mission access. This endpoint can only be used by mission creators and users with the `mission.SLUG.editor` permission. Regular user ' +
+            'authentication with appropriate permissions is required to access this endpoint',
             tags: ['api', 'delete', 'v1', 'missions', 'access', 'authenticated', 'restricted'],
             validate: {
                 options: {
@@ -637,7 +637,7 @@ export const mission = [
             },
             plugins: {
                 acl: {
-                    permissions: ['mission.{{missionSlug}}.creator']
+                    permissions: ['mission.{{missionSlug}}.creator', 'mission.{{missionSlug}}.editor']
                 },
                 'hapi-swagger': {
                     responses: {
