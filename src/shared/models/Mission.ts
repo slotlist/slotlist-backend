@@ -1,4 +1,5 @@
 import * as Boom from 'boom';
+import * as Joi from 'joi';
 import * as _ from 'lodash';
 import {
     BelongsTo,
@@ -19,6 +20,7 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { missionServerInfoSchema } from '../schemas/mission';
 import {
     NOTIFICATION_TYPE_MISSION_DELETED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
@@ -325,6 +327,50 @@ export class Mission extends Model {
         }
     })
     public rules: string | null;
+
+    /**
+     * Information about the gameserver the mission will be held on.
+     * Can be `null` if no gameserver information is provided.
+     *
+     * @type {(IMissionServerInfo | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            validMissionServerInfo(val: any): void {
+                const validationResult = Joi.validate(val, missionServerInfoSchema);
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission server info', validationResult);
+                }
+            }
+        }
+    })
+    public gameServer: IMissionServerInfo | null;
+
+    /**
+     * Information about the voice comms server used for the mission.
+     * Can be `null` if no voice comm server information is provided.
+     *
+     * @type {(IMissionServerInfo | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            validMissionServerInfo(val: any): void {
+                const validationResult = Joi.validate(val, missionServerInfoSchema);
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission server info', validationResult);
+                }
+            }
+        }
+    })
+    public voiceComms: IMissionServerInfo | null;
 
     /**
      * Indicates the visibility status of the mission.
@@ -1288,6 +1334,8 @@ export class Mission extends Model {
             repositoryUrl: _.isNil(this.repositoryUrl) ? null : this.repositoryUrl,
             techSupport: _.isNil(this.techSupport) ? null : this.techSupport,
             rules: _.isNil(this.rules) ? null : this.rules,
+            gameServer: _.isNil(this.gameServer) ? null : this.gameServer,
+            voiceComms: _.isNil(this.voiceComms) ? null : this.voiceComms,
             visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator,
@@ -1333,6 +1381,8 @@ export interface IDetailedPublicMission extends IPublicMission {
     repositoryUrl: string | null;
     techSupport: string | null;
     rules: string | null;
+    gameServer: IMissionServerInfo | null;
+    voiceComms: IMissionServerInfo | null;
     visibility: string;
     community: IPublicCommunity | null;
 }
@@ -1346,4 +1396,10 @@ export interface IMissionSlotCounts {
     restricted: number;
     total: number;
     unassigned: number;
+}
+
+export interface IMissionServerInfo {
+    hostname: string;
+    port: number;
+    password: string | null;
 }

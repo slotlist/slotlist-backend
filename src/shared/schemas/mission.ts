@@ -36,6 +36,12 @@ export const missionSchema = Joi.object().keys({
 // communityDetailsSchema depends on missionSchema
 import { communitySchema } from './community';
 
+export const missionServerInfoSchema = Joi.object().keys({
+    hostname: Joi.string().min(1).required().description('Hostname of the server').example('example.com'),
+    port: Joi.number().min(0).max(65535).required().description('Port of the server').example(2302),
+    password: Joi.string().min(1).allow(null).default(null).optional().description('Optional password of the server. Set to `null` if no password is required').example('hunter2')
+}).required().label('MissionServerInfo').description('Contains information about a server used during a mission. This could either be a gameserver or voice comms');
+
 export const missionDetailsSchema = missionSchema.keys({
     description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
     detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
@@ -55,6 +61,8 @@ export const missionDetailsSchema = missionSchema.keys({
     rules: Joi.string().allow(null).min(1).default(null).optional()
         .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
+    gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
+    voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
     visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).required()
         .description('Indicates the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only visible to the ' +
         'mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission creator\'s community. The `private` ' +

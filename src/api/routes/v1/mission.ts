@@ -206,6 +206,8 @@ export const mission = [
                     rules: Joi.string().allow(null).min(1).default(null).optional()
                         .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
+                    gameServer: schemas.missionServerInfoSchema.allow(null).default(null).optional(),
+                    voiceComms: schemas.missionServerInfoSchema.allow(null).default(null).optional(),
                     visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).optional()
                         .description('Sets the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only ' +
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
@@ -354,6 +356,8 @@ export const mission = [
                     rules: Joi.string().allow(null).min(1).optional()
                         .description('New additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
+                    gameServer: schemas.missionServerInfoSchema.allow(null).optional(),
+                    voiceComms: schemas.missionServerInfoSchema.allow(null).optional(),
                     visibility: Joi.string().equal(MISSION_VISIBILITIES).optional()
                         .description('New visibility setting for the mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only ' +
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
