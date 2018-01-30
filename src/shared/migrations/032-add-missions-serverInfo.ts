@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 
 /**
- * Adds the logoUrl column to the Communities table
+ * Adds the serverInfo columns to the Missions table
  */
 module.exports = {
     up: async (queryInterface: any): Promise<void> => {

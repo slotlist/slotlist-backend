@@ -1,5 +1,7 @@
 import * as Joi from 'joi';
 
+import { missionServerInfoSchema } from './missionServerInfo';
+
 /**
  * Schema for public community information
  */
@@ -25,6 +27,10 @@ export const communityDetailsSchema = communitySchema.keys({
         .description('Community members holding leadership permissions. This includes users with permissions `community.SLUG.*`, ' +
         '`community.SLUG.founder` and `community.SLUG.leader`'),
     members: Joi.array().items(userSchema.optional()).required().description('Members currently associated with the community (excluding leaders)'),
-    missions: Joi.array().items(missionSchema.optional()).required().description('Missions created by members of the community')
+    missions: Joi.array().items(missionSchema.optional()).required().description('Missions created by members of the community'),
+    gameServers: Joi.array().items(missionServerInfoSchema.optional()).optional().description('List of gameservers defined for the community. Will only be present ' +
+        'for community members'),
+    voiceComms: Joi.array().items(missionServerInfoSchema.optional()).optional().description('List of voice comms defined for the community. Will only be present ' +
+        'for community members')
 }).required().label('CommunityDetails')
     .description('Detailed public community information, as displayed on community profile. Includes leaders, members and missions created by members');

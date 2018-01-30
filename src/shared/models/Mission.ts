@@ -20,7 +20,7 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
-import { missionServerInfoSchema } from '../schemas/mission';
+import { missionServerInfoSchema } from '../schemas/missionServerInfo';
 import {
     NOTIFICATION_TYPE_MISSION_DELETED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
@@ -1399,6 +1399,7 @@ export interface IMissionSlotCounts {
 }
 
 export interface IMissionServerInfo {
+    name: string | null;
     hostname: string;
     port: number;
     password: string | null;

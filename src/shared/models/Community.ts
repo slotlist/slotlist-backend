@@ -1,4 +1,5 @@
 import * as Boom from 'boom';
+import * as Joi from 'joi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
 import {
@@ -18,6 +19,7 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { missionServerInfoSchema } from '../schemas/missionServerInfo';
 import {
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
@@ -29,7 +31,7 @@ import {
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED
 } from '../types/notification';
 import { CommunityApplication } from './CommunityApplication';
-import { IPublicMission, Mission } from './Mission';
+import { IMissionServerInfo, IPublicMission, Mission } from './Mission';
 import { MissionAccess } from './MissionAccess';
 import { Notification } from './Notification';
 import { Permission } from './Permission';
@@ -179,6 +181,58 @@ export class Community extends Model {
         }
     })
     public logoUrl: string | null;
+
+    /**
+     * Information about the gameservers run by the community. Can be used by mission creators to automatically fill out the mission's gameserver data.
+     * Can be an empty array if no gameserver information is provided.
+     *
+     * @type {IMissionServerInfo[]}
+     * @memberof Community
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
+        validate: {
+            validMissionServerInfo(val: any): void {
+                if (!_.isArray(val)) {
+                    val = [val];
+                }
+
+                const validationResult = Joi.validate(val, Joi.array().required().items(missionServerInfoSchema.optional()));
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission server info', validationResult);
+                }
+            }
+        }
+    })
+    public gameServers: IMissionServerInfo[];
+
+    /**
+     * Information about the voice comms servers run by the community. Can be used by mission creators to automatically fill out the mission's voice comms data.
+     * Can be an empty array if no voice comm server information is provided.
+     *
+     * @type {IMissionServerInfo[]}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
+        validate: {
+            validMissionServerInfo(val: any): void {
+                if (!_.isArray(val)) {
+                    val = [val];
+                }
+
+                const validationResult = Joi.validate(val, Joi.array().required().items(missionServerInfoSchema.optional()));
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission server info', validationResult);
+                }
+            }
+        }
+    })
+    public voiceComms: IMissionServerInfo[];
 
     /**
      * Eager-loaded list of member applications associated with the community.
@@ -783,10 +837,11 @@ export class Community extends Model {
      * Returns a detailed public representation of the community instance, as transmitted via API.
      * Also includes leaders, members and missions created by members
      *
+     * @param {boolean} isCommunityMember Indicates whether the user requesting the community information is a member, returning more details
      * @returns {Promise<IDetailedPublicCommunity>} Object containing detailed public community information
      * @memberof Community
      */
-    public async toDetailedPublicObject(): Promise<IDetailedPublicCommunity> {
+    public async toDetailedPublicObject(isCommunityMember: boolean = false): Promise<IDetailedPublicCommunity> {
         const leaders = await this.getLeaders();
 
         if (_.isNil(this.members)) {
@@ -824,7 +879,9 @@ export class Community extends Model {
             logoUrl: this.logoUrl,
             leaders: publicLeaders,
             members: _.pullAllBy(publicMembers, publicLeaders, 'uid'),
-            missions: publicMissions
+            missions: publicMissions,
+            gameServers: isCommunityMember ? this.gameServers : undefined,
+            voiceComms: isCommunityMember ? this.voiceComms : undefined
         };
     }
 
@@ -860,4 +917,6 @@ export interface IDetailedPublicCommunity extends IPublicCommunity {
     leaders: IPublicUser[];
     members: IPublicUser[];
     missions: IPublicMission[];
+    gameServers?: IMissionServerInfo[];
+    voiceComms?: IMissionServerInfo[];
 }

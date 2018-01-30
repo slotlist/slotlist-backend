@@ -175,6 +175,10 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
+        let userCommunityUid: string | null = null;
+        if (request.auth.isAuthenticated && !_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
 
         const community = await Community.findOne({
             where: { slug },
@@ -201,7 +205,8 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             throw Boom.notFound('Community not found');
         }
 
-        const detailedPublicCommunity = await community.toDetailedPublicObject();
+        // Only return server info for community if requesting user is a member
+        const detailedPublicCommunity = await community.toDetailedPublicObject(community.uid === userCommunityUid);
 
         return {
             community: detailedPublicCommunity
@@ -242,11 +247,12 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Updating community');
 
-        await community.update(payload, { allowed: ['name', 'tag', 'website'] });
+        await community.update(payload, { allowed: ['name', 'tag', 'website', 'gameServers', 'voiceComms'] });
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Successfully updated community');
 
-        const detailedPublicCommunity = await community.toDetailedPublicObject();
+        // User updating the community will either be a community member or an admin, so server info is always returned
+        const detailedPublicCommunity = await community.toDetailedPublicObject(true);
 
         return {
             community: detailedPublicCommunity
@@ -1014,6 +1020,41 @@ export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
 
         return {
             success: true
+        };
+    })());
+}
+
+export function getCommunityServers(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        } else {
+            log.debug({ function: 'getCommunityServers', slug, userUid }, 'User is not member of any community, preventing access to community servers');
+            throw Boom.forbidden();
+        }
+
+        const community = await Community.findOne({
+            where: { slug },
+            attributes: ['uid', 'gameServers', 'voiceComms']
+        });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityServers', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (userCommunityUid !== community.uid) {
+            log.debug(
+                { function: 'getCommunityServers', slug, userUid, userCommunityUid, communityUid: community.uid },
+                'User is not member of community, preventing access to community servers');
+            throw Boom.forbidden();
+        }
+
+        return {
+            gameServers: community.gameServers,
+            voiceComms: community.voiceComms
         };
     })());
 }

@@ -1,6 +1,7 @@
 import * as Joi from 'joi';
 
 import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
+import { missionServerInfoSchema } from './missionServerInfo';
 import { userSchema } from './user';
 
 /**
@@ -35,12 +36,6 @@ export const missionSchema = Joi.object().keys({
 // Imported below public missionSchema so circular dependencies work
 // communityDetailsSchema depends on missionSchema
 import { communitySchema } from './community';
-
-export const missionServerInfoSchema = Joi.object().keys({
-    hostname: Joi.string().min(1).required().description('Hostname of the server').example('example.com'),
-    port: Joi.number().min(0).max(65535).required().description('Port of the server').example(2302),
-    password: Joi.string().min(1).allow(null).default(null).optional().description('Optional password of the server. Set to `null` if no password is required').example('hunter2')
-}).required().label('MissionServerInfo').description('Contains information about a server used during a mission. This could either be a gameserver or voice comms');
 
 export const missionDetailsSchema = missionSchema.keys({
     description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
