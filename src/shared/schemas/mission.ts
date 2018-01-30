@@ -1,6 +1,7 @@
 import * as Joi from 'joi';
 
 import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
+import { missionServerInfoSchema } from './missionServerInfo';
 import { userSchema } from './user';
 
 /**
@@ -55,6 +56,8 @@ export const missionDetailsSchema = missionSchema.keys({
     rules: Joi.string().allow(null).min(1).default(null).optional()
         .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
+    gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
+    voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
     visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).required()
         .description('Indicates the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only visible to the ' +
         'mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission creator\'s community. The `private` ' +

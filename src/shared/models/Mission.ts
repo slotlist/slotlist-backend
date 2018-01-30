@@ -1,4 +1,5 @@
 import * as Boom from 'boom';
+import * as Joi from 'joi';
 import * as _ from 'lodash';
 import {
     BelongsTo,
@@ -12,12 +13,14 @@ import {
     Model
 } from 'sequelize';
 import { Attribute, Options } from 'sequelize-decorators';
+import * as uuid from 'uuid';
 
 import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { missionServerInfoSchema } from '../schemas/missionServerInfo';
 import {
     NOTIFICATION_TYPE_MISSION_DELETED,
     NOTIFICATION_TYPE_MISSION_PERMISSION_GRANTED,
@@ -187,7 +190,7 @@ export class Mission extends Model {
     public description: string;
 
     /**
-     * Optional URL of banner iamge to display on mission details.
+     * Optional URL of banner image to display on mission details.
      * Can be `null` if not defined by mission creator/editor
      *
      * @type {(string | null)}
@@ -326,6 +329,50 @@ export class Mission extends Model {
     public rules: string | null;
 
     /**
+     * Information about the gameserver the mission will be held on.
+     * Can be `null` if no gameserver information is provided.
+     *
+     * @type {(IMissionServerInfo | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            validMissionServerInfo(val: any): void {
+                const validationResult = Joi.validate(val, missionServerInfoSchema);
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission server info', validationResult);
+                }
+            }
+        }
+    })
+    public gameServer: IMissionServerInfo | null;
+
+    /**
+     * Information about the voice comms server used for the mission.
+     * Can be `null` if no voice comm server information is provided.
+     *
+     * @type {(IMissionServerInfo | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            validMissionServerInfo(val: any): void {
+                const validationResult = Joi.validate(val, missionServerInfoSchema);
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission server info', validationResult);
+                }
+            }
+        }
+    })
+    public voiceComms: IMissionServerInfo | null;
+
+    /**
      * Indicates the visibility status of the mission.
      * More detailed information about the visibility states can be found in the comments of the respective setting constants.
      *
@@ -338,6 +385,20 @@ export class Mission extends Model {
         defaultValue: MISSION_VISIBILITY_HIDDEN
     })
     public visibility: string;
+
+    /**
+     * API token to grant regular user access to the mission, regardless of its visibility setting.
+     * Can be used for static authentication without having to provide regular auth credentials, such as embedding in a website.
+     *
+     * @type {(string | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.UUID,
+        allowNull: true,
+        defaultValue: null
+    })
+    public missionToken: string | null;
 
     /**
      * UID of the community the mission is associated with.
@@ -960,6 +1021,19 @@ export class Mission extends Model {
         return MissionSlot.findById(slotUid);
     }
 
+    /**
+     * Generates a new mission access token, updates the current instance in the database and returns the updated mission.
+     * Overwrites any mission token previously set, thus invalidating it.
+     *
+     * @returns {Promise<Mission>} Updated mission with newly generated mission token set
+     * @memberof Mission
+     */
+    public async generateMissionToken(): Promise<Mission> {
+        return this.update({
+            missionToken: uuid.v4()
+        });
+    }
+
     // tslint:disable:max-line-length
     /**
      * Returns slot count information about the current mission.
@@ -1260,6 +1334,8 @@ export class Mission extends Model {
             repositoryUrl: _.isNil(this.repositoryUrl) ? null : this.repositoryUrl,
             techSupport: _.isNil(this.techSupport) ? null : this.techSupport,
             rules: _.isNil(this.rules) ? null : this.rules,
+            gameServer: _.isNil(this.gameServer) ? null : this.gameServer,
+            voiceComms: _.isNil(this.voiceComms) ? null : this.voiceComms,
             visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator,
@@ -1305,6 +1381,8 @@ export interface IDetailedPublicMission extends IPublicMission {
     repositoryUrl: string | null;
     techSupport: string | null;
     rules: string | null;
+    gameServer: IMissionServerInfo | null;
+    voiceComms: IMissionServerInfo | null;
     visibility: string;
     community: IPublicCommunity | null;
 }
@@ -1318,4 +1396,11 @@ export interface IMissionSlotCounts {
     restricted: number;
     total: number;
     unassigned: number;
+}
+
+export interface IMissionServerInfo {
+    name: string | null;
+    hostname: string;
+    port: number;
+    password: string | null;
 }

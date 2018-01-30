@@ -10,6 +10,7 @@ import * as schemas from '../../../shared/schemas/community';
 import { communityApplicationSchema } from '../../../shared/schemas/communityApplication';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
+import { missionServerInfoSchema } from '../../../shared/schemas/missionServerInfo';
 import { permissionSchema } from '../../../shared/schemas/permission';
 import { userSchema } from '../../../shared/schemas/user';
 import * as controller from '../../controllers/v1/community';
@@ -272,7 +273,11 @@ export const community = [
                     name: Joi.string().min(1).max(255).optional().description('New name of the community').example('Spezialeinheit Luchs'),
                     tag: Joi.string().min(1).max(255).optional().description('New community tag (without square brackets, will be added by frontend)').example('SeL'),
                     website: Joi.string().uri().allow(null).min(1).max(255).optional().description('New website of the community, can be null if none exists')
-                        .example('http://spezialeinheit-luchs.de')
+                        .example('http://spezialeinheit-luchs.de'),
+                    gameServers: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of game servers to define for the community. Set to ' +
+                        'an empty array to remove all entries'),
+                    voiceComms: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of voice comms to define for the community. Set to ' +
+                        'an empty array to remove all entries')
                 })
             },
             response: {
@@ -686,6 +691,136 @@ export const community = [
         }
     },
     {
+        method: 'PUT',
+        path: '/v1/communities/{communitySlug}/logo',
+        handler: controller.setCommunityLogo,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Sets the community\'s logo to the uploaded file',
+            notes: 'Sets the community\'s logo to the uploaded file - stored in GCP, max. image size is 2 Mebibyte. This endpoint can only be used by community founders ' +
+            'and users with the `community.SLUG.leader` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'put', 'v1', 'communities', 'logo', 'authenticated', 'restricted'],
+            payload: {
+                maxBytes: 2097152 // Payload size limit increased to 2 Mebibyte
+            },
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to set logo for')
+                        .example('spezialeinheit-luchs')
+                }),
+                payload: Joi.object().required().keys({
+                    imageType: Joi.string().equal('image/jpeg', 'image/png', 'image/gif').required().description('Type of image uploaded. Only jpeg, png and gif files allowed')
+                        .example('image/png'),
+                    image: Joi.string().uri().min(1).required().description('Image data encoded as a data URL. Maximum allowed upload size is 2 Mebibyte')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    community: schemas.communityDetailsSchema
+                }).label('SetCommunityLogoResponse').description('Response containing details of the updated community')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{communitySlug}}.founder', 'community.{{communitySlug}}.leader']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        400: {
+                            description: 'Required community logo data is missing',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Bad Request').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Missing community logo data').required().description('Message further describing the error')
+                            })
+                        },
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'DELETE',
+        path: '/v1/communities/{communitySlug}/logo',
+        handler: controller.deleteCommunityLogo,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Deletes an existing community logo',
+            notes: 'Deletes an existing community logo, also removing it from GCP storage. This endpoint can only be used by community founders and users with the ' +
+            '`community.SLUG.leader` permission. Regular user authentication with appropriate permissions is required to access this endpoint',
+            tags: ['api', 'delete', 'v1', 'communities', 'logo', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to delete the logo for')
+                        .example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    success: Joi.bool().truthy().required().description('Indicates success of the delete operation (will never be false, since an error will be returned instead)')
+                }).label('DeleteCommunityLogoResponse').description('Response containing results of the delete operation')
+            },
+            plugins: {
+                acl: {
+                    permissions: ['community.{{communitySlug}}.founder', 'community.{{communitySlug}}.leader']
+                },
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug was found or the community did not have a logo set',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found', 'No community logo set').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
         method: 'GET',
         path: '/v1/communities/{communitySlug}/members',
         handler: controller.getCommunityMemberList,
@@ -1077,6 +1212,62 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found', 'Community permission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/communities/{communitySlug}/servers',
+        handler: controller.getCommunityServers,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns a list of game and voice comms servers defined for a specific community',
+            notes: 'Returns a list of game and voice comms servers defined for a specific community, allowing for mission creators to quickly fill out the mission\'s ' +
+            'gameserver and voice comms information. This endpoint is only accessible to community members. Regular user authentication with appropriate permissions is ' +
+            'required to access this endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'servers', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve servers for')
+                        .example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    gameServers: Joi.array().required().items(missionServerInfoSchema.optional()).description('List of game servers defined for the community'),
+                    voiceComms: Joi.array().required().items(missionServerInfoSchema.optional()).description('List of voice comms servers defined for the community')
+                }).label('GetCommunityServersResponse').description('Response containing lists of servers defined for the community')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
                             })
                         },
                         500: {

@@ -3,6 +3,8 @@ import * as Hapi from 'hapi';
 import * as _ from 'lodash';
 import * as moment from 'moment';
 import { col, fn, literal, Transaction } from 'sequelize';
+import * as urlJoin from 'url-join';
+import * as uuid from 'uuid';
 
 import { Community } from '../../../shared/models/Community';
 import {
@@ -15,6 +17,7 @@ import {
 import { Mission } from '../../../shared/models/Mission';
 import { Permission } from '../../../shared/models/Permission';
 import { User } from '../../../shared/models/User';
+import { COMMUNITY_LOGO_PATH, instance as ImageService } from '../../../shared/services/ImageService';
 import { hasPermission } from '../../../shared/util/acl';
 import { log as logger } from '../../../shared/util/log';
 import { sequelize } from '../../../shared/util/sequelize';
@@ -172,6 +175,10 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
+        let userCommunityUid: string | null = null;
+        if (request.auth.isAuthenticated && !_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        }
 
         const community = await Community.findOne({
             where: { slug },
@@ -198,7 +205,8 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             throw Boom.notFound('Community not found');
         }
 
-        const detailedPublicCommunity = await community.toDetailedPublicObject();
+        // Only return server info for community if requesting user is a member
+        const detailedPublicCommunity = await community.toDetailedPublicObject(community.uid === userCommunityUid);
 
         return {
             community: detailedPublicCommunity
@@ -239,11 +247,12 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Updating community');
 
-        await community.update(payload, { allowed: ['name', 'tag', 'website'] });
+        await community.update(payload, { allowed: ['name', 'tag', 'website', 'gameServers', 'voiceComms'] });
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Successfully updated community');
 
-        const detailedPublicCommunity = await community.toDetailedPublicObject();
+        // User updating the community will either be a community member or an admin, so server info is always returned
+        const detailedPublicCommunity = await community.toDetailedPublicObject(true);
 
         return {
             community: detailedPublicCommunity
@@ -292,6 +301,115 @@ export function deleteCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
                 token: token
             };
         });
+    })());
+}
+
+export function setCommunityLogo(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const imageType = request.payload.imageType;
+        const image = request.payload.image;
+
+        if (_.isNil(imageType) || _.isNil(image)) {
+            log.debug({ function: 'setCommunityLogo', slug, userUid }, 'Missing community logo data, aborting');
+            throw Boom.badRequest('Missing community logo data');
+        }
+
+        const community = await Community.findOne({
+            where: { slug },
+            include: [
+                {
+                    model: User,
+                    as: 'members'
+                },
+                {
+                    model: Mission,
+                    as: 'missions',
+                    include: [
+                        {
+                            model: User,
+                            as: 'creator'
+                        }
+                    ],
+                    required: false
+                }
+            ]
+        });
+        if (_.isNil(community)) {
+            log.debug({ function: 'setCommunityLogo', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const imageFolder = urlJoin(COMMUNITY_LOGO_PATH, slug);
+        const imageName = uuid.v4();
+
+        const matches = ImageService.parseDataUrl(image);
+        if (_.isNil(matches)) {
+            log.debug({ function: 'setCommunityLogo', slug, userUid }, 'Community logo data did not match data URL regex, aborting');
+            throw Boom.badRequest('Missing community logo data');
+        }
+
+        const imageData = Buffer.from(matches[4], 'base64');
+
+        log.debug({ function: 'setCommunityLogo', slug, userUid, communityUid: community.uid, imageFolder, imageName }, 'Uploading community logo');
+
+        const imageUrl = await ImageService.uploadImage(imageData, imageName, imageFolder, imageType);
+
+        log.debug({ function: 'setCommunityLogo', slug, userUid, communityUid: community.uid, imageUrl }, 'Finished uploading community logo, updating community');
+
+        await community.update({ logoUrl: imageUrl });
+
+        log.debug({ function: 'setCommunityLogo', slug, userUid, communityUid: community.uid, imageUrl }, 'Successfully updated community');
+
+        const detailedPublicCommunity = await community.toDetailedPublicObject();
+
+        return {
+            community: detailedPublicCommunity
+        };
+    })());
+}
+
+export function deleteCommunityLogo(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+
+        const community = await Community.findOne({ where: { slug } });
+        if (_.isNil(community)) {
+            log.debug({ function: 'deleteCommunityLogo', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        const logoUrl = community.logoUrl;
+        if (_.isNil(logoUrl)) {
+            log.debug({ function: 'deleteCommunityLogo', slug, userUid }, 'Community does not have logo URL set, aborting');
+            throw Boom.notFound('No community logo set');
+        }
+
+        const matches = ImageService.getImageUidFromUrl(logoUrl);
+        if (_.isNil(matches) || _.isEmpty(matches)) {
+            log.debug({ function: 'deleteCommunityLogo', slug, userUid }, 'Failed to parse image UID from logo URL, aborting');
+            throw Boom.notFound('No community logo set');
+        }
+        const logoUid = matches[0];
+
+        const imagePath = urlJoin(COMMUNITY_LOGO_PATH, slug, logoUid);
+
+        log.debug({ function: 'deleteCommunityLogo', slug, userUid, communityUid: community.uid, imagePath }, 'Deleting community logo');
+
+        await ImageService.deleteImage(imagePath);
+
+        log.debug({ function: 'deleteCommunityLogo', slug, userUid, communityUid: community.uid, imagePath }, 'Removing community logo URL from community');
+
+        await community.update({ logoUrl: null });
+
+        log.debug({ function: 'deleteCommunityLogo', slug, userUid, communityUid: community.uid, imagePath }, 'Successfully updated community');
+
+        return {
+            success: true
+        };
     })());
 }
 
@@ -902,6 +1020,41 @@ export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
 
         return {
             success: true
+        };
+    })());
+}
+
+export function getCommunityServers(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        } else {
+            log.debug({ function: 'getCommunityServers', slug, userUid }, 'User is not member of any community, preventing access to community servers');
+            throw Boom.forbidden();
+        }
+
+        const community = await Community.findOne({
+            where: { slug },
+            attributes: ['uid', 'gameServers', 'voiceComms']
+        });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityServers', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (userCommunityUid !== community.uid) {
+            log.debug(
+                { function: 'getCommunityServers', slug, userUid, userCommunityUid, communityUid: community.uid },
+                'User is not member of community, preventing access to community servers');
+            throw Boom.forbidden();
+        }
+
+        return {
+            gameServers: community.gameServers,
+            voiceComms: community.voiceComms
         };
     })());
 }
