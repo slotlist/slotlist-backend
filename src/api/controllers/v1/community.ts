@@ -175,9 +175,14 @@ export function createCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;
+        let userUid: string | null = null;
         let userCommunityUid: string | null = null;
-        if (request.auth.isAuthenticated && !_.isNil(request.auth.credentials.user.community)) {
-            userCommunityUid = request.auth.credentials.user.community.uid;
+        if (request.auth.isAuthenticated) {
+            userUid = request.auth.credentials.user.uid;
+
+            if (!_.isNil(request.auth.credentials.user.community)) {
+                userCommunityUid = request.auth.credentials.user.community.uid;
+            }
         }
 
         const community = await Community.findOne({
@@ -205,8 +210,16 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             throw Boom.notFound('Community not found');
         }
 
-        // Only return server info for community if requesting user is a member
-        const detailedPublicCommunity = await community.toDetailedPublicObject(community.uid === userCommunityUid);
+        // Only include full community details if user is a member of the community or has community admin permissions
+        let includeFullDetails = false;
+        if (community.uid === userCommunityUid) {
+            includeFullDetails = true;
+        } else if (hasPermission(request.auth.credentials.permissions, 'admin.community')) {
+            log.info({ function: 'getCommunityDetails', slug, userUid, hasPermission: true }, 'User has community admin permissions, returning community details');
+            includeFullDetails = true;
+        }
+
+        const detailedPublicCommunity = await community.toDetailedPublicObject(includeFullDetails);
 
         return {
             community: detailedPublicCommunity
@@ -251,7 +264,7 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Successfully updated community');
 
-        // User updating the community will either be a community member or an admin, so server info is always returned
+        // User updating the community will either be a community member or an admin, so full details are always returned
         const detailedPublicCommunity = await community.toDetailedPublicObject(true);
 
         return {

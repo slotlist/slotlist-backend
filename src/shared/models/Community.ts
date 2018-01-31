@@ -837,11 +837,11 @@ export class Community extends Model {
      * Returns a detailed public representation of the community instance, as transmitted via API.
      * Also includes leaders, members and missions created by members
      *
-     * @param {boolean} isCommunityMember Indicates whether the user requesting the community information is a member, returning more details
+     * @param {boolean} includeFullDetails Indicates whether full community details should be included, returned for community members and admins
      * @returns {Promise<IDetailedPublicCommunity>} Object containing detailed public community information
      * @memberof Community
      */
-    public async toDetailedPublicObject(isCommunityMember: boolean = false): Promise<IDetailedPublicCommunity> {
+    public async toDetailedPublicObject(includeFullDetails: boolean = false): Promise<IDetailedPublicCommunity> {
         const leaders = await this.getLeaders();
 
         if (_.isNil(this.members)) {
@@ -880,8 +880,8 @@ export class Community extends Model {
             leaders: publicLeaders,
             members: _.pullAllBy(publicMembers, publicLeaders, 'uid'),
             missions: publicMissions,
-            gameServers: isCommunityMember ? this.gameServers : undefined,
-            voiceComms: isCommunityMember ? this.voiceComms : undefined
+            gameServers: includeFullDetails ? this.gameServers : undefined,
+            voiceComms: includeFullDetails ? this.voiceComms : undefined
         };
     }
 
