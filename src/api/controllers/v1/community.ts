@@ -214,7 +214,7 @@ export function getCommunityDetails(request: Hapi.Request, reply: Hapi.ReplyWith
         let includeFullDetails = false;
         if (community.uid === userCommunityUid) {
             includeFullDetails = true;
-        } else if (hasPermission(request.auth.credentials.permissions, 'admin.community')) {
+        } else if (request.auth.isAuthenticated && hasPermission(request.auth.credentials.permissions, 'admin.community')) {
             log.info({ function: 'getCommunityDetails', slug, userUid, hasPermission: true }, 'User has community admin permissions, returning community details');
             includeFullDetails = true;
         }
