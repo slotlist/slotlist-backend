@@ -4,6 +4,7 @@ import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUB
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionAccessSchema } from '../../../shared/schemas/missionAccess';
+import { missionRepositoryInfoSchema } from '../../../shared/schemas/missionRepositoryInfo';
 import { missionServerInfoSchema } from '../../../shared/schemas/missionServerInfo';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
 import { missionSlotGroupSchema } from '../../../shared/schemas/missionSlotGroup';
@@ -198,9 +199,6 @@ export const mission = [
                         'via mission details)').example('2017-09-02T17:00:00.000Z'),
                     endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
-                    repositoryUrl: Joi.string().allow(null).min(1).default(null).optional()
-                        .description('URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
-                        .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),
                     techSupport: Joi.string().allow(null).min(1).default(null).optional()
                         .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
                         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
@@ -209,6 +207,7 @@ export const mission = [
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
                     gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
                     voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
+                    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).default([]).optional(),
                     visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).optional()
                         .description('Sets the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only ' +
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
@@ -348,9 +347,6 @@ export const mission = [
                         'via mission details)').example('2017-09-02T17:00:00.000Z'),
                     endTime: Joi.date().optional().description('New estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
-                    repositoryUrl: Joi.string().allow(null).min(1).optional()
-                        .description('New URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
-                        .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),
                     techSupport: Joi.string().allow(null).min(1).optional()
                         .description('New information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
                         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
@@ -359,6 +355,7 @@ export const mission = [
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
                     gameServer: missionServerInfoSchema.allow(null).optional(),
                     voiceComms: missionServerInfoSchema.allow(null).optional(),
+                    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).optional(),
                     visibility: Joi.string().equal(MISSION_VISIBILITIES).optional()
                         .description('New visibility setting for the mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only ' +
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +

@@ -19,6 +19,7 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { missionRepositoryInfoSchema } from '../schemas/missionRepositoryInfo';
 import { missionServerInfoSchema } from '../schemas/missionServerInfo';
 import {
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED,
@@ -31,7 +32,7 @@ import {
     NOTIFICATION_TYPE_COMMUNITY_PERMISSION_REVOKED
 } from '../types/notification';
 import { CommunityApplication } from './CommunityApplication';
-import { IMissionServerInfo, IPublicMission, Mission } from './Mission';
+import { IMissionRepositoryInfo, IMissionServerInfo, IPublicMission, Mission } from './Mission';
 import { MissionAccess } from './MissionAccess';
 import { Notification } from './Notification';
 import { Permission } from './Permission';
@@ -213,7 +214,7 @@ export class Community extends Model {
      * Can be an empty array if no voice comm server information is provided.
      *
      * @type {IMissionServerInfo[]}
-     * @memberof Mission
+     * @memberof Community
      */
     @Attribute({
         type: DataTypes.JSON,
@@ -233,6 +234,32 @@ export class Community extends Model {
         }
     })
     public voiceComms: IMissionServerInfo[];
+
+    /**
+     * Information about the mod repositories provided by the community. Can be used by mission creators to automatically fill out the mission's repository data.
+     * Can be an empty array if no mod repository information is provided.
+     *
+     * @type {IMissionRepositoryInfo[]}
+     * @memberof Community
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
+        validate: {
+            validMissionRepositoryInfo(val: any): void {
+                if (!_.isArray(val)) {
+                    val = [val];
+                }
+
+                const validationResult = Joi.validate(val, Joi.array().required().items(missionRepositoryInfoSchema.optional()));
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission repository info', validationResult);
+                }
+            }
+        }
+    })
+    public repositories: IMissionRepositoryInfo[];
 
     /**
      * Eager-loaded list of member applications associated with the community.

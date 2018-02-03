@@ -1,6 +1,7 @@
 import * as Joi from 'joi';
 
 import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
+import { missionRepositoryInfoSchema } from './missionRepositoryInfo';
 import { missionServerInfoSchema } from './missionServerInfo';
 import { userSchema } from './user';
 
@@ -47,9 +48,6 @@ export const missionDetailsSchema = missionSchema.keys({
         .example('2017-09-02T16:00:00.000Z'),
     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server and choose their reserved slot ' +
         'at this time').example('2017-09-02T16:00:00.000Z'),
-    repositoryUrl: Joi.string().allow(null).min(1).default(null).optional()
-        .description('URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
-        .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),
     techSupport: Joi.string().allow(null).min(1).default(null).optional()
         .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
@@ -58,6 +56,7 @@ export const missionDetailsSchema = missionSchema.keys({
         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
     gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
     voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
+    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).required().description('List of mod repositories used for the mission'),
     visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).required()
         .description('Indicates the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only visible to the ' +
         'mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission creator\'s community. The `private` ' +

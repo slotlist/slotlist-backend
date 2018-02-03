@@ -403,7 +403,7 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         }
 
         await mission.update(payload, {
-            allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']
+            allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'techSupport', 'rules', 'visibility']
         });
 
         if (notifyUpdate && !suppressNotifications) {
