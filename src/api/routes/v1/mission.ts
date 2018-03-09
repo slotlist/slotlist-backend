@@ -1383,6 +1383,8 @@ export const mission = [
                         'filled) or a regular one (false)').example(false),
                     blocked: Joi.bool().required().description('Indicates whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
+                    autoAssignable: Joi.bool().required().description('Indicates whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
+                        'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
                     insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot the new slot should be inserted ' +
                         'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
                 }).required()
@@ -1458,6 +1460,8 @@ export const mission = [
                         'filled) or a regular one (false)').example(false),
                     blocked: Joi.bool().optional().description('New indicator whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
+                    autoAssignable: Joi.bool().optional().description('New indicator whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
+                        'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
                     externalAssignee: Joi.string().min(1).max(255).allow(null).optional().description('Nickname of external player assigned to the slot. Allows for slots ' +
                         'to be assigned to users not present in the database. Cannot be set if a user has been assigned and vice versa. Set to `null` to remove the external ' +
                         'assignee').example('MorpheusXAUT'),
