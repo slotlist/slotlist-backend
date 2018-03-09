@@ -191,6 +191,8 @@ export const mission = [
                     description: Joi.string().min(1).required().description('Short description and summary of mission').example('Conquer all of Altis!'),
                     detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
                         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+                    collapsedDescription: Joi.string().allow(null).min(1).default(null).optional().description('Collapsed description of the mission, can be `null` if ' +
+                        'not applicable. Can contain HTML for formatting').example('<h1>Lots of additional info</h1><div>Thank god this is collapsed!</div>'),
                     briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
                         'with leadership roles').example('2017-09-02T16:00:00.000Z'),
                     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
@@ -200,10 +202,10 @@ export const mission = [
                     endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
                     techSupport: Joi.string().allow(null).min(1).default(null).optional()
-                        .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+                        .description('Information regarding any technical support provided before the mission, can be `null` if not provided. Can contain HTML for formatting')
                         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
                     rules: Joi.string().allow(null).min(1).default(null).optional()
-                        .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+                        .description('Additional ruleset for this mission, can be `null` if not applicable. Can contain HTML for formatting')
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
                     gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
                     voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
@@ -339,6 +341,8 @@ export const mission = [
                     description: Joi.string().min(1).optional().description('New short description and summary of mission').example('Conquer all of Altis!'),
                     detailedDescription: Joi.string().min(1).optional().description('New full, detailed description of the mission. Can contain HTML for formatting')
                         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+                    collapsedDescription: Joi.string().allow(null).min(1).optional().description('New collapsed description of the mission, can be `null` if not applicable. ' +
+                        'Can contain HTML for formatting').example('<h1>Lots of additional info</h1><div>Thank god this is collapsed!</div>'),
                     briefingTime: Joi.date().optional().description('New date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
                         'with leadership roles').example('2017-09-02T16:00:00.000Z'),
                     slottingTime: Joi.date().optional().description('New date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
@@ -348,10 +352,10 @@ export const mission = [
                     endTime: Joi.date().optional().description('New estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
                     techSupport: Joi.string().allow(null).min(1).optional()
-                        .description('New information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+                        .description('New information regarding any technical support provided before the mission, can be `null` if not provided. Can contain HTML for formatting')
                         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
                     rules: Joi.string().allow(null).min(1).optional()
-                        .description('New additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+                        .description('New additional ruleset for this mission, can be `null` if not applicable. Can contain HTML for formatting')
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
                     gameServer: missionServerInfoSchema.allow(null).optional(),
                     voiceComms: missionServerInfoSchema.allow(null).optional(),

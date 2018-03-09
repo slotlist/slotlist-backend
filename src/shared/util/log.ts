@@ -57,6 +57,9 @@ const serializers: bunyan.Serializers = {
         if (_.isString(pay.detailedDescription)) {
             pay.detailedDescription = '***SNIP***';
         }
+        if (_.isString(pay.collapsedDescription)) {
+            pay.collapsedDescription = '***SNIP***';
+        }
         if (!_.isNil(pay.image)) {
             pay.image = '***SNIP***';
         }

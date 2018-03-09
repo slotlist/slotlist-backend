@@ -23,7 +23,7 @@ export const missionSlotSchema = Joi.object().keys({
         'are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
     restrictedCommunity: communitySchema.allow(null).default(null).optional().description('Community the slot has been restricted to. If a value is set, only members of ' +
         'this community can register for the slot. If `null` is returned, no restrictions apply and everyone can register'),
-    assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be null if no final assignment has been completed yet'),
+    assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be `null` if no final assignment has been completed yet'),
     externalAssignee: Joi.string().min(1).max(255).allow(null).default(null).optional().description('Nickname of external player assigned to the slot. Allows for slots to ' +
         'be assigned to users not present in the database. Cannot be set at the same time as an `assigneeUid` and vice versa. Can be `null` if no external player has been ' +
         'assigned').example('MorpheusXAUT'),

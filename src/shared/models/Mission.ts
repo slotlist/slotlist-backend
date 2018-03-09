@@ -176,6 +176,23 @@ export class Mission extends Model {
     public detailedDescription: string;
 
     /**
+     * (Optional) collapsed description of the mission.
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
+     *
+     * @type {(string | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
+    })
+    public collapsedDescription: string;
+
+    /**
      * (Short) summary description of the mission.
      *
      * @type {string}
@@ -1336,6 +1353,7 @@ export class Mission extends Model {
             slug: this.slug,
             description: this.description,
             detailedDescription: this.detailedDescription,
+            collapsedDescription: _.isNil(this.collapsedDescription) ? null : this.collapsedDescription,
             bannerImageUrl: _.isNil(this.bannerImageUrl) ? null : this.bannerImageUrl,
             briefingTime: this.briefingTime,
             slottingTime: this.slottingTime,
@@ -1385,6 +1403,7 @@ export interface IPublicMission {
 export interface IDetailedPublicMission extends IPublicMission {
     description: string;
     detailedDescription: string;
+    collapsedDescription: string | null;
     bannerImageUrl: string | null;
     briefingTime: Date;
     slottingTime: Date;

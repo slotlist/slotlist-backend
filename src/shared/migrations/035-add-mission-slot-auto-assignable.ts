@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 
 /**
- * Adds the repositories columns to the Communities and Missions tables and migrates existing `repositoryUrl`s
+ * Adds the autoAssignable column to the MissionSlots table
  */
 module.exports = {
     up: async (queryInterface: any): Promise<void> => {

@@ -155,7 +155,7 @@ export const community = [
                 payload: Joi.object().required().keys({
                     name: Joi.string().min(1).max(255).required().description('Name of the community').example('Spezialeinheit Luchs'),
                     tag: Joi.string().min(1).max(255).required().description('Community tag (without square brackets, will be added by frontend)').example('SeL'),
-                    website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be null if none exists')
+                    website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be `null` if none exists')
                         .example('http://spezialeinheit-luchs.de'),
                     slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
                         .description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID').example('spezialeinheit-luchs')
@@ -272,7 +272,7 @@ export const community = [
                 payload: Joi.object().required().keys({
                     name: Joi.string().min(1).max(255).optional().description('New name of the community').example('Spezialeinheit Luchs'),
                     tag: Joi.string().min(1).max(255).optional().description('New community tag (without square brackets, will be added by frontend)').example('SeL'),
-                    website: Joi.string().uri().allow(null).min(1).max(255).optional().description('New website of the community, can be null if none exists')
+                    website: Joi.string().uri().allow(null).min(1).max(255).optional().description('New website of the community, can be `null` if none exists')
                         .example('http://spezialeinheit-luchs.de'),
                     gameServers: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of game servers to define for the community. Set to ' +
                         'an empty array to remove all entries'),

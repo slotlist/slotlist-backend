@@ -227,6 +227,10 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             delete payload.addToCommunity;
         }
 
+        if (_.isString(payload.collapsedDescription) && !_.isEmpty(payload.collapsedDescription)) {
+            payload.collapsedDescription = await ImageService.parseMissionDescription(payload.slug, payload.collapsedDescription);
+        }
+
         payload.detailedDescription = await ImageService.parseMissionDescription(payload.slug, payload.detailedDescription);
 
         log.debug({ function: 'createMission', payload, userUid }, 'Creating new mission');
@@ -390,6 +394,9 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
         log.debug({ function: 'updateMission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid }, 'Updating mission');
 
+        if (_.isString(payload.collapsedDescription) && !_.isEmpty(payload.collapsedDescription)) {
+            payload.collapsedDescription = await ImageService.parseMissionDescription(slug, payload.collapsedDescription);
+        }
         if (_.isString(payload.detailedDescription) && !_.isEmpty(payload.detailedDescription)) {
             payload.detailedDescription = await ImageService.parseMissionDescription(slug, payload.detailedDescription);
         }
@@ -405,6 +412,7 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         await mission.update(payload, {
             fields: [
                 'title',
+                'collapsedDescription',
                 'detailedDescription',
                 'description',
                 'briefingTime',

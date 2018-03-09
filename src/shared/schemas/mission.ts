@@ -42,6 +42,8 @@ export const missionDetailsSchema = missionSchema.keys({
     description: Joi.string().min(1).required().description('Short (plaintext) description and summary of mission').example('Conquer all of Altis!'),
     detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+    collapsedDescription: Joi.string().allow(null).min(1).default(null).optional().description('Collapsed description of the mission, can be `null` if not applicable. Can ' +
+        'contain HTML for formatting').example('<h1>Lots of additional info</h1><div>Thank god this is collapsed!</div>'),
     bannerImageUrl: Joi.string().allow(null).uri().min(1).default(null).description('Optional URL of banner image to be displayed on mission details')
         .example('https://example.org/banner.png'),
     briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players with leadership roles')
@@ -49,10 +51,10 @@ export const missionDetailsSchema = missionSchema.keys({
     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server and choose their reserved slot ' +
         'at this time').example('2017-09-02T16:00:00.000Z'),
     techSupport: Joi.string().allow(null).min(1).default(null).optional()
-        .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+        .description('Information regarding any technical support provided before the mission, can be `null` if not provided. Can contain HTML for formatting')
         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
     rules: Joi.string().allow(null).min(1).default(null).optional()
-        .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+        .description('Additional ruleset for this mission, can be `null` if not applicable. Can contain HTML for formatting')
         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
     gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
     voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
@@ -63,6 +65,6 @@ export const missionDetailsSchema = missionSchema.keys({
         'visibility setting restricts access to selected users, although this functionality is currently not implemented yet (as of 2017-08-23)')
         .example(MISSION_VISIBILITY_PUBLIC),
     community: communitySchema.allow(null).default(null).optional().label('Community')
-        .description('Community of the mission, if associated via user. Can be null if user is not assigned to community or removed mission association')
+        .description('Community of the mission, if associated via user. Can be `null` if user is not assigned to community or removed mission association')
 }).required().label('MissionDetails').description('Detailed public mission information, as displayed on mission page. Include more detailed mission times, as well as a longer ' +
 'description and additional information required for participating');
