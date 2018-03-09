@@ -260,7 +260,7 @@ export function updateCommunity(request: Hapi.Request, reply: Hapi.ReplyWithCont
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Updating community');
 
-        await community.update(payload, { allowed: ['name', 'tag', 'website', 'gameServers', 'voiceComms'] });
+        await community.update(payload, { fields: ['name', 'tag', 'website', 'gameServers', 'voiceComms'] });
 
         log.debug({ function: 'updateCommunity', slug, payload, userUid, communityUid: community.uid }, 'Successfully updated community');
 

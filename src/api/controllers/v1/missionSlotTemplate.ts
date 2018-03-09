@@ -223,7 +223,7 @@ export function updateMissionSlotTemplate(request: Hapi.Request, reply: Hapi.Rep
 
         log.debug({ function: 'updateMissionSlotTemplate', slotTemplateUid, payload, userUid }, 'Updating mission slot template');
 
-        await slotTemplate.update(payload, { allowed: ['slotGroups', 'title', 'visibility'] });
+        await slotTemplate.update(payload, { fields: ['slotGroups', 'title', 'visibility'] });
 
         log.debug({ function: 'updateMission', slotTemplateUid, payload, userUid }, 'Successfully updated mission slot template');
 

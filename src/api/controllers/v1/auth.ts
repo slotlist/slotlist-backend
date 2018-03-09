@@ -181,7 +181,7 @@ export function patchAccountDetails(request: Hapi.Request, reply: Hapi.ReplyWith
             user.permissions = await user.getPermissions();
         }
 
-        await user.update(payload, { allowed: ['nickname'] });
+        await user.update(payload, { fields: ['nickname'] });
 
         const permissions = _.map(user.permissions, 'permission');
 

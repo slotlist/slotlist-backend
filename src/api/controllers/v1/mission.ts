@@ -403,7 +403,7 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         }
 
         await mission.update(payload, {
-            allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'techSupport', 'rules', 'visibility']
+            fields: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'techSupport', 'rules', 'visibility', 'repositories']
         });
 
         if (notifyUpdate && !suppressNotifications) {
@@ -1299,7 +1299,7 @@ export function updateMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
         return sequelize.transaction(async (t: Transaction) => {
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot group');
-                await slotGroup.update(payload, { allowed: ['title', 'description'] });
+                await slotGroup.update(payload, { fields: ['title', 'description'] });
             } else {
                 log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot group');
 
@@ -1326,7 +1326,7 @@ export function updateMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
 
                 payload.orderNumber = orderNumber;
 
-                await slotGroup.update(payload, { allowed: ['title', 'description', 'orderNumber'] });
+                await slotGroup.update(payload, { fields: ['title', 'description', 'orderNumber'] });
 
                 log.debug(
                     { function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
@@ -1522,7 +1522,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
 
-                await slot.update(payload, { allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked'] });
+                await slot.update(payload, { fields: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked'] });
             } else {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot');
 
@@ -1559,7 +1559,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 payload.orderNumber = orderNumber;
 
                 await slot.update(payload, {
-                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber', 'externalAssignee']
+                    fields: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber', 'externalAssignee']
                 });
 
                 log.debug(
