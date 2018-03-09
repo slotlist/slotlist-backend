@@ -61,15 +61,15 @@ export class User extends Model {
      * @memberof User
      */
     public static associations: {
-        applications: HasMany,
-        community: BelongsTo,
-        missionAccesses: HasMany,
-        missions: HasMany,
-        missionSlots: HasMany,
-        missionSlotRegistrations: HasMany,
-        missionSlotTemplates: HasMany,
-        notifications: HasMany,
-        permissions: HasMany
+        applications: HasMany;
+        community: BelongsTo;
+        missionAccesses: HasMany;
+        missions: HasMany;
+        missionSlots: HasMany;
+        missionSlotRegistrations: HasMany;
+        missionSlotTemplates: HasMany;
+        notifications: HasMany;
+        permissions: HasMany;
     };
 
     //////////////////////

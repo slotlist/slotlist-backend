@@ -55,10 +55,10 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public static associations: {
-        assignee: BelongsTo,
-        registrations: HasMany,
-        restrictedCommunity: BelongsTo,
-        slotGroup: BelongsTo
+        assignee: BelongsTo;
+        registrations: HasMany;
+        restrictedCommunity: BelongsTo;
+        slotGroup: BelongsTo;
     };
 
     //////////////////////

@@ -1472,7 +1472,7 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
             await mission.recalculateSlotOrderNumbers();
 
-            const restrictedCommunityUids = _.filter(_.map(slots, 'restrictedCommunityUid'), (uid: string | null) => !_.isNil(uid));
+            const restrictedCommunityUids = (<string[]>_.filter(_.map(slots, 'restrictedCommunityUid'), (uid: string | null) => !_.isNil(uid)));
             if (!_.isEmpty(restrictedCommunityUids) && mission.visibility === MISSION_VISIBILITY_PRIVATE) {
                 await Promise.map(restrictedCommunityUids, async (restrictedCommunityUid: string) => {
                     log.debug(

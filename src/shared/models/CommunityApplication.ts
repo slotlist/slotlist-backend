@@ -53,8 +53,8 @@ export class CommunityApplication extends Model {
      * @memberof Permission
      */
     public static associations: {
-        community: BelongsTo,
-        user: BelongsTo
+        community: BelongsTo;
+        user: BelongsTo;
     };
 
     //////////////////////

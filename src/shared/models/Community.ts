@@ -66,11 +66,11 @@ export class Community extends Model {
      * @memberof Community
      */
     public static associations: {
-        applications: HasMany,
-        members: HasMany,
-        missionAccesses: HasMany,
-        missions: HasMany,
-        restrictedSlots: HasMany
+        applications: HasMany;
+        members: HasMany;
+        missionAccesses: HasMany;
+        missions: HasMany;
+        restrictedSlots: HasMany;
     };
 
     //////////////////////
@@ -196,11 +196,12 @@ export class Community extends Model {
         defaultValue: [],
         validate: {
             validMissionServerInfo(val: any): void {
-                if (!_.isArray(val)) {
-                    val = [val];
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
                 }
 
-                const validationResult = Joi.validate(val, Joi.array().required().items(missionServerInfoSchema.optional()));
+                const validationResult = Joi.validate(localVal, Joi.array().required().items(missionServerInfoSchema.optional()));
                 if (!_.isNil(validationResult.error)) {
                     throw Boom.badRequest('Invalid mission server info', validationResult);
                 }
@@ -222,11 +223,12 @@ export class Community extends Model {
         defaultValue: [],
         validate: {
             validMissionServerInfo(val: any): void {
-                if (!_.isArray(val)) {
-                    val = [val];
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
                 }
 
-                const validationResult = Joi.validate(val, Joi.array().required().items(missionServerInfoSchema.optional()));
+                const validationResult = Joi.validate(localVal, Joi.array().required().items(missionServerInfoSchema.optional()));
                 if (!_.isNil(validationResult.error)) {
                     throw Boom.badRequest('Invalid mission server info', validationResult);
                 }
@@ -248,11 +250,12 @@ export class Community extends Model {
         defaultValue: [],
         validate: {
             validMissionRepositoryInfo(val: any): void {
-                if (!_.isArray(val)) {
-                    val = [val];
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
                 }
 
-                const validationResult = Joi.validate(val, Joi.array().required().items(missionRepositoryInfoSchema.optional()));
+                const validationResult = Joi.validate(localVal, Joi.array().required().items(missionRepositoryInfoSchema.optional()));
                 if (!_.isNil(validationResult.error)) {
                     throw Boom.badRequest('Invalid mission repository info', validationResult);
                 }

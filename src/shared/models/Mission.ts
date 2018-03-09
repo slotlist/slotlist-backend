@@ -94,10 +94,10 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public static associations: {
-        community: BelongsTo,
-        creator: BelongsTo,
-        missionAccesses: HasMany,
-        slotGroups: HasMany
+        community: BelongsTo;
+        creator: BelongsTo;
+        missionAccesses: HasMany;
+        slotGroups: HasMany;
     };
 
     //////////////////////
@@ -368,11 +368,12 @@ export class Mission extends Model {
         defaultValue: [],
         validate: {
             validMissionRepositoryInfo(val: any): void {
-                if (!_.isArray(val)) {
-                    val = [val];
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
                 }
 
-                const validationResult = Joi.validate(val, Joi.array().required().items(missionRepositoryInfoSchema.optional()));
+                const validationResult = Joi.validate(localVal, Joi.array().required().items(missionRepositoryInfoSchema.optional()));
                 if (!_.isNil(validationResult.error)) {
                     throw Boom.badRequest('Invalid mission repository info', validationResult);
                 }
