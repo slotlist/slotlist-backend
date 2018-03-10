@@ -1037,6 +1037,40 @@ export function deleteCommunityPermission(request: Hapi.Request, reply: Hapi.Rep
     })());
 }
 
+export function getCommunityRepositories(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    return reply((async () => {
+        const slug = request.params.communitySlug;
+        const userUid = request.auth.credentials.user.uid;
+        let userCommunityUid: string | null = null;
+        if (!_.isNil(request.auth.credentials.user.community)) {
+            userCommunityUid = request.auth.credentials.user.community.uid;
+        } else {
+            log.debug({ function: 'getCommunityRepositories', slug, userUid }, 'User is not member of any community, preventing access to community repositories');
+            throw Boom.forbidden();
+        }
+
+        const community = await Community.findOne({
+            where: { slug },
+            attributes: ['uid', 'repositories']
+        });
+        if (_.isNil(community)) {
+            log.debug({ function: 'getCommunityRepositories', slug, userUid }, 'Community with given slug not found');
+            throw Boom.notFound('Community not found');
+        }
+
+        if (userCommunityUid !== community.uid) {
+            log.debug(
+                { function: 'getCommunityRepositories', slug, userUid, userCommunityUid, communityUid: community.uid },
+                'User is not member of community, preventing access to community repositories');
+            throw Boom.forbidden();
+        }
+
+        return {
+            repositories: community.repositories
+        };
+    })());
+}
+
 export function getCommunityServers(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
     return reply((async () => {
         const slug = request.params.communitySlug;

@@ -10,6 +10,7 @@ import * as schemas from '../../../shared/schemas/community';
 import { communityApplicationSchema } from '../../../shared/schemas/communityApplication';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
+import { missionRepositoryInfoSchema } from '../../../shared/schemas/missionRepositoryInfo';
 import { missionServerInfoSchema } from '../../../shared/schemas/missionServerInfo';
 import { permissionSchema } from '../../../shared/schemas/permission';
 import { userSchema } from '../../../shared/schemas/user';
@@ -1212,6 +1213,61 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found', 'Community permission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/communities/{communitySlug}/repositories',
+        handler: controller.getCommunityRepositories,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns a list of mod repositories defined for a specific community',
+            notes: 'Returns a list of mod repositories defined for a specific community, allowing for mission creators to quickly fill out the mission\'s mod repo ' +
+            'repo information. This endpoint is only accessible to community members. Regular user authentication with appropriate permissions is required to access this ' +
+            'endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'repositories', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve repositories for')
+                        .example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    repositories: Joi.array().required().items(missionRepositoryInfoSchema.optional()).description('List of mod repositories defined for the community')
+                }).label('GetCommunityRepositoriesResponse').description('Response containing lists of repositories defined for the community')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
                             })
                         },
                         500: {
