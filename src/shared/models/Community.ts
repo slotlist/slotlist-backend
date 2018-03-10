@@ -911,7 +911,8 @@ export class Community extends Model {
             members: _.pullAllBy(publicMembers, publicLeaders, 'uid'),
             missions: publicMissions,
             gameServers: includeFullDetails ? this.gameServers : undefined,
-            voiceComms: includeFullDetails ? this.voiceComms : undefined
+            voiceComms: includeFullDetails ? this.voiceComms : undefined,
+            repositories: includeFullDetails ? this.repositories : undefined
         };
     }
 
@@ -949,4 +950,5 @@ export interface IDetailedPublicCommunity extends IPublicCommunity {
     missions: IPublicMission[];
     gameServers?: IMissionServerInfo[];
     voiceComms?: IMissionServerInfo[];
+    repositories?: IMissionRepositoryInfo[];
 }

@@ -278,7 +278,9 @@ export const community = [
                     gameServers: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of game servers to define for the community. Set to ' +
                         'an empty array to remove all entries'),
                     voiceComms: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of voice comms to define for the community. Set to ' +
-                        'an empty array to remove all entries')
+                        'an empty array to remove all entries'),
+                    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).optional().description('New array of mod repositories to define for the community. ' +
+                        'Set to an empty array to remove all entries')
                 })
             },
             response: {
