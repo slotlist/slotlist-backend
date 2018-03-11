@@ -6,7 +6,6 @@ import {
     BelongsToSetAssociationMixin,
     DataTypes,
     HasMany,
-    HasManyCountAssociationsMixin,
     HasManyCreateAssociationMixin,
     HasManyGetAssociationsMixin,
     HasManyRemoveAssociationMixin,
