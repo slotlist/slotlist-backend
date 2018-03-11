@@ -27,7 +27,7 @@ module.exports = {
 
             return queryInterface.sequelize.query(
                 // tslint:disable-next-line:max-line-length
-                `UPDATE "missions" SET "repositories" = '[{"name": null, "kind": "other", "url": null, "notes": "${repositoryUrl}"}]'::json WHERE "uid" = :missionUid`,
+                `UPDATE "missions" SET "repositories" = '[{"name": "Repository", "kind": "other", "url": null, "notes": "${repositoryUrl}"}]'::json WHERE "uid" = :missionUid`,
                 {
                     type: QueryTypes.UPDATE,
                     replacements: {
