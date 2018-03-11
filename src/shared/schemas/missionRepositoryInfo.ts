@@ -6,8 +6,7 @@ import { MISSION_REPOSITORY_TYPE_ARMA3SYNC, MISSION_REPOSITORY_TYPES } from '../
  * Schema for public mission repository information
  */
 export const missionRepositoryInfoSchema = Joi.object().keys({
-    name: Joi.string().min(1).allow(null).default(null).optional().description('Optional name of the repository, mostly useful for searching in repo lists')
-        .example('SeL Mainrepo'),
+    name: Joi.string().min(1).required().description('Name of the repository, mostly useful for searching in repo lists').example('SeL Mainrepo'),
     kind: Joi.string().valid(MISSION_REPOSITORY_TYPES).required().description('Kind of mod repository, used for further distinguishment in the frontend')
         .example(MISSION_REPOSITORY_TYPE_ARMA3SYNC),
     url: Joi.string().uri().min(1).allow(null).default(null).optional().description('URL of the mod repository, must be a valid URI')
