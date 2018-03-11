@@ -27,6 +27,7 @@
             "parameter",
             "property-declaration"
         ],
-        "underscore-consistent-invocation": false
+        "underscore-consistent-invocation": false,
+        "no-redundant-jsdoc": false // TODO re-enable this as soon as jsdoc comments have been adapted
     }
 }

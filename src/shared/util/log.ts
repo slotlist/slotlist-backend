@@ -57,6 +57,9 @@ const serializers: bunyan.Serializers = {
         if (_.isString(pay.detailedDescription)) {
             pay.detailedDescription = '***SNIP***';
         }
+        if (_.isString(pay.collapsedDescription)) {
+            pay.collapsedDescription = '***SNIP***';
+        }
         if (!_.isNil(pay.image)) {
             pay.image = '***SNIP***';
         }
@@ -94,7 +97,7 @@ if (LoggingConfig.stdout) {
     });
 }
 
-_.each(LoggingConfig.files, (logFile: { path: string; level: string | number; }) => {
+_.each(LoggingConfig.files, (logFile: { path: string; level: string | number }) => {
     streams.push({
         level: <any>logFile.level,
         path: logFile.path

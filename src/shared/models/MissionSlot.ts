@@ -6,6 +6,7 @@ import {
     BelongsToSetAssociationMixin,
     DataTypes,
     HasMany,
+    HasManyCountAssociationsMixin,
     HasManyCreateAssociationMixin,
     HasManyGetAssociationsMixin,
     HasManyRemoveAssociationMixin,
@@ -54,10 +55,10 @@ export class MissionSlot extends Model {
      * @memberof MissionSlot
      */
     public static associations: {
-        assignee: BelongsTo,
-        registrations: HasMany,
-        restrictedCommunity: BelongsTo,
-        slotGroup: BelongsTo
+        assignee: BelongsTo;
+        registrations: HasMany;
+        restrictedCommunity: BelongsTo;
+        slotGroup: BelongsTo;
     };
 
     //////////////////////
@@ -187,6 +188,20 @@ export class MissionSlot extends Model {
         defaultValue: false
     })
     public blocked: boolean;
+
+    /**
+     * Indicates whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a mission editor, but are automatically
+     * assigned to the first registering user (who would have thought, what a good name choice!).
+     *
+     * @type {boolean}
+     * @memberof MissionSlot
+     */
+    @Attribute({
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    })
+    public autoAssignable: boolean;
 
     /**
      * UID of the user that has been assigned to the slot.
@@ -469,6 +484,7 @@ export class MissionSlot extends Model {
             restrictedCommunity: publicRestrictedCommunity,
             reserve: this.reserve,
             blocked: this.blocked,
+            autoAssignable: this.autoAssignable,
             assignee: publicAssignee,
             externalAssignee: _.isNil(this.externalAssignee) ? null : this.externalAssignee,
             registrationCount: this.registrations.length
@@ -497,6 +513,7 @@ export interface IPublicMissionSlot {
     restrictedCommunity: IPublicCommunity | null;
     reserve: boolean;
     blocked: boolean;
+    autoAssignable: boolean;
     assignee: IPublicUser | null;
     externalAssignee: string | null;
     registrationCount: number;
@@ -519,5 +536,6 @@ export interface IMissionSlotCreatePayload {
     restrictedCommunityUid: string | null;
     reserve: boolean;
     blocked: boolean;
+    autoAssignable: boolean;
     insertAfter: number;
 }

@@ -140,7 +140,7 @@ export function modifyUserDetails(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
         log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Updating user');
 
-        await targetUser.update(payload, { allowed: ['nickname', 'active'] });
+        await targetUser.update(payload, { fields: ['nickname', 'active'] });
 
         log.debug({ function: 'modifyUserDetails', targetUserUid, payload, userUid }, 'Successfully updated user');
 

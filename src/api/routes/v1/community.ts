@@ -10,6 +10,7 @@ import * as schemas from '../../../shared/schemas/community';
 import { communityApplicationSchema } from '../../../shared/schemas/communityApplication';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import { missionSchema } from '../../../shared/schemas/mission';
+import { missionRepositoryInfoSchema } from '../../../shared/schemas/missionRepositoryInfo';
 import { missionServerInfoSchema } from '../../../shared/schemas/missionServerInfo';
 import { permissionSchema } from '../../../shared/schemas/permission';
 import { userSchema } from '../../../shared/schemas/user';
@@ -155,7 +156,7 @@ export const community = [
                 payload: Joi.object().required().keys({
                     name: Joi.string().min(1).max(255).required().description('Name of the community').example('Spezialeinheit Luchs'),
                     tag: Joi.string().min(1).max(255).required().description('Community tag (without square brackets, will be added by frontend)').example('SeL'),
-                    website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be null if none exists')
+                    website: Joi.string().uri().allow(null).min(1).max(255).default(null).optional().description('Website of the community, can be `null` if none exists')
                         .example('http://spezialeinheit-luchs.de'),
                     slug: Joi.string().min(1).max(255).disallow('slugAvailable').required()
                         .description('Slug used for uniquely identifying a community in the frontend, easier to read than a UUID').example('spezialeinheit-luchs')
@@ -272,12 +273,14 @@ export const community = [
                 payload: Joi.object().required().keys({
                     name: Joi.string().min(1).max(255).optional().description('New name of the community').example('Spezialeinheit Luchs'),
                     tag: Joi.string().min(1).max(255).optional().description('New community tag (without square brackets, will be added by frontend)').example('SeL'),
-                    website: Joi.string().uri().allow(null).min(1).max(255).optional().description('New website of the community, can be null if none exists')
+                    website: Joi.string().uri().allow(null).min(1).max(255).optional().description('New website of the community, can be `null` if none exists')
                         .example('http://spezialeinheit-luchs.de'),
                     gameServers: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of game servers to define for the community. Set to ' +
                         'an empty array to remove all entries'),
                     voiceComms: Joi.array().items(missionServerInfoSchema.optional()).optional().description('New array of voice comms to define for the community. Set to ' +
-                        'an empty array to remove all entries')
+                        'an empty array to remove all entries'),
+                    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).optional().description('New array of mod repositories to define for the community. ' +
+                        'Set to an empty array to remove all entries')
                 })
             },
             response: {
@@ -1212,6 +1215,61 @@ export const community = [
                                 statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
                                 error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
                                 message: Joi.string().equal('Community not found', 'Community permission not found').required().description('Message further describing the error')
+                            })
+                        },
+                        500: {
+                            description: 'An error occured while processing the request',
+                            schema: internalServerErrorSchema
+                        }
+                    }
+                }
+            }
+        }
+    },
+    {
+        method: 'GET',
+        path: '/v1/communities/{communitySlug}/repositories',
+        handler: controller.getCommunityRepositories,
+        config: {
+            auth: {
+                strategy: 'jwt',
+                mode: 'required'
+            },
+            description: 'Returns a list of mod repositories defined for a specific community',
+            notes: 'Returns a list of mod repositories defined for a specific community, allowing for mission creators to quickly fill out the mission\'s mod repo ' +
+            'repo information. This endpoint is only accessible to community members. Regular user authentication with appropriate permissions is required to access this ' +
+            'endpoint',
+            tags: ['api', 'get', 'v1', 'communities', 'repositories', 'authenticated', 'restricted'],
+            validate: {
+                options: {
+                    abortEarly: false
+                },
+                headers: Joi.object({
+                    authorization: Joi.string().min(1).required().description('`JWT <TOKEN>` used for authorization, required').example('JWT <TOKEN>')
+                }).unknown(true),
+                params: Joi.object().required().keys({
+                    communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community to retrieve repositories for')
+                        .example('spezialeinheit-luchs')
+                })
+            },
+            response: {
+                schema: Joi.object().required().keys({
+                    repositories: Joi.array().required().items(missionRepositoryInfoSchema.optional()).description('List of mod repositories defined for the community')
+                }).label('GetCommunityRepositoriesResponse').description('Response containing lists of repositories defined for the community')
+            },
+            plugins: {
+                'hapi-swagger': {
+                    responses: {
+                        403: {
+                            description: 'A user without appropriate permissions is accessing the endpoint',
+                            schema: forbiddenSchema
+                        },
+                        404: {
+                            description: 'No community with given slug was found',
+                            schema: Joi.object().required().keys({
+                                statusCode: Joi.number().equal(404).required().description('HTTP status code caused by the error'),
+                                error: Joi.string().equal('Not Found').required().description('HTTP status code text respresentation'),
+                                message: Joi.string().equal('Community not found').required().description('Message further describing the error')
                             })
                         },
                         500: {

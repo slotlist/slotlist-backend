@@ -41,8 +41,8 @@ export class MissionSlotGroup extends Model {
      * @memberof MissionSlotGroup
      */
     public static associations: {
-        mission: BelongsTo,
-        slots: HasMany
+        mission: BelongsTo;
+        slots: HasMany;
     };
 
     //////////////////////

@@ -42,7 +42,7 @@ export class Permission extends Model {
      * @memberof Permission
      */
     public static associations: {
-        user: BelongsTo
+        user: BelongsTo;
     };
 
     //////////////////////

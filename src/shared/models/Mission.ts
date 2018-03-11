@@ -20,6 +20,7 @@ import sequelize from '../util/sequelize';
 import slug from '../util/slug';
 const log = logger.child({ model: 'Community' });
 
+import { missionRepositoryInfoSchema } from '../schemas/missionRepositoryInfo';
 import { missionServerInfoSchema } from '../schemas/missionServerInfo';
 import {
     NOTIFICATION_TYPE_MISSION_DELETED,
@@ -93,10 +94,10 @@ export class Mission extends Model {
      * @memberof Mission
      */
     public static associations: {
-        community: BelongsTo,
-        creator: BelongsTo,
-        missionAccesses: HasMany,
-        slotGroups: HasMany
+        community: BelongsTo;
+        creator: BelongsTo;
+        missionAccesses: HasMany;
+        slotGroups: HasMany;
     };
 
     //////////////////////
@@ -173,6 +174,23 @@ export class Mission extends Model {
         }
     })
     public detailedDescription: string;
+
+    /**
+     * (Optional) collapsed description of the mission.
+     * Will be added as HTML in frontend, thus allows for regular HTML styling
+     *
+     * @type {(string | null)}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+        validate: {
+            notEmpty: true
+        }
+    })
+    public collapsedDescription: string;
 
     /**
      * (Short) summary description of the mission.
@@ -275,24 +293,6 @@ export class Mission extends Model {
     public endTime: Date;
 
     /**
-     * URL of the repository used for the mission.
-     * Can be `null` if no repository is required
-     * Will be added as HTML in frontend, thus allows for regular HTML styling
-     *
-     * @type {(string | null)}
-     * @memberof Mission
-     */
-    @Attribute({
-        type: DataTypes.TEXT,
-        allowNull: true,
-        defaultValue: null,
-        validate: {
-            notEmpty: true
-        }
-    })
-    public repositoryUrl: string | null;
-
-    /**
      * Information about tech support provided before the mission.
      * Can be `null` if no tech support is provided.
      * Will be added as HTML in frontend, thus allows for regular HTML styling
@@ -371,6 +371,33 @@ export class Mission extends Model {
         }
     })
     public voiceComms: IMissionServerInfo | null;
+
+    /**
+     * Information about the mod repositories used for the mission.
+     * Can be an empty array if no mod repository information is provided.
+     *
+     * @type {IMissionRepositoryInfo[]}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.JSON,
+        allowNull: false,
+        defaultValue: [],
+        validate: {
+            validMissionRepositoryInfo(val: any): void {
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
+                }
+
+                const validationResult = Joi.validate(localVal, Joi.array().required().items(missionRepositoryInfoSchema.optional()));
+                if (!_.isNil(validationResult.error)) {
+                    throw Boom.badRequest('Invalid mission repository info', validationResult);
+                }
+            }
+        }
+    })
+    public repositories: IMissionRepositoryInfo[];
 
     /**
      * Indicates the visibility status of the mission.
@@ -1326,16 +1353,17 @@ export class Mission extends Model {
             slug: this.slug,
             description: this.description,
             detailedDescription: this.detailedDescription,
+            collapsedDescription: _.isNil(this.collapsedDescription) ? null : this.collapsedDescription,
             bannerImageUrl: _.isNil(this.bannerImageUrl) ? null : this.bannerImageUrl,
             briefingTime: this.briefingTime,
             slottingTime: this.slottingTime,
             startTime: this.startTime,
             endTime: this.endTime,
-            repositoryUrl: _.isNil(this.repositoryUrl) ? null : this.repositoryUrl,
             techSupport: _.isNil(this.techSupport) ? null : this.techSupport,
             rules: _.isNil(this.rules) ? null : this.rules,
             gameServer: _.isNil(this.gameServer) ? null : this.gameServer,
             voiceComms: _.isNil(this.voiceComms) ? null : this.voiceComms,
+            repositories: this.repositories,
             visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator,
@@ -1375,18 +1403,25 @@ export interface IPublicMission {
 export interface IDetailedPublicMission extends IPublicMission {
     description: string;
     detailedDescription: string;
+    collapsedDescription: string | null;
     bannerImageUrl: string | null;
     briefingTime: Date;
     slottingTime: Date;
-    repositoryUrl: string | null;
     techSupport: string | null;
     rules: string | null;
     gameServer: IMissionServerInfo | null;
     voiceComms: IMissionServerInfo | null;
+    repositories: IMissionRepositoryInfo[];
     visibility: string;
     community: IPublicCommunity | null;
 }
 
+/**
+ * Summarises the current slotlist as counts of slot assignment statuses
+ *
+ * @export
+ * @interface IMissionSlotCounts
+ */
 export interface IMissionSlotCounts {
     assigned: number;
     blocked: number;
@@ -1398,9 +1433,30 @@ export interface IMissionSlotCounts {
     unassigned: number;
 }
 
+/**
+ * Information about a server used for a mission.
+ * Can either be used to represent gameservers or voice comms.
+ *
+ * @export
+ * @interface IMissionServerInfo
+ */
 export interface IMissionServerInfo {
     name: string | null;
     hostname: string;
     port: number;
     password: string | null;
+}
+
+/**
+ * Information about a mod repository used for a mission.
+ * Can either be an Arma3Sync repository (extra integration in the frontend) or a custom one.
+ *
+ * @export
+ * @interface IMissionRepositoryInfo
+ */
+export interface IMissionRepositoryInfo {
+    name: string | null;
+    kind: string;
+    url: string | null;
+    notes: string | null;
 }

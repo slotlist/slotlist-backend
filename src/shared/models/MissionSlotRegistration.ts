@@ -44,8 +44,8 @@ export class MissionSlotRegistration extends Model {
      * @memberof MissionSlotRegistration
      */
     public static associations: {
-        slot: BelongsTo,
-        user: BelongsTo
+        slot: BelongsTo;
+        user: BelongsTo;
     };
 
     //////////////////////

@@ -41,7 +41,7 @@ export class MissionSlotTemplate extends Model {
      * @memberof MissionSlotTemplate
      */
     public static associations: {
-        creator: BelongsTo
+        creator: BelongsTo;
     };
 
     //////////////////////
@@ -197,7 +197,7 @@ export class MissionSlotTemplate extends Model {
         const slotGroupCount = this.slotGroups.length;
         const slotCount = _.reduce(
             this.slotGroups, (total: number, slotGroup: IMissionSlotTemplateSlotGroup) => {
-                return total += slotGroup.slots.length;
+                return total + slotGroup.slots.length;
             },
             0);
 
@@ -226,7 +226,7 @@ export class MissionSlotTemplate extends Model {
         const slotGroupCount = this.slotGroups.length;
         const slotCount = _.reduce(
             this.slotGroups, (total: number, slotGroup: IMissionSlotTemplateSlotGroup) => {
-                return total += slotGroup.slots.length;
+                return total + slotGroup.slots.length;
             },
             0);
 

@@ -61,9 +61,9 @@ export class MissionAccess extends Model {
      * @memberof MissionAccess
      */
     public static associations: {
-        community: BelongsTo,
-        mission: BelongsTo,
-        user: BelongsTo
+        community: BelongsTo;
+        mission: BelongsTo;
+        user: BelongsTo;
     };
 
     //////////////////////

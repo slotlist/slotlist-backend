@@ -90,7 +90,7 @@ export class Config {
         const steamConfig: any = {};
         const storageConfig: any = {};
 
-        const loggingConfigFiles: { [key: string]: { path: string, level: string } } = {};
+        const loggingConfigFiles: { [key: string]: { path: string; level: string } } = {};
 
         _.each(configEnvVariables, (value: string, name: string) => {
             const nameParts = name.split('_');

@@ -227,6 +227,10 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             delete payload.addToCommunity;
         }
 
+        if (_.isString(payload.collapsedDescription) && !_.isEmpty(payload.collapsedDescription)) {
+            payload.collapsedDescription = await ImageService.parseMissionDescription(payload.slug, payload.collapsedDescription);
+        }
+
         payload.detailedDescription = await ImageService.parseMissionDescription(payload.slug, payload.detailedDescription);
 
         log.debug({ function: 'createMission', payload, userUid }, 'Creating new mission');
@@ -390,6 +394,9 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
         log.debug({ function: 'updateMission', slug, payload, suppressNotifications, userUid, missionUid: mission.uid }, 'Updating mission');
 
+        if (_.isString(payload.collapsedDescription) && !_.isEmpty(payload.collapsedDescription)) {
+            payload.collapsedDescription = await ImageService.parseMissionDescription(slug, payload.collapsedDescription);
+        }
         if (_.isString(payload.detailedDescription) && !_.isEmpty(payload.detailedDescription)) {
             payload.detailedDescription = await ImageService.parseMissionDescription(slug, payload.detailedDescription);
         }
@@ -403,7 +410,22 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
         }
 
         await mission.update(payload, {
-            allowed: ['title', 'detailedDescription', 'description', 'briefingTime', 'slottingTime', 'startTime', 'endTime', 'repositoryUrl', 'techSupport', 'rules', 'visibility']
+            fields: [
+                'title',
+                'collapsedDescription',
+                'detailedDescription',
+                'description',
+                'briefingTime',
+                'slottingTime',
+                'startTime',
+                'endTime',
+                'techSupport',
+                'rules',
+                'visibility',
+                'gameServer',
+                'voiceComms',
+                'repositories'
+            ]
         });
 
         if (notifyUpdate && !suppressNotifications) {
@@ -1299,7 +1321,7 @@ export function updateMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
         return sequelize.transaction(async (t: Transaction) => {
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot group');
-                await slotGroup.update(payload, { allowed: ['title', 'description'] });
+                await slotGroup.update(payload, { fields: ['title', 'description'] });
             } else {
                 log.debug({ function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot group');
 
@@ -1326,7 +1348,7 @@ export function updateMissionSlotGroup(request: Hapi.Request, reply: Hapi.ReplyW
 
                 payload.orderNumber = orderNumber;
 
-                await slotGroup.update(payload, { allowed: ['title', 'description', 'orderNumber'] });
+                await slotGroup.update(payload, { fields: ['title', 'description', 'orderNumber'] });
 
                 log.debug(
                     { function: 'updateMissionSlotGroup', slug, slotGroupUid, payload, userUid, missionUid: mission.uid, orderNumber, oldOrderNumber },
@@ -1458,7 +1480,7 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 
             await mission.recalculateSlotOrderNumbers();
 
-            const restrictedCommunityUids = _.filter(_.map(slots, 'restrictedCommunityUid'), (uid: string | null) => !_.isNil(uid));
+            const restrictedCommunityUids = (<string[]>_.filter(_.map(slots, 'restrictedCommunityUid'), (uid: string | null) => !_.isNil(uid)));
             if (!_.isEmpty(restrictedCommunityUids) && mission.visibility === MISSION_VISIBILITY_PRIVATE) {
                 await Promise.map(restrictedCommunityUids, async (restrictedCommunityUid: string) => {
                     log.debug(
@@ -1493,6 +1515,7 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
 }
 
 export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithContinue): Hapi.Response {
+    // tslint:disable-next-line:max-func-body-length
     return reply((async () => {
         const slug = request.params.missionSlug;
         const slotUid = request.params.slotUid;
@@ -1522,7 +1545,19 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
 
-                await slot.update(payload, { allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked'] });
+                await slot.update(payload, {
+                    fields: [
+                        'title',
+                        'difficulty',
+                        'description',
+                        'detailedDescription',
+                        'restrictedCommunityUid',
+                        'reserve',
+                        'blocked',
+                        'autoAssignable',
+                        'externalAssignee'
+                    ]
+                });
             } else {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Reordering mission slot');
 
@@ -1559,7 +1594,18 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                 payload.orderNumber = orderNumber;
 
                 await slot.update(payload, {
-                    allowed: ['title', 'difficulty', 'description', 'detailedDescription', 'restrictedCommunityUid', 'reserve', 'blocked', 'orderNumber', 'externalAssignee']
+                    fields: [
+                        'title',
+                        'difficulty',
+                        'description',
+                        'detailedDescription',
+                        'restrictedCommunityUid',
+                        'reserve',
+                        'blocked',
+                        'autoAssignable',
+                        'orderNumber',
+                        'externalAssignee'
+                    ]
                 });
 
                 log.debug(
@@ -2081,6 +2127,8 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
 
         log.debug({ function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Creating new mission slot registration');
 
+        const registrationCount = await MissionSlotRegistration.count({ where: { slotUid: slot.uid } });
+
         let registration: MissionSlotRegistration;
         try {
             registration = await slot.createRegistration(payload);
@@ -2097,6 +2145,42 @@ export function createMissionSlotRegistration(request: Hapi.Request, reply: Hapi
                 { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, err },
                 'Received error during mission slot registration creation');
             throw err;
+        }
+
+        if (slot.autoAssignable) {
+            const isUserAssignedToAnySlot = await mission.isUserAssignedToAnySlot(registration.userUid);
+            if (registrationCount === 0 && !isUserAssignedToAnySlot) {
+                logger.debug(
+                    { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid },
+                    'Mission slot is auto-assignable and has no registrations, assigning');
+
+                await Promise.all([
+                    slot.setAssignee(registration.userUid),
+                    registration.update({ confirmed: true })
+                ]);
+
+                try {
+                    await mission.createSlotAssignmentChangedNotification(registration.userUid, slot.title, true);
+                } catch (err) {
+                    log.warn(
+                        { function: 'createMissionSlotRegistration', slug, slotUid, payload, userUid, missionUid: mission.uid, registrationUid: registration.uid, err },
+                        'Received error during mission slot assignment notification creation');
+                }
+            } else {
+                logger.debug(
+                    {
+                        function: 'createMissionSlotRegistration',
+                        slug,
+                        slotUid,
+                        payload,
+                        userUid,
+                        missionUid: mission.uid,
+                        registrationUid: registration.uid,
+                        registrationCount,
+                        isUserAssignedToAnySlot
+                    },
+                    'Mission slot is auto-assignable, but already has registrations or user is already assigned to a slot in the mission. Continuing without auto-assignment');
+            }
         }
 
         try {

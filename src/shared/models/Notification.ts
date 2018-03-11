@@ -65,7 +65,7 @@ export class Notification extends Model {
      * @memberof Notification
      */
     public static associations: {
-        user: BelongsTo
+        user: BelongsTo;
     };
 
     //////////////////////

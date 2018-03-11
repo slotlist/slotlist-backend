@@ -4,6 +4,7 @@ import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUB
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionAccessSchema } from '../../../shared/schemas/missionAccess';
+import { missionRepositoryInfoSchema } from '../../../shared/schemas/missionRepositoryInfo';
 import { missionServerInfoSchema } from '../../../shared/schemas/missionServerInfo';
 import { missionSlotSchema } from '../../../shared/schemas/missionSlot';
 import { missionSlotGroupSchema } from '../../../shared/schemas/missionSlotGroup';
@@ -190,6 +191,8 @@ export const mission = [
                     description: Joi.string().min(1).required().description('Short description and summary of mission').example('Conquer all of Altis!'),
                     detailedDescription: Joi.string().min(1).required().description('Full, detailed description of the mission. Can contain HTML for formatting')
                         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+                    collapsedDescription: Joi.string().allow(null).min(1).default(null).optional().description('Collapsed description of the mission, can be `null` if ' +
+                        'not applicable. Can contain HTML for formatting').example('<h1>Lots of additional info</h1><div>Thank god this is collapsed!</div>'),
                     briefingTime: Joi.date().required().description('Date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
                         'with leadership roles').example('2017-09-02T16:00:00.000Z'),
                     slottingTime: Joi.date().required().description('Date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
@@ -198,17 +201,15 @@ export const mission = [
                         'via mission details)').example('2017-09-02T17:00:00.000Z'),
                     endTime: Joi.date().required().description('Estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
-                    repositoryUrl: Joi.string().allow(null).min(1).default(null).optional()
-                        .description('URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
-                        .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),
                     techSupport: Joi.string().allow(null).min(1).default(null).optional()
-                        .description('Information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+                        .description('Information regarding any technical support provided before the mission, can be `null` if not provided. Can contain HTML for formatting')
                         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
                     rules: Joi.string().allow(null).min(1).default(null).optional()
-                        .description('Additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+                        .description('Additional ruleset for this mission, can be `null` if not applicable. Can contain HTML for formatting')
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
                     gameServer: missionServerInfoSchema.allow(null).default(null).optional(),
                     voiceComms: missionServerInfoSchema.allow(null).default(null).optional(),
+                    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).default([]).optional(),
                     visibility: Joi.string().equal(MISSION_VISIBILITIES).default(MISSION_VISIBILITY_HIDDEN).optional()
                         .description('Sets the visibility setting of a mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only ' +
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
@@ -340,6 +341,8 @@ export const mission = [
                     description: Joi.string().min(1).optional().description('New short description and summary of mission').example('Conquer all of Altis!'),
                     detailedDescription: Joi.string().min(1).optional().description('New full, detailed description of the mission. Can contain HTML for formatting')
                         .example('<h1>All of Altis</h1><h2>Tasks</h2><ol><li>Have fun!</li></ol>'),
+                    collapsedDescription: Joi.string().allow(null).min(1).optional().description('New collapsed description of the mission, can be `null` if not applicable. ' +
+                        'Can contain HTML for formatting').example('<h1>Lots of additional info</h1><div>Thank god this is collapsed!</div>'),
                     briefingTime: Joi.date().optional().description('New date and time the mission briefing starts, in UTC. The briefing usually only includes players ' +
                         'with leadership roles').example('2017-09-02T16:00:00.000Z'),
                     slottingTime: Joi.date().optional().description('New date and time the mission slotting starts, in UTC. Players are encouraged to join the server ' +
@@ -348,17 +351,15 @@ export const mission = [
                         'via mission details)').example('2017-09-02T17:00:00.000Z'),
                     endTime: Joi.date().optional().description('New estimated date and time the missions ends, in UTC. Must be equal to or after `startTime`, just an ' +
                         'estimation by the mission creator. The actual end time might vary').example('2017-09-02T22:00:00.000Z'),
-                    repositoryUrl: Joi.string().allow(null).min(1).optional()
-                        .description('New URL of the mod repository used for the mission. Can be null if no additional mods are required. Can contain HTML for formatting')
-                        .example('<a href="http://spezialeinheit-luchs.de/repo/Arma3/baseConfig/.a3s/autoconfig">SeL main repo</a>'),
                     techSupport: Joi.string().allow(null).min(1).optional()
-                        .description('New information regarding any technical support provided before the mission, can be null if not provided. Can contain HTML for formatting')
+                        .description('New information regarding any technical support provided before the mission, can be `null` if not provided. Can contain HTML for formatting')
                         .example('<div><strong>TechCheck</strong> available 3 days before mission, <strong>TechSupport</strong> available 2 hours before mission start </div>'),
                     rules: Joi.string().allow(null).min(1).optional()
-                        .description('New additional ruleset for this mission, can be null if not applicable. Can contain HTML for formatting')
+                        .description('New additional ruleset for this mission, can be `null` if not applicable. Can contain HTML for formatting')
                         .example('<ol><li>Be punctual, no join in progress!</li></ol>'),
                     gameServer: missionServerInfoSchema.allow(null).optional(),
                     voiceComms: missionServerInfoSchema.allow(null).optional(),
+                    repositories: Joi.array().items(missionRepositoryInfoSchema.optional()).optional(),
                     visibility: Joi.string().equal(MISSION_VISIBILITIES).optional()
                         .description('New visibility setting for the mission. Missions with `public` visibility are visible to everyone, `hidden` missions are only ' +
                         'visible to the mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission ' +
@@ -1386,6 +1387,8 @@ export const mission = [
                         'filled) or a regular one (false)').example(false),
                     blocked: Joi.bool().required().description('Indicates whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
+                    autoAssignable: Joi.bool().required().description('Indicates whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
+                        'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
                     insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot the new slot should be inserted ' +
                         'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
                 }).required()
@@ -1461,6 +1464,8 @@ export const mission = [
                         'filled) or a regular one (false)').example(false),
                     blocked: Joi.bool().optional().description('New indicator whether the slot is a blocked slot (true, no users can register) or a regular one (false). ' +
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
+                    autoAssignable: Joi.bool().optional().description('New indicator whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
+                        'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
                     externalAssignee: Joi.string().min(1).max(255).allow(null).optional().description('Nickname of external player assigned to the slot. Allows for slots ' +
                         'to be assigned to users not present in the database. Cannot be set if a user has been assigned and vice versa. Set to `null` to remove the external ' +
                         'assignee').example('MorpheusXAUT'),

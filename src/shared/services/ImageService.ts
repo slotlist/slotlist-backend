@@ -46,24 +46,24 @@ export class ImageService {
     }
 
     public async deleteAllMissionImages(path: string): Promise<void> {
-        if (_.startsWith(path, '/')) {
-            path = path.slice(1);
+        let localPath = path;
+        if (_.startsWith(localPath, '/')) {
+            localPath = localPath.slice(1);
         }
-        if (!_.endsWith(path, '/')) {
-            path = `${path}/`;
+        if (!_.endsWith(localPath, '/')) {
+            localPath = `${localPath}/`;
         }
 
-        log.debug({ function: 'deleteAllMissionImages', path }, 'Deleting all mission images');
+        log.debug({ function: 'deleteAllMissionImages', path: localPath }, 'Deleting all mission images');
 
         try {
-            const resp = await this.bucket.deleteFiles({ prefix: path, force: true });
-            log.debug({ resp }, 'resp');
+            await this.bucket.deleteFiles({ prefix: localPath, force: true });
         } catch (err) {
-            log.warn({ function: 'deleteAllMissionImages', path, err }, 'Failed to delete all mission images');
+            log.warn({ function: 'deleteAllMissionImages', localPath, err }, 'Failed to delete all mission images');
             throw Boom.badImplementation('Failed to delete all mission images');
         }
 
-        log.debug({ function: 'deleteAllMissionImages', path }, 'Successfully deleted all mission images');
+        log.debug({ function: 'deleteAllMissionImages', path: localPath }, 'Successfully deleted all mission images');
     }
 
     public getImageUidFromUrl(imageUrl: string): RegExpMatchArray | null {
@@ -82,10 +82,11 @@ export class ImageService {
     public async parseMissionDescription(missionSlug: string, description: string): Promise<string> {
         log.debug({ function: 'parseMissionDescription', missionSlug }, 'Parsing mission description');
 
+        let localDescription = description;
         let imageCount = 0;
         // tslint:disable-next-line:no-constant-condition
         while (true) {
-            const matches = this.parseDataUrl(description);
+            const matches = this.parseDataUrl(localDescription);
             if (_.isNull(matches)) {
                 break;
             }
@@ -105,13 +106,13 @@ export class ImageService {
                     { function: 'parseMissionDescription', missionSlug, imageType, imageFolder, imageName, err },
                     'Failed to process image, replacing data URL with empty string to avoid endless loop');
 
-                description = description.replace(matches[0], '');
+                localDescription = localDescription.replace(matches[0], '');
 
                 continue;
             }
 
             log.debug({ function: 'parseMissionDescription', missionSlug, imageType, imageFolder, imageName, imageUrl }, 'Replacing image in mission description');
-            description = description.replace(matches[0], imageUrl);
+            localDescription = localDescription.replace(matches[0], imageUrl);
             imageCount += 1;
         }
 
