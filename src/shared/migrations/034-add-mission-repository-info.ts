@@ -23,11 +23,18 @@ module.exports = {
             { type: QueryTypes.SELECT });
 
         await Promise.map(existingRepositoryEntries, (existingRepositoryEntry: any) => {
-            const repositoryUrl = (<string>existingRepositoryEntry.repositoryUrl).replace(/\"/g, '\\"');
+            const repositoryUrl = (<string>existingRepositoryEntry.repositoryUrl).replace(/[\\]/g, '\\\\')
+                .replace(/[\"]/g, '\\\"')
+                .replace(/[\/]/g, '\\/')
+                .replace(/[\b]/g, '\\b')
+                .replace(/[\f]/g, '\\f')
+                .replace(/[\n]/g, '\\n')
+                .replace(/[\r]/g, '\\r')
+                .replace(/[\t]/g, '\\t');
 
             return queryInterface.sequelize.query(
                 // tslint:disable-next-line:max-line-length
-                `UPDATE "missions" SET "repositories" = '[{"name": "Repository", "kind": "other", "url": null, "notes": "${repositoryUrl}"}]'::json WHERE "uid" = :missionUid`,
+                `UPDATE "missions" SET "repositories" = $$[{"name": "Repository", "kind": "other", "url": null, "notes": "${repositoryUrl}"}]$$::json WHERE "uid" = :missionUid`,
                 {
                     type: QueryTypes.UPDATE,
                     replacements: {
