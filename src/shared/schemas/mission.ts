@@ -64,6 +64,8 @@ export const missionDetailsSchema = missionSchema.keys({
         'mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission creator\'s community. The `private` ' +
         'visibility setting restricts access to selected users, although this functionality is currently not implemented yet (as of 2017-08-23)')
         .example(MISSION_VISIBILITY_PUBLIC),
+    slotsAutoAssignable: Joi.bool().required().description('Indicates whether slots in the mission are auto-assignable. Auto-assignable slots do not require confirmation by a ' +
+        'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
     community: communitySchema.allow(null).default(null).optional().label('Community')
         .description('Community of the mission, if associated via user. Can be `null` if user is not assigned to community or removed mission association')
 }).required().label('MissionDetails').description('Detailed public mission information, as displayed on mission page. Include more detailed mission times, as well as a longer ' +

@@ -1455,10 +1455,15 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'visibility'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'visibility', 'slotsAutoAssignable'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
+        }
+
+        if (!payload.autoAssignable && mission.slotsAutoAssignable) {
+            log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission has auto-assignable setting enabled, marking slot as auto-assignable');
+            payload.autoAssignable = true;
         }
 
         log.debug({ function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission slots');

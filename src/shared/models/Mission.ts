@@ -428,6 +428,20 @@ export class Mission extends Model {
     public missionToken: string | null;
 
     /**
+     * Indicates whether all slots for the mission should be created as auto-assignable.
+     * Auto-assignable slots do not require a registration confirmation by a mission editor, but are automatically assigned to the first user that registers for them.
+     *
+     * @type {boolean}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    })
+    public slotsAutoAssignable: boolean;
+
+    /**
      * UID of the community the mission is associated with.
      * Can be `null` if the creating user has no community assigned
      *
@@ -1364,6 +1378,7 @@ export class Mission extends Model {
             gameServer: _.isNil(this.gameServer) ? null : this.gameServer,
             voiceComms: _.isNil(this.voiceComms) ? null : this.voiceComms,
             repositories: this.repositories,
+            slotsAutoAssignable: this.slotsAutoAssignable,
             visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator,
@@ -1413,6 +1428,7 @@ export interface IDetailedPublicMission extends IPublicMission {
     voiceComms: IMissionServerInfo | null;
     repositories: IMissionRepositoryInfo[];
     visibility: string;
+    slotsAutoAssignable: boolean;
     community: IPublicCommunity | null;
 }
 
