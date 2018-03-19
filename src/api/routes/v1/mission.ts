@@ -1,6 +1,6 @@
 import * as Joi from 'joi';
 
-import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../../../shared/models/Mission';
+import { MISSION_REQUIRED_DLCS, MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../../../shared/models/Mission';
 import { forbiddenSchema, internalServerErrorSchema } from '../../../shared/schemas/misc';
 import * as schemas from '../../../shared/schemas/mission';
 import { missionAccessSchema } from '../../../shared/schemas/missionAccess';
@@ -219,6 +219,8 @@ export const mission = [
                     slotsAutoAssignable: Joi.bool().required().description('Indicates whether slots in the mission are auto-assignable. Auto-assignable slots do not require ' +
                         'confirmation by a mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)')
                         .example(false),
+                    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).required().description('List of DLCs required to participate in the ' +
+                        'mission. Currently not used in any restrictions, but merely added as an indication to players').example(['apex', 'marksmen']),
                     addToCommunity: Joi.boolean().default(true).optional()
                         .description('Indicates whether the mission should also be associated with the user\'s community (if set), defaults to true')
                 })
@@ -369,9 +371,11 @@ export const mission = [
                         'creator\'s community. The `private` visibility setting restricts access to selected users, although this functionality is currently not implemented yet ' +
                         '(as of 2017-08-23)')
                         .example(MISSION_VISIBILITY_PUBLIC),
-                    slotsAutoAssignable: Joi.bool().required().description('New setting whether slots in the mission are auto-assignable. Auto-assignable slots do not require ' +
+                    slotsAutoAssignable: Joi.bool().optional().description('New setting whether slots in the mission are auto-assignable. Auto-assignable slots do not require ' +
                         'confirmation by a mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)')
                         .example(false),
+                    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).optional().description('New list of DLCs required to participate in ' +
+                        'the mission. Currently not used in any restrictions, but merely added as an indication to players').example(['apex', 'marksmen']),
                     suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
                         '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
@@ -1395,6 +1399,8 @@ export const mission = [
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
                     autoAssignable: Joi.bool().required().description('Indicates whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
                         'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
+                    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).required().description('List of DLCs required to fulfil the duties ' +
+                        'assigned to the slot. Currently not used in any restrictions, but merely added as an indication to players').example(['apex', 'marksmen']),
                     insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot the new slot should be inserted ' +
                         'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9),
                     duplicate: Joi.bool().optional().default(false).description('Indicates whether the slot is being created as a duplicate of an already existing one. ' +
@@ -1474,6 +1480,8 @@ export const mission = [
                         'Blocked slots can be used by mission creators to manually "assign" slots to community or users that choose not to use slotlist.info').example(false),
                     autoAssignable: Joi.bool().optional().description('New indicator whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
                         'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
+                    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).optional().description('New list of DLCs required to fulfil the duties ' +
+                        'assigned to the slot. Currently not used in any restrictions, but merely added as an indication to players').example(['apex', 'marksmen']),
                     externalAssignee: Joi.string().min(1).max(255).allow(null).optional().description('Nickname of external player assigned to the slot. Allows for slots ' +
                         'to be assigned to users not present in the database. Cannot be set if a user has been assigned and vice versa. Set to `null` to remove the external ' +
                         'assignee').example('MorpheusXAUT'),

@@ -1,6 +1,6 @@
 import * as Joi from 'joi';
 
-import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
+import { MISSION_REQUIRED_DLCS, MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
 import { missionRepositoryInfoSchema } from './missionRepositoryInfo';
 import { missionServerInfoSchema } from './missionServerInfo';
 import { userSchema } from './user';
@@ -28,6 +28,8 @@ export const missionSchema = Joi.object().keys({
         total: Joi.number().integer().positive().allow(0).min(0).description('Total number of slots created for the mission').example(9),
         unassigned: Joi.number().integer().positive().allow(0).min(0).description('Number of slots with registrations that have not been assigned yet').example(9)
     }).required().label('slotCounts').description('Slot counts for the mission, including number of slots with different states such as `open`, `unassigned` or `assigned`'),
+    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).required().description('List of DLCs required to participate in the mission. Currently ' +
+        'not used in any restrictions, but merely added as an indication to players').example(['apex', 'marksmen']),
     isAssignedToAnySlot: Joi.bool().optional().description('Indicates whether the user is assigned to any slot in the mission. Only present for requests by authenticated users')
         .example(true),
     isRegisteredForAnySlot: Joi.bool().optional().description('Indicates whether the user is registered for any slot in the mission. Only present for requests by ' +

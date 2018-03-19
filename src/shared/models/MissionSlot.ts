@@ -16,6 +16,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 import sequelize from '../util/sequelize';
 
 import { Community, IPublicCommunity } from './Community';
+import { MISSION_REQUIRED_DLCS } from './Mission';
 import { MissionSlotGroup } from './MissionSlotGroup';
 import { MissionSlotRegistration } from './MissionSlotRegistration';
 import { IPublicUser, User } from './User';
@@ -201,6 +202,34 @@ export class MissionSlot extends Model {
         defaultValue: false
     })
     public autoAssignable: boolean;
+
+    /**
+     * List of DLCs required to fulfil the duties assigned to the slot.
+     * Currently not used in any restrictions, but merely added as an indication to players.
+     *
+     * @type {string[]}
+     * @memberof MissionSlot
+     */
+    @Attribute({
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        allowNull: false,
+        defaultValue: [],
+        validate: {
+            validRequiredDLC(val: any): void {
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
+                }
+
+                _.each(localVal, (dlc: string) => {
+                    if (_.indexOf(MISSION_REQUIRED_DLCS, dlc) === -1) {
+                        throw Boom.badRequest('Invalid mission slot required DLC', dlc);
+                    }
+                });
+            }
+        }
+    })
+    public requiredDLCs: string[];
 
     /**
      * UID of the user that has been assigned to the slot.
@@ -484,6 +513,7 @@ export class MissionSlot extends Model {
             reserve: this.reserve,
             blocked: this.blocked,
             autoAssignable: this.autoAssignable,
+            requiredDLCs: this.requiredDLCs,
             assignee: publicAssignee,
             externalAssignee: _.isNil(this.externalAssignee) ? null : this.externalAssignee,
             registrationCount: this.registrations.length
@@ -513,6 +543,7 @@ export interface IPublicMissionSlot {
     reserve: boolean;
     blocked: boolean;
     autoAssignable: boolean;
+    requiredDLCs: string[];
     assignee: IPublicUser | null;
     externalAssignee: string | null;
     registrationCount: number;

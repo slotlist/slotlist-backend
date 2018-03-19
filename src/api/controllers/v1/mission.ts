@@ -233,6 +233,9 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
         payload.detailedDescription = await ImageService.parseMissionDescription(payload.slug, payload.detailedDescription);
 
+        // Ensure list of required DLCs is always sorted/displayed the same way
+        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
         log.debug({ function: 'createMission', payload, userUid }, 'Creating new mission');
 
         return sequelize.transaction(async (t: Transaction) => {
@@ -409,6 +412,9 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             notifyUpdate = true;
         }
 
+        // Ensure list of required DLCs is always sorted/displayed the same way
+        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
         await mission.update(payload, {
             fields: [
                 'title',
@@ -425,7 +431,8 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 'gameServer',
                 'voiceComms',
                 'repositories',
-                'slotsAutoAssignable'
+                'slotsAutoAssignable',
+                'requiredDLCs'
             ]
         });
 
@@ -1467,6 +1474,9 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             payload.autoAssignable = true;
         }
 
+        // Ensure list of required DLCs is always sorted/displayed the same way
+        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
         log.debug({ function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission slots');
 
         return sequelize.transaction(async (t: Transaction) => {
@@ -1548,6 +1558,9 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         }
 
         return sequelize.transaction(async (t: Transaction) => {
+            // Ensure list of required DLCs is always sorted/displayed the same way
+            payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
 
@@ -1561,6 +1574,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         'reserve',
                         'blocked',
                         'autoAssignable',
+                        'requiredDLCs',
                         'externalAssignee'
                     ]
                 });
@@ -1610,6 +1624,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         'blocked',
                         'autoAssignable',
                         'orderNumber',
+                        'requiredDLCs',
                         'externalAssignee'
                     ]
                 });

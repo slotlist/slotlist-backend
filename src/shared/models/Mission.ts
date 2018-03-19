@@ -68,6 +68,21 @@ export const MISSION_VISIBILITIES = [
 ];
 
 /**
+ * List of possiblie `requiredDLC` settings for a mission
+ *
+ */
+export const MISSION_REQUIRED_DLCS = [
+    'apex',
+    'helicopters',
+    'jets',
+    'karts',
+    'laws-of-war',
+    'marksmen',
+    'tac-ops',
+    'tanks'
+];
+
+/**
  * Represents a mission in database.
  * Provides database access and utility functionality for mission instances
  *
@@ -440,6 +455,34 @@ export class Mission extends Model {
         defaultValue: false
     })
     public slotsAutoAssignable: boolean;
+
+    /**
+     * List of DLCs required to participate in the mission.
+     * Currently not used in any restrictions, but merely added as an indication to players.
+     *
+     * @type {string[]}
+     * @memberof Mission
+     */
+    @Attribute({
+        type: DataTypes.ARRAY(DataTypes.STRING),
+        allowNull: false,
+        defaultValue: [],
+        validate: {
+            validRequiredDLC(val: any): void {
+                let localVal = val;
+                if (!_.isArray(localVal)) {
+                    localVal = [localVal];
+                }
+
+                _.each(localVal, (dlc: string) => {
+                    if (_.indexOf(MISSION_REQUIRED_DLCS, dlc) === -1) {
+                        throw Boom.badRequest('Invalid mission required DLC', dlc);
+                    }
+                });
+            }
+        }
+    })
+    public requiredDLCs: string[];
 
     /**
      * UID of the community the mission is associated with.
@@ -1331,6 +1374,7 @@ export class Mission extends Model {
             startTime: this.startTime,
             endTime: this.endTime,
             creator: publicCreator,
+            requiredDLCs: this.requiredDLCs,
             slotCounts
         };
     }
@@ -1379,6 +1423,7 @@ export class Mission extends Model {
             voiceComms: _.isNil(this.voiceComms) ? null : this.voiceComms,
             repositories: this.repositories,
             slotsAutoAssignable: this.slotsAutoAssignable,
+            requiredDLCs: this.requiredDLCs,
             visibility: this.visibility,
             community: publicCommunity,
             creator: publicCreator,
@@ -1404,6 +1449,7 @@ export interface IPublicMission {
     endTime: Date;
     creator: IPublicUser;
     slotCounts: IMissionSlotCounts;
+    requiredDLCs: string[];
     isAssignedToAnySlot?: boolean; // only returned for logged in users
     isRegisteredForAnySlot?: boolean; // only returned for logged in users
 }

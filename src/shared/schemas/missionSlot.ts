@@ -1,5 +1,7 @@
 import * as Joi from 'joi';
 
+import { MISSION_REQUIRED_DLCS } from '../models/Mission';
+
 import { communitySchema } from './community';
 import { userSchema } from './user';
 
@@ -23,6 +25,8 @@ export const missionSlotSchema = Joi.object().keys({
         'are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
     restrictedCommunity: communitySchema.allow(null).default(null).optional().description('Community the slot has been restricted to. If a value is set, only members of ' +
         'this community can register for the slot. If `null` is returned, no restrictions apply and everyone can register'),
+    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).required().description('List of DLCs required to fulfil the duties assigned to the ' +
+        'slot. Currently not used in any restrictions, but merely added as an indication to players.'),
     assignee: userSchema.allow(null).optional().description('User the slot has been assigned to. Can be `null` if no final assignment has been completed yet'),
     externalAssignee: Joi.string().min(1).max(255).allow(null).default(null).optional().description('Nickname of external player assigned to the slot. Allows for slots to ' +
         'be assigned to users not present in the database. Cannot be set at the same time as an `assigneeUid` and vice versa. Can be `null` if no external player has been ' +
