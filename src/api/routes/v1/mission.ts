@@ -216,6 +216,9 @@ export const mission = [
                         'creator\'s community. The `private` visibility setting restricts access to selected users, although this functionality is currently not implemented yet ' +
                         '(as of 2017-08-23)')
                         .example(MISSION_VISIBILITY_PUBLIC),
+                    slotsAutoAssignable: Joi.bool().required().description('Indicates whether slots in the mission are auto-assignable. Auto-assignable slots do not require ' +
+                        'confirmation by a mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)')
+                        .example(false),
                     addToCommunity: Joi.boolean().default(true).optional()
                         .description('Indicates whether the mission should also be associated with the user\'s community (if set), defaults to true')
                 })
@@ -366,6 +369,9 @@ export const mission = [
                         'creator\'s community. The `private` visibility setting restricts access to selected users, although this functionality is currently not implemented yet ' +
                         '(as of 2017-08-23)')
                         .example(MISSION_VISIBILITY_PUBLIC),
+                    slotsAutoAssignable: Joi.bool().required().description('New setting whether slots in the mission are auto-assignable. Auto-assignable slots do not require ' +
+                        'confirmation by a mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)')
+                        .example(false),
                     suppressNotifications: Joi.boolean().default(false).optional().description('Allows for notifications caused by the endpoint changes to be suppressed. ' +
                         '"Destructive" actions such as slot unassignments, permission removals or mission deletions cannot be suppressed')
                 })
@@ -1390,7 +1396,9 @@ export const mission = [
                     autoAssignable: Joi.bool().required().description('Indicates whether the slot is auto-assignable. Auto-assignable slots do not require confirmation by a ' +
                         'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
                     insertAfter: Joi.number().integer().positive().allow(0).default(0).required().description('Order number of slot the new slot should be inserted ' +
-                        'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9)
+                        'after. The order number created will be incremented by one and all higher order numbers adapted accordingly').example(9),
+                    duplicate: Joi.bool().optional().default(false).description('Indicates whether the slot is being created as a duplicate of an already existing one. ' +
+                        'Duplicated slots are handled slightly differently, mainly regarding the `autoAssignable` setting')
                 }).required()
             },
             response: {

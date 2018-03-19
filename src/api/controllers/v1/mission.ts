@@ -424,7 +424,8 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 'visibility',
                 'gameServer',
                 'voiceComms',
-                'repositories'
+                'repositories',
+                'slotsAutoAssignable'
             ]
         });
 
@@ -1461,7 +1462,7 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
             throw Boom.notFound('Mission not found');
         }
 
-        if (!payload.autoAssignable && mission.slotsAutoAssignable) {
+        if (!payload.autoAssignable && mission.slotsAutoAssignable && !payload.duplicate) {
             log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission has auto-assignable setting enabled, marking slot as auto-assignable');
             payload.autoAssignable = true;
         }
