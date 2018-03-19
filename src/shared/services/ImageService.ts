@@ -118,7 +118,7 @@ export class ImageService {
 
         log.debug({ function: 'parseMissionDescription', missionSlug, imageCount }, 'Finished parsing mission description');
 
-        return Promise.resolve(description);
+        return Promise.resolve(localDescription);
     }
 
     public async uploadImage(imageData: any, imageName: string, imageFolder: string, imageType: string): Promise<string> {
