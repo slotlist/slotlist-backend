@@ -20,6 +20,7 @@ import { log as logger } from '../util/log';
 import sequelize from '../util/sequelize';
 const log = logger.child({ model: 'User' });
 
+import { Announcement } from './Announcement';
 import { Community, IPublicCommunity } from './Community';
 import { CommunityApplication } from './CommunityApplication';
 import { IPublicMission, Mission } from './Mission';
@@ -48,6 +49,7 @@ export class User extends Model {
      *
      * @static
      * @type {{
+     *         announcements: HasMany,
      *         applications: HasMany,
      *         community: BelongsTo,
      *         missionAccesses: HasMany,
@@ -61,6 +63,7 @@ export class User extends Model {
      * @memberof User
      */
     public static associations: {
+        announcements: HasMany;
         applications: HasMany;
         community: BelongsTo;
         missionAccesses: HasMany;
@@ -142,6 +145,15 @@ export class User extends Model {
         onUpdate: 'CASCADE'
     })
     public communityUid: string | null;
+
+    /**
+     * Eager-loaded list of announcements instances.
+     * Only included if the user has created announcements and it has been eager-loaded via sequelize
+     *
+     * @type {(Announcement[] | undefined)}
+     * @memberof User
+     */
+    public announcements?: Announcement[];
 
     /**
      * Eager-loaded list of community application instances.

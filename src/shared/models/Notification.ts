@@ -12,6 +12,7 @@ import { Attribute, Options } from 'sequelize-decorators';
 import sequelize from '../util/sequelize';
 
 import {
+    notificationDataAnnouncementSchema,
     notificationDataCommunityApplicationSchema,
     notificationDataCommunitySchema,
     notificationDataGenericSchema,
@@ -20,6 +21,8 @@ import {
     notificationDataPermissionSchema
 } from '../schemas/notification';
 import {
+    NOTIFICATION_TYPE_ANNOUNCEMENT_GENERIC,
+    NOTIFICATION_TYPE_ANNOUNCEMENT_UPDATE,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,
@@ -103,7 +106,8 @@ export class Notification extends Model {
      * Stores additional data, providing information about what triggered the notification.
      * Can e.g. contain a missionSlug, communitySlug, userUid, permission or likewise.
      *
-     * @type {(INotificationDataCommunity |
+     * @type {(INotificationDataAnnouncement |
+     *     INotificationDataCommunity |
      *     INotificationDataCommunityApplication |
      *     INotificationDataGeneric |
      *     INotificationDataMission |
@@ -118,6 +122,10 @@ export class Notification extends Model {
             validNotificationData(val: any): void {
                 let schema: Joi.Schema;
                 switch (this.notificationType) {
+                    case NOTIFICATION_TYPE_ANNOUNCEMENT_GENERIC:
+                    case NOTIFICATION_TYPE_ANNOUNCEMENT_UPDATE:
+                        schema = notificationDataAnnouncementSchema;
+                        break;
                     case NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED:
                     case NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED:
                     case NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED:
@@ -292,6 +300,18 @@ export interface IPublicNotification {
 }
 
 /**
+ * Additional notification data for type `NOTIFICATION_TYPE_ANNOUNCEMENT_GENERIC` and `NOTIFICATION_TYPE_ANNOUNCEMENT_UPDATE`.
+ * Contains information about the announcement that was created.
+ *
+ * @export
+ * @interface INotificationDataAnnouncement
+ */
+export interface INotificationDataAnnouncement {
+    announcementUid: string;
+    title: string;
+}
+
+/**
  * Additional notification data for type `NOTIFICATION_TYPE_COMMUNITY_DELETED`.
  * Contains information about the community that was deleted.
  *
@@ -305,7 +325,7 @@ export interface INotificationDataCommunity {
 
 /**
  * Additional notification data for types `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED`, `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED`,
- * `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED` and `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW`, `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED`.
+ * `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED`, `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_NEW` and `NOTIFICATION_TYPE_COMMUNITY_APPLICATION_REMOVED`.
  * Contains information about the user that created the application as well as the community it was created for.
  *
  * @export

@@ -1,4 +1,12 @@
 /**
+ * Notification indicating a new, generic announcement is available
+ */
+export const NOTIFICATION_TYPE_ANNOUNCEMENT_GENERIC = 'announcement.generic';
+/**
+ * Notification indicating a new, update announcement is available
+ */
+export const NOTIFICATION_TYPE_ANNOUNCEMENT_UPDATE = 'announcement.update';
+/**
  * Notification indicating an application (created by the user) to a community has been accepted
  */
 export const NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED = 'community.application.accepted';
@@ -71,6 +79,8 @@ export const NOTIFICATION_TYPE_MISSION_UPDATED = 'mission.updated';
  * List of possible `notificationType` values, indicating the trigger of the notification
  */
 export const NOTIFICATION_TYPES = [
+    NOTIFICATION_TYPE_ANNOUNCEMENT_GENERIC,
+    NOTIFICATION_TYPE_ANNOUNCEMENT_UPDATE,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_ACCEPTED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DELETED,
     NOTIFICATION_TYPE_COMMUNITY_APPLICATION_DENIED,

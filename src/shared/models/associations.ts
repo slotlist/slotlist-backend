@@ -1,3 +1,4 @@
+import { Announcement } from './Announcement';
 import { Community } from './Community';
 import { CommunityApplication } from './CommunityApplication';
 import { Mission } from './Mission';
@@ -18,6 +19,8 @@ import { User } from './User';
  */
 // tslint:disable:max-line-length
 export function createAssociations(): void {
+    Announcement.associations.user = Announcement.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+
     Community.associations.applications = Community.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     Community.associations.members = Community.hasMany(User, { as: 'members', foreignKey: 'communityUid', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
     Community.associations.missionAccesses = Community.hasMany(MissionAccess, { as: 'missionAccesses', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
@@ -53,6 +56,7 @@ export function createAssociations(): void {
 
     Permission.associations.user = Permission.belongsTo(User, { as: 'user', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
+    User.associations.announcements = User.hasMany(Announcement, { as: 'announcements', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.applications = User.hasMany(CommunityApplication, { as: 'applications', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.community = User.belongsTo(Community, { as: 'community', foreignKey: 'communityUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
     User.associations.missionAccesses = User.hasMany(MissionAccess, { as: 'missionAccesses', foreignKey: 'userUid', onDelete: 'CASCADE', onUpdate: 'CASCADE' });

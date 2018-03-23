@@ -2,6 +2,11 @@ import * as Joi from 'joi';
 
 import { NOTIFICATION_TYPE_GENERIC, NOTIFICATION_TYPE_MISSION_SLOT_ASSIGNED, NOTIFICATION_TYPES } from '../types/notification';
 
+export const notificationDataAnnouncementSchema = Joi.object().keys({
+    announcementUid: Joi.string().guid().length(36).required().description('UID of the announcement that was created').example('e3af45b2-2ef8-4ece-bbcc-13e70f2b68a8'),
+    title: Joi.string().min(1).max(255).required().description('Title of the announcement').example('Update 1.0.0 finally released')
+});
+
 export const notificationDataCommunityApplicationSchema = Joi.object().keys({
     communitySlug: Joi.string().min(1).max(255).disallow('slugAvailable').required().description('Slug of community the status of the application was changed for')
         .example('spezialeinheit-luchs'),

@@ -54,6 +54,9 @@ const serializers: bunyan.Serializers = {
         if (_.isString(pay.token)) {
             pay.token = '***REDACTED***';
         }
+        if (_.isString(pay.content)) {
+            pay.content = '***SNIP***';
+        }
         if (_.isString(pay.detailedDescription)) {
             pay.detailedDescription = '***SNIP***';
         }
