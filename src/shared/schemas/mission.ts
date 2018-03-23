@@ -1,6 +1,6 @@
 import * as Joi from 'joi';
 
-import { MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
+import { MISSION_REQUIRED_DLCS, MISSION_VISIBILITIES, MISSION_VISIBILITY_HIDDEN, MISSION_VISIBILITY_PUBLIC } from '../models/Mission';
 import { missionRepositoryInfoSchema } from './missionRepositoryInfo';
 import { missionServerInfoSchema } from './missionServerInfo';
 import { userSchema } from './user';
@@ -28,6 +28,8 @@ export const missionSchema = Joi.object().keys({
         total: Joi.number().integer().positive().allow(0).min(0).description('Total number of slots created for the mission').example(9),
         unassigned: Joi.number().integer().positive().allow(0).min(0).description('Number of slots with registrations that have not been assigned yet').example(9)
     }).required().label('slotCounts').description('Slot counts for the mission, including number of slots with different states such as `open`, `unassigned` or `assigned`'),
+    requiredDLCs: Joi.array().items(Joi.string().equal(MISSION_REQUIRED_DLCS).optional()).required().description('List of DLCs required to participate in the mission. Currently ' +
+        'not used in any restrictions, but merely added as an indication to players').example(['apex', 'marksmen']),
     isAssignedToAnySlot: Joi.bool().optional().description('Indicates whether the user is assigned to any slot in the mission. Only present for requests by authenticated users')
         .example(true),
     isRegisteredForAnySlot: Joi.bool().optional().description('Indicates whether the user is registered for any slot in the mission. Only present for requests by ' +
@@ -64,6 +66,8 @@ export const missionDetailsSchema = missionSchema.keys({
         'mission creator and assigned mission editors. The `community` visibility makes the mission visible to all members of the mission creator\'s community. The `private` ' +
         'visibility setting restricts access to selected users, although this functionality is currently not implemented yet (as of 2017-08-23)')
         .example(MISSION_VISIBILITY_PUBLIC),
+    slotsAutoAssignable: Joi.bool().required().description('Indicates whether slots in the mission are auto-assignable. Auto-assignable slots do not require confirmation by a ' +
+        'mission editor, but are automatically assigned to the first registering user (who would have thought, what a good name choice!)').example(false),
     community: communitySchema.allow(null).default(null).optional().label('Community')
         .description('Community of the mission, if associated via user. Can be `null` if user is not assigned to community or removed mission association')
 }).required().label('MissionDetails').description('Detailed public mission information, as displayed on mission page. Include more detailed mission times, as well as a longer ' +

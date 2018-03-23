@@ -233,6 +233,9 @@ export function createMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
 
         payload.detailedDescription = await ImageService.parseMissionDescription(payload.slug, payload.detailedDescription);
 
+        // Ensure list of required DLCs is always sorted/displayed the same way
+        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
         log.debug({ function: 'createMission', payload, userUid }, 'Creating new mission');
 
         return sequelize.transaction(async (t: Transaction) => {
@@ -409,6 +412,9 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             notifyUpdate = true;
         }
 
+        // Ensure list of required DLCs is always sorted/displayed the same way
+        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
         await mission.update(payload, {
             fields: [
                 'title',
@@ -424,7 +430,9 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
                 'visibility',
                 'gameServer',
                 'voiceComms',
-                'repositories'
+                'repositories',
+                'slotsAutoAssignable',
+                'requiredDLCs'
             ]
         });
 
@@ -1455,11 +1463,19 @@ export function createMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         const payload = request.payload;
         const userUid = request.auth.credentials.user.uid;
 
-        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'visibility'] });
+        const mission = await Mission.findOne({ where: { slug }, attributes: ['uid', 'visibility', 'slotsAutoAssignable'] });
         if (_.isNil(mission)) {
             log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission with given slug not found');
             throw Boom.notFound('Mission not found');
         }
+
+        if (!payload.autoAssignable && mission.slotsAutoAssignable && !payload.duplicate) {
+            log.debug({ function: 'createMissionSlot', slug, payload, userUid }, 'Mission has auto-assignable setting enabled, marking slot as auto-assignable');
+            payload.autoAssignable = true;
+        }
+
+        // Ensure list of required DLCs is always sorted/displayed the same way
+        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
 
         log.debug({ function: 'createMissionSlot', slug, payload, userUid, missionUid: mission.uid }, 'Creating new mission slots');
 
@@ -1542,6 +1558,9 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
         }
 
         return sequelize.transaction(async (t: Transaction) => {
+            // Ensure list of required DLCs is always sorted/displayed the same way
+            payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+
             if (_.isNil(payload.moveAfter)) {
                 log.debug({ function: 'updateMissionSlot', slug, slotUid, payload, userUid, missionUid: mission.uid }, 'Updating mission slot');
 
@@ -1555,6 +1574,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         'reserve',
                         'blocked',
                         'autoAssignable',
+                        'requiredDLCs',
                         'externalAssignee'
                     ]
                 });
@@ -1604,6 +1624,7 @@ export function updateMissionSlot(request: Hapi.Request, reply: Hapi.ReplyWithCo
                         'blocked',
                         'autoAssignable',
                         'orderNumber',
+                        'requiredDLCs',
                         'externalAssignee'
                     ]
                 });
