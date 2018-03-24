@@ -90,6 +90,13 @@ export function createAnnouncement(request: Hapi.Request, reply: Hapi.ReplyWithC
 
         payload.userUid = user.uid;
 
+        if (payload.sendNotifications && !_.isNil(payload.visibleFrom) && moment(payload.visibleFrom).utc().isAfter(moment().utc())) {
+            log.debug(
+                { function: 'createAnnouncement', payload, userUid, sendNotifications: payload.sendNotifications, visibleFrom: payload.visibleFrom },
+                'Announcement has visibleFrom date after current timestamp, disabling notifications');
+            payload.sendNotifications = false;
+        }
+
         log.debug({ function: 'createAnnouncement', payload, userUid, sendNotifications: payload.sendNotifications }, 'Creating new announcement');
 
         const announcement = payload.sendNotifications ?
