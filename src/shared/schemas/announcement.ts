@@ -1,5 +1,6 @@
 import * as Joi from 'joi';
 
+import { ANNOUNCEMENT_TYPE_GENERIC, ANNOUNCEMENT_TYPE_UPDATE, ANNOUNCEMENT_TYPES } from '../models/Announcement';
 import { userSchema } from './user';
 
 /**
@@ -13,5 +14,7 @@ export const announcementSchema = Joi.object().keys({
     user: userSchema.required().description('Creator of the announcement'),
     createdAt: Joi.date().required().description('Date and time the announcement was created').example('2017-09-02T17:00:00.000Z'),
     visibleFrom: Joi.date().allow(null).default(null).optional().description('Date and time the announcement will be visible from. Can be `null` if the announcement ' +
-        'should be immediately visible').example('2017-09-02T17:00:00.000Z')
+        'should be immediately visible').example('2017-09-02T17:00:00.000Z'),
+    announcementType: Joi.string().equal(ANNOUNCEMENT_TYPES).default(ANNOUNCEMENT_TYPE_GENERIC).required().description('Type of announcement, used to distinguish ' +
+        'text/data to display').example(ANNOUNCEMENT_TYPE_UPDATE)
 }).required().label('Announcement').description('Public announcement information, as displayed in the announcement list');

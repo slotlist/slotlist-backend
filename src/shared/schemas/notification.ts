@@ -54,6 +54,7 @@ export const notificationDataPermissionSchema = Joi.object().keys({
 });
 
 export const notificationDataSchema = Joi.alternatives(
+    notificationDataAnnouncementSchema,
     notificationDataCommunityApplicationSchema,
     notificationDataCommunitySchema,
     notificationDataGenericSchema,

@@ -320,7 +320,8 @@ export class Announcement extends Model {
             content: this.content,
             user: publicUser,
             createdAt: this.createdAt,
-            visibleFrom: _.isNil(this.visibleFrom) ? null : this.visibleFrom
+            visibleFrom: _.isNil(this.visibleFrom) ? null : this.visibleFrom,
+            announcementType: this.announcementType
         };
     }
 
@@ -342,4 +343,5 @@ export interface IPublicAnnouncement {
     user: IPublicUser;
     createdAt: Date;
     visibleFrom: Date | null;
+    announcementType: string;
 }
