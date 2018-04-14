@@ -22,7 +22,7 @@ export class SteamService {
     constructor() {
         this.relyingParty = new openid.RelyingParty(SteamConfig.openID.callbackURL, SteamConfig.openID.realm, true, true, []);
         this.steamAPIClient = axios.create({
-            baseURL: 'http://api.steampowered.com',
+            baseURL: 'https://api.steampowered.com',
             params: { key: SteamConfig.api.secret, format: 'json' }
         });
     }
@@ -31,7 +31,7 @@ export class SteamService {
         return new Promise<string>((resolve: Function, reject: Function) => {
             log.debug({ function: 'getLoginRedirectURL' }, 'Retrieving Steam login redirect URL');
 
-            this.relyingParty.authenticate('http://steamcommunity.com/openid', false, (err: any, url: string) => {
+            this.relyingParty.authenticate('https://steamcommunity.com/openid', false, (err: any, url: string) => {
                 if (!_.isNil(err)) {
                     log.warn({ function: 'getLoginRedirectURL', err }, 'Failed to retrieve Steam login redirect URL');
 
@@ -59,7 +59,7 @@ export class SteamService {
                 if (result.authenticated === true) {
                     log.debug({ function: 'verifySteamLogin', result }, 'Successfully verified Steam login');
 
-                    const steamIdRegex = /http\:\/\/steamcommunity\.com\/openid\/id\/(\d+)/;
+                    const steamIdRegex = /https?\:\/\/steamcommunity\.com\/openid\/id\/(\d+)/;
                     const steamId = steamIdRegex.exec(result.claimedIdentifier);
                     if (_.isNil(steamId) || steamId.length < 2) {
                         log.warn({ function: 'verifySteamLogin', result }, 'Failed to verify Steam login, claimedIdentifier was invalid');
