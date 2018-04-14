@@ -64,7 +64,7 @@ export class SteamService {
                     if (_.isNil(steamId) || steamId.length < 2) {
                         log.warn({ function: 'verifySteamLogin', result }, 'Failed to verify Steam login, claimedIdentifier was invalid');
 
-                        return reject('Failed to verify Steam login');
+                        return reject(Boom.conflict('Failed to verify Steam login'));
                     }
 
                     return resolve(steamId[1]);

@@ -412,8 +412,10 @@ export function updateMission(request: Hapi.Request, reply: Hapi.ReplyWithContin
             notifyUpdate = true;
         }
 
-        // Ensure list of required DLCs is always sorted/displayed the same way
-        payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+        if (!_.isEmpty(payload.requiredDLCs)) {
+            // Ensure list of required DLCs is always sorted/displayed the same way
+            payload.requiredDLCs = _.sortBy(payload.requiredDLCs);
+        }
 
         await mission.update(payload, {
             fields: [
