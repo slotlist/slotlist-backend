@@ -108,9 +108,13 @@
   dependencies:
     "@types/bluebird" "*"
 
-"@types/bluebird@*", "@types/bluebird@^3.5.8":
+"@types/bluebird@*":
   version "3.5.20"
   resolved "https://registry.yarnpkg.com/@types/bluebird/-/bluebird-3.5.20.tgz#f6363172add6f4eabb8cada53ca9af2781e8d6a1"
+
+"@types/bluebird@3.5.21":
+  version "3.5.21"
+  resolved "https://registry.yarnpkg.com/@types/bluebird/-/bluebird-3.5.21.tgz#567615589cc913e84a28ecf9edb031732bdf2634"
 
 "@types/bluebird@^3.5.5":
   version "3.5.8"
