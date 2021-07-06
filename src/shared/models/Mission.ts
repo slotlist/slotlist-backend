@@ -73,13 +73,17 @@ export const MISSION_VISIBILITIES = [
  */
 export const MISSION_REQUIRED_DLCS = [
     'apex',
+    'contact',
+    'csla',
+    'gm',
     'helicopters',
     'jets',
     'karts',
     'laws-of-war',
     'marksmen',
     'tac-ops',
-    'tanks'
+    'tanks',
+    'vn'
 ];
 
 /**
