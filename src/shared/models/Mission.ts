@@ -72,6 +72,7 @@ export const MISSION_VISIBILITIES = [
  *
  */
 export const MISSION_REQUIRED_DLCS = [
+    'aow',
     'apex',
     'contact',
     'csla',
