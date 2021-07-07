@@ -15,6 +15,8 @@ WORKDIR /app
 
 COPY . /app/
 
+RUN chmod +x /app/docker-entrypoint.sh
+
 RUN set -ex \
     && apk add --no-cache --virtual .build-deps-node \
         g++ \
