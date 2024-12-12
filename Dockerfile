@@ -1,5 +1,5 @@
-FROM node:8.1.4-alpine
-MAINTAINER Nick 'MorpheusXAUT' Mueller <nick@morpheusxaut.net>
+ARG NODE_VERSION=8.1.4-alpine
+FROM node:${NODE_VERSION}
 
 ARG PRODUCTION_BUILD=true
 
