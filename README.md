@@ -2,6 +2,10 @@
 Backend of [slotlist.info](https://slotlist.info), an ArmA 3 mission planning and slotlist management tool.  
 The corresponding frontend implementation of this project can be found at [slotlist-frontend](https://github.com/MorpheusXAUT/slotlist-frontend).
 
+## 📢 Project Status: Discontinued
+
+After nearly a decade of serving the ArmA community, slotlist.info will be shut down on 31 December 2025. The project is no longer actively maintained due to time and resource constraints, and its underlying technology stack has become outdated. This repository remains available as an archive for historical and reference purposes. Thank you to everyone who contributed and supported the project over the years!
+
 ## Installation
 ### Requirements
 * [Node](https://nodejs.org) 8.1 and up
